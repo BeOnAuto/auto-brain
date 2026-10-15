@@ -12,6 +12,34 @@ function open(handler: ApiHandler, address = 'http://localhost:5555/'): Promise<
   return handler.fetch(new Request(address, { headers: fromABrowser }));
 }
 
+describe('an MCP endpoint, opened in a browser', () => {
+  it.each(['/mcp', '/orgs/acme/mcp', '/orgs/acme/playbooks/finance/mcp'])(
+    'sends %s to the studio settings that say how to connect to it',
+    async (path) => {
+      const response = await open(createTestHandler().handler, `http://localhost:5555${path}`);
+
+      expect({ status: response.status, location: response.headers.get('location') }).toEqual({
+        status: 302,
+        location: 'https://studio.on.auto/?server=http%3A%2F%2Flocalhost%3A5555&settings=mcp',
+      });
+    },
+  );
+
+  it('leaves an agent that opens the event stream to the endpoint', async () => {
+    const response = await createTestHandler().handler.fetch(
+      new Request('http://localhost:5555/mcp', { headers: { accept: 'text/event-stream, text/html' } }),
+    );
+
+    expect(response.status).not.toBe(302);
+  });
+
+  it('is sent on without a key', async () => {
+    const { handler } = await operationServer();
+
+    expect((await open(handler, 'http://localhost:5555/mcp')).status).toBe(302);
+  });
+});
+
 function styleOf(page: string): string {
   return page.slice(page.indexOf('<style>') + '<style>'.length, page.indexOf('</style>'));
 }

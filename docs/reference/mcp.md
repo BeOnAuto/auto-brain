@@ -10,7 +10,7 @@ A reasoning function can also call tools itself, through tool servers the operat
 
 ## Transport and authentication
 
-Endpoints use streamable HTTP without sessions. The local quick start uses `http://localhost:5555/mcp` and signs you in through the Auto identity service when your agent connects. In local mode, which `LOCAL_MODE=true` turns on for development, the endpoint takes requests without an authentication header and trusts every request on your computer; do not expose it through a tunnel or public proxy.
+Endpoints use streamable HTTP without sessions. The local quick start uses `http://localhost:5555/mcp` and signs you in through the Auto identity service when your agent connects. In local mode, which `LOCAL_MODE=true` turns on for development, the endpoint takes requests without an authentication header and trusts every request on your computer; do not expose it through a tunnel or public proxy. Opening an endpoint in a browser goes to the studio's MCP settings for this server.
 
 An authenticated deployment supplies its own endpoint and a credential: an API key, or, where sign-in is on, as it is by default, a person's access token from the Auto identity service. Credentials belong in the connection configuration, outside prompts and function documents.
 

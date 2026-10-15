@@ -152,11 +152,32 @@ function pageOf(server: Readonly<URL>): ReturnType<typeof html> {
     </html>`;
 }
 
-function asksForThePage(method: string, path: string, accept: string): boolean {
-  return method === 'GET' && path === '/' && accept.includes('text/html');
+const mcpEndpoint = /^\/(?:orgs\/[^/]+\/(?:playbooks\/[^/]+\/)?)?mcp$/u;
+
+function studioMcpSettingsOn(server: Readonly<URL>): string {
+  return `${studioOn(server)}&settings=mcp`;
 }
 
-export const landingPage: MiddlewareHandler<ApiEnv> = (c, next) =>
-  asksForThePage(c.req.method, c.req.path, c.req.header('accept') ?? '')
-    ? Promise.resolve(c.html(pageOf(new URL(c.req.url)), 200, pageHeaders))
-    : next();
+function fromABrowser(method: string, accept: string): boolean {
+  return method === 'GET' && accept.includes('text/html') && !accept.includes('text/event-stream');
+}
+
+function asksForThePage(method: string, path: string, accept: string): boolean {
+  return fromABrowser(method, accept) && path === '/';
+}
+
+function opensAnEndpoint(method: string, path: string, accept: string): boolean {
+  return fromABrowser(method, accept) && mcpEndpoint.test(path);
+}
+
+export const landingPage: MiddlewareHandler<ApiEnv> = (c, next) => {
+  const { method, path } = c.req;
+  const accept = c.req.header('accept') ?? '';
+  if (asksForThePage(method, path, accept)) {
+    return Promise.resolve(c.html(pageOf(new URL(c.req.url)), 200, pageHeaders));
+  }
+  if (opensAnEndpoint(method, path, accept)) {
+    return Promise.resolve(c.redirect(studioMcpSettingsOn(new URL(c.req.url)), 302));
+  }
+  return next();
+};

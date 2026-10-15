@@ -82,6 +82,8 @@ A page may call the API only from the studio, `https://studio.on.auto`, or from 
 
 A browser that opens the server's address gets a page saying the server is running, with a button that opens the studio on it. The server answers with the page only to a `GET /` that accepts `text/html`, and it needs no key, in local mode or not. Any other request to `/` is treated like a request to any other path.
 
+A browser that opens an MCP endpoint, `/mcp`, `/orgs/{org}/mcp` or `/orgs/{org}/playbooks/{playbook}/mcp`, is sent with `302` to the studio's MCP settings on this server, which say how to connect an agent. Only a `GET` that accepts `text/html` and not `text/event-stream` is sent there, so an agent's requests reach the endpoint as before, and it needs no key.
+
 The page tells a visitor only that an Auto Runtime server answers at that address; it shows nothing the server holds. It runs no script and asks no other server for anything: its styles, its icon and its typefaces are inside it, and its `Content-Security-Policy` allows nothing else. It may not be shown in a frame, and it is never cached.
 
 The button goes to `https://studio.on.auto/?server=<this server's origin>`, and the studio then calls this server from the browser, which is why its origin is always allowed. The studio takes a server from such a link only when the address is on the visitor's own machine: `localhost`, `127.0.0.1` or `::1`.
