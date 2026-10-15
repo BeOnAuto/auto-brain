@@ -55,7 +55,7 @@ describe('the check of an output against the output schema', () => {
   });
 });
 
-describe('the check of an output against the shape its document names', { timeout: workerTestTimeoutMs }, () => {
+describe('the check of an output against the shape its document names', () => {
   it('runs in the worker, with what the shape holds beyond its schema', async () => {
     const { pool, requests } = recording(poolOf());
     const run = computationWith(pool);

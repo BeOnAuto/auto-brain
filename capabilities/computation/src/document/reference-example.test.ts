@@ -44,7 +44,7 @@ describe('the example on the reference page of computation functions', () => {
   });
 });
 
-describe('the computation function of the reference of output shapes', { timeout: workerTestTimeoutMs }, () => {
+describe('the computation function of the reference of output shapes', () => {
   const [, , input, output] = shapedBlocks;
 
   it('answers the input the page gives with the series the page shows', async () => {
