@@ -5,7 +5,7 @@
 
 ### ⚠ BREAKING CHANGES
 
-* **server:** `pnpm dev` and `npx @on.auto/runtime` no longer start in local mode; set `LOCAL_MODE=true` to develop without signing in.
+* **server:** `LOCAL_MODE` is gone. A runtime on a laptop, listening on a loopback address with neither `PUBLIC_URL` nor `API_KEYS` set, runs in local mode; `PUBLIC_URL` turns sign-in on and has no default; a server reachable beyond its computer needs `PUBLIC_URL` or `API_KEYS` to start.
 
 ### Features
 
