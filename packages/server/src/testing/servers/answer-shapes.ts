@@ -8,7 +8,6 @@ import { chatEnvironment, chatKey } from './chat-deliveries.ts';
 import { interactionServerOn, servingInteractions, type InteractionServer } from './interaction-server.ts';
 import { alpha } from './reasoning-server.ts';
 import { until } from './workflow-calls.ts';
-import { workflowTestTimeoutMs } from './workflow-server.ts';
 
 export interface ProjectionStore {
   readonly environment: Readonly<Record<string, string>>;
@@ -86,7 +85,6 @@ export function answerShapesOn(stores: readonly ProjectionStoreChoice[]): void {
   describe.each(stores)('the answer shape of an open request, on $store', ({ skipped, aStore }) => {
     it.skipIf(skipped)(
       'is the schema a question recorded and null for a notification, as each append keeps it and once the table of version 1 is rebuilt',
-      { timeout: workflowTestTimeoutMs },
       async () => {
         const store = await aStore();
         const environment = { ...store.environment, ...(await refusingChat()) };

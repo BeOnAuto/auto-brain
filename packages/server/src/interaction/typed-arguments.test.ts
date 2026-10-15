@@ -4,7 +4,6 @@ import { chatEnvironment, chatServer } from '../testing/servers/chat-deliveries.
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const limitApproval = [
   '---',
@@ -43,7 +42,7 @@ const answerSchema = {
   properties: { choice: { type: 'string', enum: ['approve', 'reject'] } },
 };
 
-describe('the arguments of a delivery, typed as written, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the arguments of a delivery, typed as written, over HTTP', () => {
   it('sends a number, a boolean and an object as written, an expression alone as its value, and other strings as text', async () => {
     const chat = await chatServer();
     const server = await servingInteractions([], chatEnvironment(chat.url));

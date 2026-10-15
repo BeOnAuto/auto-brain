@@ -110,7 +110,7 @@ async function ranAgainOn(server: ReasoningServer, input: Schema.Json) {
   return restarted;
 }
 
-describe(`a computation function on SQLite, on ${secondStore} and after a restart`, { timeout: 60_000 }, () => {
+describe(`a computation function on SQLite, on ${secondStore} and after a restart`, () => {
   it('gives the same output for the same input, after the same work, in a cold worker, a warm one and after the server started again', async () => {
     const input = campaignRows(1000);
     const file = aLedgerFile();

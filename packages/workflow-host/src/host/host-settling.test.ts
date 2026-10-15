@@ -61,7 +61,7 @@ describe('the host asked to start a run whose settlement is pending', () => {
     expect(startedAgain).toBe('going');
     expect([...settled.keys()]).toEqual([runId]);
     expect(hosted.settleAttempts()).toBe(attemptOfTheStart + 1);
-  }, 30_000);
+  });
 });
 
 describe('the host whose ledger cannot be reached for two minutes', () => {
@@ -86,5 +86,5 @@ describe('the host whose ledger cannot be reached for two minutes', () => {
     expect([...hosted.settlements().keys()]).toEqual([runId]);
     expect(hosted.settleAttempts()).toBe(settleAttemptsBeforeBackingOff + Math.ceil(outageMs / settleBackOffMs));
     expect(hosted.troubles()).toEqual([]);
-  }, 30_000);
+  });
 });

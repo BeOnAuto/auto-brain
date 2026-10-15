@@ -1,13 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  settledRun,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const waiting = workflowSource(
   'waiting',
@@ -40,7 +34,7 @@ async function flood(runId: string, count: number, data: string): Promise<readon
   return [...new Set(statuses)].toSorted((first, second) => first - second);
 }
 
-describe('a workflow flooded with events it does not consume', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow flooded with events it does not consume', () => {
   it('fails once more than 64 wait, settles rejected, and answers later events not found', async () => {
     const runId = await waitingRun();
 

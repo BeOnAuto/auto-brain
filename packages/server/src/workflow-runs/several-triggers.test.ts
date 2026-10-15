@@ -6,7 +6,7 @@ import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const aMinuteAndASecond = 61_000;
 
@@ -122,7 +122,7 @@ async function triggeredThreeTimes(): Promise<Seen> {
 
 beforeAll(async () => {
   seen = await triggeredThreeTimes();
-}, workflowTestTimeoutMs);
+});
 
 afterAll(async () => {
   await server.stop();

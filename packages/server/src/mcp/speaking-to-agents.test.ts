@@ -157,33 +157,27 @@ async function rememberedOverMcp(session: McpSession) {
   return session.callTool('run_definition', { ...inPosts, type: 'recall', name: 'posted' });
 }
 
-describe(
-  'episode 4: asked to make the playbook remember what it posted today',
-  { timeout: recallTestTimeoutMs },
-  () => {
-    it('finds what a recall function folds and never folds, and a recipe that says the function must answer what it posted', async () => {
-      const prompt = Schema.decodeUnknownSync(PromptSchema)(
-        await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
-      );
+describe('episode 4: asked to make the playbook remember what it posted today', () => {
+  it('finds what a recall function folds and never folds, and a recipe that says the function must answer what it posted', async () => {
+    const prompt = Schema.decodeUnknownSync(PromptSchema)(
+      await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
+    );
 
-      expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain(
-        'excluding run inputs and tool calls.',
-      );
-      expect(String(prompt.messages[0]?.content.text)).toContain(
-        'a function whose job is to post must answer what it posted.',
-      );
+    expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain('excluding run inputs and tool calls.');
+    expect(String(prompt.messages[0]?.content.text)).toContain(
+      'a function whose job is to post must answer what it posted.',
+    );
+  });
+
+  it('saves the recall function the recipe describes over the runs of the function that posts, which answers what was posted', async () => {
+    const recalled = await onMcp(rememberedOverMcp);
+
+    expect(recalled.structuredContent).toMatchObject({
+      status: 'succeeded',
+      output: ['The notes of the standup, to the team channel'],
     });
-
-    it('saves the recall function the recipe describes over the runs of the function that posts, which answers what was posted', async () => {
-      const recalled = await onMcp(rememberedOverMcp);
-
-      expect(recalled.structuredContent).toMatchObject({
-        status: 'succeeded',
-        output: ['The notes of the standup, to the team channel'],
-      });
-    });
-  },
-);
+  });
+});
 
 describe('episode 5: quoting the tools to a person who does not code', () => {
   it('finds only the words of the terminology in the instructions and in the words of the results', async () => {

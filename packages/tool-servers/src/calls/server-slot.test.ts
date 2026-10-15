@@ -11,7 +11,6 @@ import {
   patientTiming,
   recordingCallJournal,
   reportingAccess,
-  stdioTestTimeoutMs,
   toolRun,
 } from '../testing/index.ts';
 
@@ -19,7 +18,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 async function stdioRun(args: readonly string[] = []) {
   const { access } = reportingAccess(
@@ -55,7 +54,7 @@ async function stdioRun(args: readonly string[] = []) {
 
 const closed = { text: 'The tool server limitless failed: The connection to the tool server closed', isError: true };
 
-describe('a stdio server that exits during a run', { timeout: stdioTestTimeoutMs }, () => {
+describe('a stdio server that exits during a run', () => {
   it('is restarted once, and fails the run’s calls when it exits again', async () => {
     const run = await stdioRun();
 

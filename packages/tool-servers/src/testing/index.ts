@@ -51,6 +51,4 @@ export {
 
 export const fakeStdioServerPath = fileURLToPath(new URL('./fake-stdio-server.ts', import.meta.url));
 
-export const stdioTestTimeoutMs = 30_000;
-
 export const patientTiming: Timing = { ...defaultTiming, callMs: 20_000, openMs: 20_000 };

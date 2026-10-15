@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
-import { runIdIn, settledRun, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -104,30 +104,26 @@ async function cancelledFirst(child: string): Promise<void> {
 describe.each(stores)(
   'the stream of a run its caller cancelled before it started, on $store',
   ({ skipped, environment }) => {
-    it.skipIf(skipped)(
-      'holds no run: the list leaves it out, and the run and its history are not found',
-      { timeout: workflowTestTimeoutMs },
-      async () => {
-        server = await servingCalls([() => Effect.never], {
-          ...(await environment()),
-          WORKFLOW_NESTED_RUNS: '1',
-        });
-        const holder = await holdingTheOnlyPermit();
-        const parent = runIdIn((await startedRunOf(server, 'waiting')).body);
-        const child = await childOfTheQueuedCall(parent);
+    it.skipIf(skipped)('holds no run: the list leaves it out, and the run and its history are not found', async () => {
+      server = await servingCalls([() => Effect.never], {
+        ...(await environment()),
+        WORKFLOW_NESTED_RUNS: '1',
+      });
+      const holder = await holdingTheOnlyPermit();
+      const parent = runIdIn((await startedRunOf(server, 'waiting')).body);
+      const child = await childOfTheQueuedCall(parent);
 
-        await server.call('POST', `${alpha}/runs/${parent}/cancel`, { body: { reason: 'No longer needed' } });
-        await settledRun(server, `${alpha}/runs/${parent}`);
-        await cancelledFirst(child);
-        const listed = await server.call('GET', `${alpha}/runs?limit=100`);
-        const startedOnes = await server.call('GET', `${alpha}/runs?status=started&limit=100`);
-        const run = await server.call('GET', `${alpha}/runs/${child}`);
-        const history = await server.call('GET', `${alpha}/runs/${child}/history`);
+      await server.call('POST', `${alpha}/runs/${parent}/cancel`, { body: { reason: 'No longer needed' } });
+      await settledRun(server, `${alpha}/runs/${parent}`);
+      await cancelledFirst(child);
+      const listed = await server.call('GET', `${alpha}/runs?limit=100`);
+      const startedOnes = await server.call('GET', `${alpha}/runs?status=started&limit=100`);
+      const run = await server.call('GET', `${alpha}/runs/${child}`);
+      const history = await server.call('GET', `${alpha}/runs/${child}/history`);
 
-        expect([listed.status, startedOnes.status, run.status, history.status]).toEqual([200, 200, 404, 404]);
-        expect(workflowsAndFunctionsIn(listed.body)).toEqual([holder, parent, 'reasoning'].toSorted());
-        expect(workflowsAndFunctionsIn(startedOnes.body)).toEqual([holder, 'reasoning'].toSorted());
-      },
-    );
+      expect([listed.status, startedOnes.status, run.status, history.status]).toEqual([200, 200, 404, 404]);
+      expect(workflowsAndFunctionsIn(listed.body)).toEqual([holder, parent, 'reasoning'].toSorted());
+      expect(workflowsAndFunctionsIn(startedOnes.body)).toEqual([holder, 'reasoning'].toSorted());
+    });
   },
 );

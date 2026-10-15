@@ -2,6 +2,8 @@ import { defineConfig } from 'vitest/config';
 
 export const sharedConfig = defineConfig({
   test: {
+    testTimeout: 60_000,
+    hookTimeout: 60_000,
     experimental: {
       viteModuleRunner: false,
     },

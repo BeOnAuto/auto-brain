@@ -11,7 +11,6 @@ import {
   inState,
   liveAt,
   liveWith,
-  recallTestTimeoutMs,
   recalled,
   reviewed,
   servingRecall,
@@ -61,7 +60,7 @@ function updated(server: ReasoningServer, name: string, fold: string) {
   });
 }
 
-describe('a recall function whose view is being built', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function whose view is being built', () => {
   it('answers before its view is built, unavailable, rebuilding, with Retry-After, until its view has caught up', async () => {
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({}, gate);
@@ -107,7 +106,7 @@ describe('a recall function whose view is being built', { timeout: recallTestTim
   });
 });
 
-describe('a recall function waiting for its view to be built', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function waiting for its view to be built', () => {
   it('waits behind the views being built when its playbook builds as many as it may at once', async () => {
     const gate = foldsHeldUntilOpened();
     const server = await servingWith({ RECALL_MAX_REBUILDS: '1', RECALL_PLAYBOOKS_AT_ONCE: '1' }, gate);

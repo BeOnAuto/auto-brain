@@ -5,7 +5,7 @@ import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
-import { liveView, poolOf, recallWith, workerTestTimeoutMs, type AnswerBounds } from '../testing/recall-runs.ts';
+import { liveView, poolOf, recallWith, type AnswerBounds } from '../testing/recall-runs.ts';
 
 const succeeded = 'language: typescript\nsource:\n  events:\n    - type: run_succeeded';
 
@@ -104,7 +104,7 @@ const brokenWhen: readonly (readonly [PoolOutcome, string])[] = [
   ],
 ];
 
-describe('a run whose answer cannot work as written', { timeout: workerTestTimeoutMs }, () => {
+describe('a run whose answer cannot work as written', () => {
   it('ends in conflict, unworkable, with the error the answer raised and its line in the document', async () => {
     expect(await ended(answering('throw new Error(`no campaign ${view.spring.length}`);'))).toEqual(
       unworkable('The answer raised an error on line 12: Error: no campaign 0'),
@@ -149,7 +149,7 @@ describe('a run whose answer cannot work as written', { timeout: workerTestTimeo
   });
 });
 
-describe('a run whose answer reaches a bound', { timeout: workerTestTimeoutMs }, () => {
+describe('a run whose answer reaches a bound', () => {
   it('ends in conflict when it does more work than its budget before any deadline, or uses more memory than its sandbox', async () => {
     expect(await endedWithin({ budget: 50 }, answering('for (;;) {}'))).toEqual(
       unworkable('The answer did more work than a run may, 50 checkpoints, and was stopped'),
@@ -180,7 +180,7 @@ describe('a run whose answer reaches a bound', { timeout: workerTestTimeoutMs },
   });
 });
 
-describe('the bounds an answer asks its sandbox for', { timeout: workerTestTimeoutMs }, () => {
+describe('the bounds an answer asks its sandbox for', () => {
   it('are those its host gives, or 500 checkpoints and 256 MiB, named when the answer reaches them', async () => {
     const byDefault = recordingPool([reaching('work'), reaching('memory')]);
     const given = recordingPool([reaching('work'), reaching('memory')]);
@@ -226,7 +226,7 @@ describe('a run of an answer its save did not strip', () => {
   });
 });
 
-describe('a run whose answer the server cannot finish', { timeout: workerTestTimeoutMs }, () => {
+describe('a run whose answer the server cannot finish', () => {
   it('is unavailable when it runs past its deadline', async () => {
     const slow = recallWith(poolOf(), { deadlineMs: 300 });
     slow.keep(liveView({}));
@@ -243,7 +243,7 @@ describe('a run whose answer the server cannot finish', { timeout: workerTestTim
   });
 });
 
-describe('a run whose answer the pool stops', { timeout: workerTestTimeoutMs }, () => {
+describe('a run whose answer the pool stops', () => {
   it.each(stoppedWhen)('is unavailable when the pool answers %j', async (outcome, detail) => {
     const run = recallWith(scriptedPool([outcome], poolOf()));
     run.keep(liveView({}));

@@ -7,12 +7,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import {
-  runIdIn,
-  servingWorkflows,
-  workflowSource,
-  workflowTestTimeoutMs,
-} from '../testing/servers/workflow-server.ts';
+import { runIdIn, servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const playbookKey = 'playbook/acme/alpha/';
 
@@ -102,7 +97,7 @@ async function startedInTurn(names: readonly string[], runIds: readonly string[]
   return startedInTurn(rest, [...runIds, runIdIn(response.body)]);
 }
 
-describe('the run log of a workflow', { timeout: workflowTestTimeoutMs }, () => {
+describe('the run log of a workflow', () => {
   it('is kept under its own kind, so no stream of the kind of a run begins with an input the engine applied', async () => {
     ledger = temporaryLedger();
     server = await servingWorkflows([answers(textResult('Short.'))], {

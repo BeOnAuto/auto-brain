@@ -22,7 +22,6 @@ import {
   isStalled,
   liveWith,
   succeeded,
-  viewTestTimeoutMs,
 } from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 
@@ -189,7 +188,7 @@ function neighbourTests(settingsOf: SettingsOf): void {
 }
 
 export function stallSuite(settingsOf: SettingsOf): void {
-  describe('a view that stalls', { timeout: viewTestTimeoutMs }, () => {
+  describe('a view that stalls', () => {
     stoppingTests(settingsOf);
     afterTheStallTests(settingsOf);
     lostPageTests(settingsOf);

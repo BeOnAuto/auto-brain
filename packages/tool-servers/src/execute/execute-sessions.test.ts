@@ -14,7 +14,6 @@ import {
   playbookToolCalls,
   reportingAccess,
   serveFakeMcp,
-  stdioTestTimeoutMs,
   type AccessOptions,
   type FakeMcpOptions,
   type FakeMcpServer,
@@ -25,7 +24,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 async function fakeServer(options: FakeMcpOptions = {}): Promise<FakeMcpServer> {
   const fake = await serveFakeMcp({ bearer: fakeApiKey, ...options });
@@ -194,7 +193,7 @@ describe('a call the ledger cannot record', () => {
   });
 });
 
-describe('a call of a stdio server', { timeout: stdioTestTimeoutMs }, () => {
+describe('a call of a stdio server', () => {
   it('starts its process once, and keeps it for the next call', async () => {
     const folder = mkdtempSync(join(tmpdir(), 'hand-calls-'));
     closing.push(() => {

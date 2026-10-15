@@ -59,7 +59,7 @@ async function anAppendLeftOpen(database: string): Promise<Client> {
   return client;
 }
 
-describe.skipIf(skipped)(`The playbook's indexes on PostgreSQL${notice}`, { timeout: 30_000 }, () => {
+describe.skipIf(skipped)(`The playbook's indexes on PostgreSQL${notice}`, () => {
   it('are created when the ledger opens, once however often it opens', async () => {
     const database = await aDatabase();
     const first = await openLedgerWith(postgresqlLedgerLayer({ pools: plainPoolsOn(database) }));

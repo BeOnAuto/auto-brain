@@ -87,7 +87,7 @@ describe('the compiler, given operations served over HTTP alone', () => {
 
   beforeAll(() => {
     errors = compiledErrors('http-rules', { accepted, rejected });
-  }, 60_000);
+  });
 
   it('accepts every body a definition may take and rejects every one it may not', () => {
     expect(new Set(errors.map((error) => error.slice(0, error.indexOf('('))))).toEqual(new Set(Object.keys(rejected)));

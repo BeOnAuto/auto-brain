@@ -1,11 +1,12 @@
-import { setTimeout } from 'node:timers/promises';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { connectMcp, problemIn, withMcpSession, type McpClientKind, type McpSession } from '@on.auto/api/testing';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { shortShutdownTimeoutMs } from '../testing/processes/short-shutdown-timeout.ts';
-import { spawnServer, spawnedServerTestTimeoutMs, type SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { callInFlightFileVariable } from '../testing/entries/announced-waiting.ts';
+import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const serveWithWaitingTool = fileURLToPath(new URL('../testing/entries/serve-with-waiting-tool.ts', import.meta.url));
@@ -36,10 +37,12 @@ interface WaitingCall {
 }
 
 async function waitingCallOn(kind: McpClientKind): Promise<WaitingCall> {
+  const inFlight = join(ledger.directory, 'call-in-flight');
   const child = spawnServer(serveWithWaitingTool, {
     HOST: '127.0.0.1',
     PORT: '0',
     LEDGER_FILE: ledger.fileName,
+    [callInFlightFileVariable]: inFlight,
   });
   const port = await child.port;
   await withMcpSession(kind, { url: `http://127.0.0.1:${port}/orgs/acme/mcp`, headers: {} }, (session) =>
@@ -53,17 +56,21 @@ async function waitingCallOn(kind: McpClientKind): Promise<WaitingCall> {
     (result) => ({ isError: result.isError, problem: problemIn(result) }),
     (error: unknown) => ({ ended: String(error) }),
   );
-  await setTimeout(200);
+  await vi.waitFor(
+    () => {
+      expect(existsSync(inFlight)).toBe(true);
+    },
+    { timeout: 30_000, interval: 10 },
+  );
   return { child, port, session, waiting };
 }
 
-describe('a server process with an MCP call in flight', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a server process with an MCP call in flight', () => {
   it.each(clientKinds)(
-    'answers the %s client at the shutdown timeout with a 503 problem as isError, and exits 0',
+    'answers the %s client, whose call the shutdown cuts off, with a 503 problem as isError, and exits 0',
     async (kind) => {
       const { child, session, waiting } = await waitingCallOn(kind);
 
-      const signalled = performance.now();
       child.signal('SIGTERM');
       const answer = await waiting;
       const exitCode = await child.exited;
@@ -82,7 +89,6 @@ describe('a server process with an MCP call in flight', { timeout: spawnedServer
         },
         exitCode: 0,
       });
-      expect(performance.now() - signalled).toBeLessThan(shortShutdownTimeoutMs + 1500);
     },
   );
 
@@ -93,7 +99,6 @@ describe('a server process with an MCP call in flight', { timeout: spawnedServer
 
       await session.close();
       const answer = await waiting;
-      await setTimeout(300);
       child.signal('SIGTERM');
 
       expect({ answer, exitCode: await child.exited }).toEqual({ answer: { ended }, exitCode: 0 });

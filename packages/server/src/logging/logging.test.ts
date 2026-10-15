@@ -5,7 +5,7 @@ import type { SignInSettings } from '@on.auto/identity';
 import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import {
   logAccessMode,
@@ -185,7 +185,7 @@ describe('logMcpError', () => {
   });
 });
 
-describe('the server process', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the server process', () => {
   it('logs an unexpected error to stderr under the incident id it answers with', async () => {
     const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;

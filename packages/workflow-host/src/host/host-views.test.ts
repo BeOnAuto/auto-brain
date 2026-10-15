@@ -7,11 +7,11 @@ import { tallyFolderOf } from '../folder-testing/tally-folder.ts';
 import { someFolder } from '../projector/folder.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
-import { counting, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
+import { counting } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { openWorkflowStore } from './workflow-store.ts';
 
-describe('a host given a store and the settings of its projector', { timeout: viewTestTimeoutMs }, () => {
+describe('a host given a store and the settings of its projector', () => {
   it('keeps the views of recall functions on that store while it serves, and stops keeping them when it stops', async () => {
     const settings = await onSQLite();
     const views = await viewHarness(settings);
@@ -32,7 +32,7 @@ describe('a host given a store and the settings of its projector', { timeout: vi
   });
 });
 
-describe('a host given the settings of a database and of its projector', { timeout: viewTestTimeoutMs }, () => {
+describe('a host given the settings of a database and of its projector', () => {
   it('makes the tables of the folders of its projector when it opens its store', async () => {
     const settings = await onSQLite();
     const folder = tallyFolderOf(1);

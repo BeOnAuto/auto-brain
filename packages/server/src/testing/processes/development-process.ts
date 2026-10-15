@@ -99,7 +99,7 @@ export function startDevelopment(files: DevelopmentFiles, options: DevelopmentOp
   onTestFinished(async () => {
     child.kill('SIGTERM');
     await exited;
-  }, developmentTestTimeoutMs);
+  });
   return {
     files,
     exited,
