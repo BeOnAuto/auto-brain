@@ -15,8 +15,6 @@ import { UnreadAnswer } from '../identity-service/issuer-requests.ts';
 
 export const mostTokenBytes = 8192;
 
-const orgClaim = 'org_id';
-
 const scopeClaim = 'scope';
 
 const pageClaim = 'azp';
@@ -32,6 +30,22 @@ const isCredentialOrg = Schema.is(CredentialOrgSchema);
 type Payload = Readonly<Record<string, unknown>>;
 
 type Form = 'access token' | 'session';
+
+const orgClaimPaths: Readonly<Record<Form, readonly [string, ...string[]]>> = {
+  'access token': ['org_id'],
+  session: ['o', 'id'],
+};
+
+function orgClaimOf(form: Form): string {
+  return orgClaimPaths[form][0];
+}
+
+function orgIn(payload: Payload, form: Form): unknown {
+  return orgClaimPaths[form].reduce<unknown>(
+    (claims, claim) => (Predicate.hasProperty(claims, claim) ? claims[claim] : undefined),
+    payload,
+  );
+}
 
 export interface Expected {
   readonly issuer: string;
@@ -67,7 +81,7 @@ function optionsOf({ issuer, audiences, now }: Expected, form: Form): JWTVerifyO
     ...(form === 'access token' ? { audience: [...audiences] } : {}),
     algorithms: signingAlgorithms,
     clockTolerance: leewaySeconds,
-    requiredClaims: ['exp', 'sub', orgClaim],
+    requiredClaims: ['exp', 'sub', orgClaimOf(form)],
     currentDate: new Date(now),
   };
 }
@@ -104,7 +118,8 @@ function permissionsGrantedBy({ [scopeClaim]: scope = '' }: Payload, form: Form)
 }
 
 function personIn(payload: Payload, form: Form, now: number): string | VerifiedPerson {
-  const { iat, sub, [orgClaim]: org } = payload;
+  const { iat, sub } = payload;
+  const org = orgIn(payload, form);
   if (Predicate.isNumber(iat) && iat > now / 1000 + leewaySeconds) {
     return `its iat is more than ${leewaySeconds} seconds ahead`;
   }
@@ -112,7 +127,7 @@ function personIn(payload: Payload, form: Form, now: number): string | VerifiedP
     return `its sub is not a non-empty string of at most ${mostReferenceBytes} bytes without ${forbiddenCharactersInWords}`;
   }
   if (!isCredentialOrg(org)) {
-    return `its ${orgClaim} claim is not an org id other than local`;
+    return `its ${orgClaimPaths[form].join('.')} claim is not an org id other than local`;
   }
   const permissions = permissionsGrantedBy(payload, form);
   return Predicate.isString(permissions) ? permissions : { subject: sub, org, permissions };

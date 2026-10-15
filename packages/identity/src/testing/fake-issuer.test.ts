@@ -81,21 +81,39 @@ function segmentOf(token: string, index: number): unknown {
 }
 
 describe('the fake issuer giving a page its session', () => {
-  it('issues a session of a minute to the page, its origin as azp, with a sid, the claims given and no aud', async () => {
+  it('issues the session of version 2 the identity service sends, of a minute, to the page as azp, its org as o', async () => {
+    const session = await fakeIssuer('https://login.example').session('https://studio.example');
+    const claims = segmentOf(session, 1);
+    const { iat, nbf, exp } = timesOf(claims);
+
+    expect([segmentOf(session, 0), claims]).toEqual([
+      { alg: 'RS256', kid: 'rs256-1', typ: 'JWT' },
+      {
+        iss: 'https://login.example',
+        sub: 'ada',
+        sid: 'session-1',
+        azp: 'https://studio.example',
+        iat,
+        nbf,
+        exp,
+        v: 2,
+        o: { id: 'acme', slg: 'acme', rol: 'admin', per: 'manage,read', fpm: '3' },
+      },
+    ]);
+    expect([nbf - iat, exp - iat]).toEqual([0, 60]);
+  });
+
+  it('issues the session with the claims a test gives in place of its own, o among them whole, and none it removes', async () => {
     const session = await fakeIssuer('https://login.example').session('https://studio.example', {
-      sub: 'ada',
-      org_id: 'acme',
+      sub: 'grace',
+      o: { id: 'globex' },
+      v: undefined,
     });
     const claims = segmentOf(session, 1);
 
-    expect([segmentOf(session, 0), claims]).toMatchObject([
-      { alg: 'RS256', typ: 'JWT' },
-      { iss: 'https://login.example', sub: 'ada', org_id: 'acme', azp: 'https://studio.example', sid: 'session-1' },
-    ]);
-    const { iat, nbf, exp } = timesOf(claims);
-
-    expect(claims).not.toHaveProperty('aud');
-    expect([nbf - iat, exp - iat]).toEqual([0, 60]);
+    expect(claims).toMatchObject({ sub: 'grace', azp: 'https://studio.example' });
+    expect(claims).toHaveProperty('o', { id: 'globex' });
+    expect(claims).not.toHaveProperty('v');
   });
 
   it('names each session it issues by a sid of its own', async () => {

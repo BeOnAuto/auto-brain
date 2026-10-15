@@ -122,6 +122,10 @@ function tokenEndpoint(
 
 const sessionLifetimeSeconds = 60;
 
+const sessionVersion = 2;
+
+const signedInOrganization = { id: 'acme', slg: 'acme', rol: 'admin', per: 'manage,read', fpm: '3' };
+
 function sessionsOf(issuer: string, signed: Sign): FakeIssuer['session'] {
   let issued = 0;
   return (page, claims = {}) => {
@@ -130,11 +134,14 @@ function sessionsOf(issuer: string, signed: Sign): FakeIssuer['session'] {
     return signed(
       {
         iss: issuer,
+        sub: 'ada',
         sid: `session-${issued}`,
         azp: page,
         iat: now,
         nbf: now,
         exp: now + sessionLifetimeSeconds,
+        v: sessionVersion,
+        o: signedInOrganization,
         ...claims,
       },
       { typ: 'JWT' },
