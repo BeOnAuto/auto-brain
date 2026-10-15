@@ -83,7 +83,7 @@ Some of what is withheld, and why:
 - `anthropic`: `effort`, which `config.reasoning` sets; `cacheControl` and `container` (stored on the account); `metadata` (attribution); `mcpServers`, `disableParallelToolUse`, `toolStreaming` and `safeguards` (tools and servers); `anthropicBeta` (a request header); `fallbacks`, `speed`, `serviceTier` and `inferenceGeo` (routing and capacity); `sendReasoning`, `taskBudget`, `compaction` and `contextManagement` (conversation state); `structuredOutputMode` (the front matter's `output` decides how JSON is asked for); `thinking.blockBinding`, which turns on a beta.
 - `openai`, `azure`: `reasoningEffort`, `reasoningEffortUpdate` and `maxCompletionTokens` (`config` sets them); `store`, `previousResponseId`, `conversation` and the prompt cache options; `user`, `safetyIdentifier` and `metadata`; `serviceTier`; `prediction` (raw request content); `instructions`, `systemMessageMode`, `forceReasoning` and `strictJsonSchema`, which change how the runtime sends the prompt or the schema; `logprobs`, `include` and `reasoningSummary` (output the runtime does not read); the tool options.
 - `google`, `vertex`, `googleVertex`: `labels`; `cachedContent`; `serviceTier`, `sharedRequestType` and `requestType` (Vertex AI capacity headers); `retrievalConfig` and `streamFunctionCallArguments`; `responseModalities`, `imageConfig`, `audioTimestamp` and `mediaResolution`; `structuredOutputs`.
-- `amazonBedrock`, `bedrock`: `additionalModelRequestFields`, and every key Bedrock does not read, because Bedrock adds those to the Converse request as they are (`inferenceConfig`, `guardrailConfig`, `requestMetadata` and the like); `anthropicBeta`; `serviceTier`; `structuredOutputMode`. The options of Anthropic models on Bedrock go under `anthropic`, since Bedrock would send them as they are under `bedrock`.
+- `amazonBedrock`, `bedrock`: `additionalModelRequestFields`, and every key Bedrock does not read, because Bedrock adds those to the Converse request as they are (`inferenceConfig`, `guardrailConfig` and the like); `requestMetadata` (attribution); `anthropicBeta`; `serviceTier`; `structuredOutputMode`. The options of Anthropic models on Bedrock go under `anthropic`, since Bedrock would send them as they are under `bedrock`.
 
 Any other option is rejected when the document is parsed, with the option named and the words `is not offered`, so such a definition is never stored. A namespace that is neither a provider's nor shaped like a gateway's name is rejected the same way. The offered and withheld options are one table of data in `src/model/offered-provider-options.ts`, typed against the option types the AI SDK exports, so an upgrade that adds or removes an option fails the type check until the option is decided.
 
@@ -122,7 +122,7 @@ A run that calls tools costs more: every step resends the conversation so far, s
 
 ## The template language
 
-The template is [Liquid](https://shopify.github.io/liquid/), rendered by liquidjs 10.29.0, configured for templates written by tenants: templates live in memory and the engine has no file system.
+The template is [Liquid](https://shopify.github.io/liquid/), rendered by liquidjs 10.30.0, configured for templates written by tenants: templates live in memory and the engine has no file system.
 
 ### Variables
 
@@ -176,7 +176,7 @@ Left out, and why:
 - `url_encode`, `cgi_escape`, `uri_escape` and `url_decode`: the encoders grow their output without charging the memory limit (nine `url_encode` in a row turn 65,536 characters into 1,245,184 without charging anything), and a prompt has no URL to encode;
 - `inspect` and `jsonify` do what `json` does.
 
-As of October 2026, no published advisory affects liquidjs 10.27.2 or later; earlier versions have several, including running code from a crafted template. 10.29.0 is the newest release the workspace's minimum release age allows.
+As of October 2026, no published advisory affects liquidjs 10.27.2 or later; earlier versions have several, including running code from a crafted template. 10.30.0 is the newest release the workspace's minimum release age allows.
 
 ### Limits
 

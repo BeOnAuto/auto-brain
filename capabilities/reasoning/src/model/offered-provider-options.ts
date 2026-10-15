@@ -134,6 +134,7 @@ const bedrockConverse: Decisions<AmazonBedrockLanguageModelChatOptions> = {
   additionalModelRequestFields: rawFields,
   anthropicBeta: headers,
   serviceTier: routing,
+  requestMetadata: attribution,
 };
 
 type OptionDecisions = Readonly<Record<string, Decision>>;
