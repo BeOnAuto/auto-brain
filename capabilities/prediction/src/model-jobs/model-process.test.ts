@@ -20,6 +20,8 @@ const packagesAModelProcessLoads: readonly string[] = [
 
 const decodeManifest = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Struct({ name: Schema.String })));
 
+const loadedFile = 'loaded';
+
 interface WatchedProcess {
   readonly module: Readonly<URL>;
   readonly loaded: string;
@@ -27,7 +29,7 @@ interface WatchedProcess {
 
 function watchedModelProcess(): WatchedProcess {
   const directory = scratchDirectory();
-  const loaded = join(directory, 'loaded');
+  const loaded = join(directory, loadedFile);
   const module = pathToFileURL(join(directory, 'watched-model-process.mjs'));
   writeFileSync(loaded, '');
   writeFileSync(
@@ -35,13 +37,14 @@ function watchedModelProcess(): WatchedProcess {
     [
       "import { appendFileSync } from 'node:fs';",
       "import { registerHooks } from 'node:module';",
+      `const loaded = new URL('./${loadedFile}', import.meta.url);`,
       'registerHooks({',
       '  load: (url, context, nextLoad) => {',
-      `    appendFileSync(${JSON.stringify(loaded)}, url + '\\n');`,
+      "    appendFileSync(loaded, url + '\\n');",
       '    return nextLoad(url, context);',
       '  },',
       '});',
-      `await import(${JSON.stringify(modelProcessModule.href)});`,
+      `await import('${modelProcessModule.href}');`,
     ].join('\n'),
   );
   return { module, loaded };
