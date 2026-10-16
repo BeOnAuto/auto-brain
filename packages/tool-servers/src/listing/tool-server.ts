@@ -1,17 +1,11 @@
 import { Schema } from 'effect';
 
+import { serverFailedReasons } from '../access/tool-server-failed.ts';
 import type { ToolAnnotations } from '../bounds/tool-results.ts';
+import { unreadyReasons } from '../org-servers/connection-source.ts';
 import type { ServerType } from '../settings/server-settings.ts';
 
-export const UnavailableBecauseSchema = Schema.Literals([
-  'failing',
-  'rate_limited',
-  'unreachable',
-  'key_refused',
-  'connection_pending',
-  'connection_broken',
-  'connection_not_allowed',
-]);
+export const UnavailableBecauseSchema = Schema.Literals([...serverFailedReasons, ...unreadyReasons]);
 
 export type UnavailableBecause = typeof UnavailableBecauseSchema.Type;
 

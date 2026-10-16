@@ -37,8 +37,8 @@ export function readReplies(reading: Reading, oldest: KeptRequest): Effect.Effec
     meta: { [conversationCallIdKey]: callId },
   };
   return Effect.gen(function* () {
-    const start = yield* parts.tools.startOf(call);
-    const called = yield* parts.tools.callOnce(call);
+    const { fields: start, called: calling } = yield* parts.tools.preparedCall(call);
+    const called = yield* calling;
     const answer = readAnswerOf(route.replies, called, sentByThePlaybook(reading.kept));
     const state = yield* Effect.reduce(
       answer.replies,

@@ -7,7 +7,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { toolBounds } from '../bounds/call-bounds.ts';
 import { controlledSignals, recordingCallJournal, toolRun } from '../testing/tool-runs.ts';
 import { behaviourKey, type ServedUnderTest, type ServerUnderTest } from './servers-under-test.ts';
-import type { SourceUnderTest } from './sources-under-test.ts';
+import type { SourcedEntry, SourceUnderTest } from './sources-under-test.ts';
 
 type Facts = ReturnType<ReturnType<typeof recordingCallJournal>['facts']>;
 
@@ -23,7 +23,31 @@ const theServerNamed: unknown = expect.stringContaining('graph');
 
 const theDenial: unknown = expect.stringContaining('salary is denied');
 
+const environment = { GRAPH_API_KEY: behaviourKey };
+
 const digest = (text: string) => createHash('sha256').update(text).digest('hex');
+
+function carriedForms(secret: string): readonly string[] {
+  return [
+    secret,
+    Buffer.from(secret).toString('base64'),
+    new URLSearchParams([['', secret]]).toString().slice(1),
+    encodeURIComponent(secret),
+  ];
+}
+
+function writtenForms(forms: readonly string[]): readonly string[] {
+  return forms.flatMap((form) => [
+    form,
+    JSON.stringify(form).slice(1, -1),
+    JSON.stringify(JSON.stringify(form)).slice(2, -2),
+  ]);
+}
+
+function sourced(fake: ServedUnderTest, entry: Readonly<Record<string, unknown>> = {}): SourcedEntry {
+  const { type, credential } = fake;
+  return { type, credential, entry: { ...fake.entry, ...entry }, bare: { ...fake.bare, ...entry } };
+}
 
 async function served(underTest: ServerUnderTest, requestIdHeader?: string): Promise<ServedUnderTest> {
   const fake = await underTest.serve(requestIdHeader);
@@ -34,6 +58,12 @@ async function served(underTest: ServerUnderTest, requestIdHeader?: string): Pro
 function resultDigestOf(facts: Facts): string {
   return facts
     .flatMap((fact) => (fact.type === 'tool_call_answered' ? [String(fact.data.result_sha256)] : []))
+    .join('');
+}
+
+function argumentsDigestOf(facts: Facts): string {
+  return facts
+    .flatMap((fact) => (fact.type === 'tool_call_started' ? [String(fact.data.arguments_sha256)] : []))
     .join('');
 }
 
@@ -52,10 +82,7 @@ async function calledThrough(
   tool: string,
   input: Readonly<Record<string, unknown>>,
 ) {
-  const { access, content } = await source.accessTo(
-    { ...fake.entry, ...entry },
-    { environment: { GRAPH_API_KEY: behaviourKey }, timing },
-  );
+  const { access, content } = await source.accessTo(sourced(fake, entry), { environment, timing });
   onTestFinished(access.close);
   const journal = recordingCallJournal();
   const tools = await Effect.runPromise(access.open(toolRun(journal), [{ server: 'graph', tool }]));
@@ -69,7 +96,7 @@ function keptAndScrubbed(underTest: ServerUnderTest, source: SourceUnderTest): v
   it('records the start and the answer of a call with their sizes and digests, and keeps both whole, scrubbed of its secrets', async () => {
     const fake = await served(underTest);
     const input = fake.echoed({ note: `the key is ${behaviourKey}` });
-    const scrubbed = JSON.stringify(input).replace(behaviourKey, '[redacted]');
+    const scrubbed = JSON.stringify(input).replace(JSON.stringify(behaviourKey).slice(1, -1), '[redacted]');
     const started = {
       call_id: 'call-1',
       server: 'graph',
@@ -90,8 +117,36 @@ function keptAndScrubbed(underTest: ServerUnderTest, source: SourceUnderTest): v
       data: { is_error: false, result_bytes: aNumber, duration_ms: aNumber, jsonrpc_id: fake.jsonrpcId },
     });
     expect(await kept(resultDigestOf(facts))).toContain('[redacted]');
-    expect(await kept(resultDigestOf(facts))).not.toContain(behaviourKey);
+    expect(await kept(resultDigestOf(facts))).not.toContain(JSON.stringify(behaviourKey).slice(1, -1));
     expect(await kept(digest(scrubbed))).toBe(scrubbed);
+  });
+}
+
+function everyForm(underTest: ServerUnderTest, source: SourceUnderTest): void {
+  it('keeps and answers nothing of its credential, in any form a call carries it', async () => {
+    const fake = await served(underTest);
+    const forms = carriedForms(behaviourKey);
+
+    const { reply, facts, kept } = await calledThrough({ fake, source }, 'echo', fake.echoed({ forms }));
+    const said = [String(reply?.text), String(await kept(resultDigestOf(facts)))];
+    const recorded = String(await kept(argumentsDigestOf(facts)));
+
+    expect(writtenForms(forms).filter((form) => [...said, recorded].join('').includes(form))).toEqual([]);
+    expect([...said, recorded].every((text) => text.includes('[redacted]'))).toBe(true);
+  });
+
+  it('keeps nothing of its credential in the start of a call recorded before the call is made', async () => {
+    const fake = await served(underTest);
+    const { access, content } = await source.accessTo(sourced(fake), { environment, timing });
+    onTestFinished(access.close);
+    const call = { ...alpha, reference: { server: 'graph', tool: 'echo' }, input: { note: behaviourKey }, meta: {} };
+
+    const { fields } = await Effect.runPromise(access.preparedCall(call));
+
+    expect(await keptTextOf(content, alpha, String(fields.arguments_sha256))).toBe(
+      JSON.stringify({ note: '[redacted]' }),
+    );
+    expect(fake.calls()).toBe(0);
   });
 }
 
@@ -172,6 +227,7 @@ function argumentBounds(underTest: ServerUnderTest, source: SourceUnderTest): vo
 export function toolAccessBehaviour(underTest: ServerUnderTest, source: SourceUnderTest): void {
   describe(`the tools of ${underTest.kind} of ${source.kind}, reached through the tool access`, () => {
     keptAndScrubbed(underTest, source);
+    everyForm(underTest, source);
     sizesAlone(underTest, source);
     requestIds(underTest, source);
     denials(underTest, source);

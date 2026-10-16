@@ -1,11 +1,26 @@
 import { Effect } from 'effect';
 
+import { secretsOfServer, type Secrets } from '../bounds/secrets.ts';
 import type { ConnectionServer, ConnectionSource, ConnectionUnready, OrgConnection } from './connection-source.ts';
-import { isUnready, unreadyServer, type Linked, type OrgServer, type Served } from './org-servers.ts';
+import { unreadyServer, type Linked, type OrgServer, type Served } from './org-servers.ts';
+import { serverFailed, type Unusable } from './server-refusals.ts';
 
-export type LinkConnection = (id: string, server: ConnectionServer) => Promise<Linked>;
+export type Linking = Linked | { readonly unread: Unusable };
 
-type Prepared = { readonly server: ConnectionServer } | { readonly unready: ConnectionUnready };
+export type LinkConnection = (id: string, server: ConnectionServer) => Promise<Linking>;
+
+type Prepared =
+  | { readonly server: ConnectionServer }
+  | { readonly unready: ConnectionUnready }
+  | { readonly failed: Unusable };
+
+type Keeping = Pick<Secrets, 'keep' | 'scrub'>;
+
+interface Connected {
+  readonly id: string;
+  readonly settings: Served;
+  readonly state: ConnectedState;
+}
 
 type Run = <A>(effect: Effect.Effect<A>) => Promise<A>;
 
@@ -13,7 +28,14 @@ type ConnectedState = Extract<OrgConnection['state'], { readonly status: 'connec
 
 interface HeldInAnOrg {
   readonly servers: Map<string, Promise<Prepared>>;
-  readonly links: Map<string, Promise<Linked>>;
+  readonly links: Map<string, Promise<Linking>>;
+}
+
+interface Holding {
+  readonly held: HeldInAnOrg;
+  readonly link: LinkConnection;
+  readonly secrets: Keeping;
+  readonly run: Run;
 }
 
 export interface ConnectionLinks {
@@ -21,96 +43,145 @@ export interface ConnectionLinks {
   readonly close: () => Promise<void>;
 }
 
-async function stopped(link: Promise<Linked>): Promise<void> {
+async function stopped(link: Promise<Linking>): Promise<void> {
   const linked = await link;
   if ('link' in linked) {
     await linked.link.stop();
   }
 }
 
-function linkOnce(prepared: Prepared, id: string, link: LinkConnection): Promise<Linked> {
-  return 'unready' in prepared ? Promise.resolve({ refused: prepared.unready }) : link(id, prepared.server);
+function stoppedEach(links: readonly Promise<Linking>[]): Promise<readonly PromiseSettledResult<void>[]> {
+  return Promise.allSettled(links.map((link) => stopped(link)));
 }
 
-function isFailedToDescribe(linked: Linked): boolean {
-  return 'refused' in linked && !isUnready(linked.refused.because);
+async function letGoUnlessKept<A>(
+  held: Map<string, Promise<A>>,
+  id: string,
+  promise: Promise<A>,
+  isKept: (value: A) => boolean,
+) {
+  if (!isKept(await promise) && held.get(id) === promise) {
+    held.delete(id);
+  }
 }
 
-function preparedIn(held: HeldInAnOrg, id: string, state: ConnectedState, run: Run): Promise<Prepared> {
-  const prepared =
-    held.servers.get(id) ??
-    run(
-      Effect.match(state.server, {
-        onSuccess: (server): Prepared => ({ server }),
-        onFailure: (unready): Prepared => ({ unready }),
-      }),
-    );
-  held.servers.set(id, prepared);
-  return prepared;
+function keptWhile<A>(held: Map<string, Promise<A>>, id: string, promise: Promise<A>, isKept: (value: A) => boolean) {
+  held.set(id, promise);
+  void letGoUnlessKept(held, id, promise, isKept);
+  return promise;
 }
 
-function linkedIn(held: HeldInAnOrg, id: string, prepared: Promise<Prepared>, link: LinkConnection): Promise<Linked> {
-  const linking =
-    held.links.get(id) ??
-    prepared
-      .then((ready) => linkOnce(ready, id, link))
-      .then((linked) => {
-        if (isFailedToDescribe(linked)) {
-          held.links.delete(id);
-        }
-        return linked;
-      });
-  held.links.set(id, linking);
-  return linking;
+function failedWith(settings: Served, secrets: Keeping): (error: unknown) => Unusable {
+  return (error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    return serverFailed({ settings }, { kind: 'failing', message }, secrets);
+  };
 }
 
-function prunedTo(held: HeldInAnOrg, connections: readonly OrgConnection[]): Promise<readonly void[]> {
+function isUsable(prepared: Prepared): boolean {
+  return !('failed' in prepared);
+}
+
+function isLinkedOrRefused(linking: Linking): boolean {
+  return !('unread' in linking);
+}
+
+function preparedIn(holding: Holding, { id, settings, state }: Connected): Promise<Prepared> {
+  const { held, secrets, run } = holding;
+  const preparing = held.servers.get(id);
+  if (preparing !== undefined) {
+    return preparing;
+  }
+  const failed = failedWith(settings, secrets);
+  const prepared = run(
+    Effect.match(state.server, {
+      onSuccess: (server): Prepared => {
+        secrets.keep(secretsOfServer(server.settings));
+        return { server };
+      },
+      onFailure: (unready): Prepared => ({ unready }),
+    }),
+  ).catch((error: unknown): Prepared => ({ failed: failed(error) }));
+  return keptWhile(held.servers, id, prepared, isUsable);
+}
+
+async function linkedOnce(
+  holding: Holding,
+  { id, settings }: Connected,
+  prepared: Promise<Prepared>,
+): Promise<Linking> {
+  const ready = await prepared;
+  if ('unready' in ready) {
+    return { refused: ready.unready };
+  }
+  if ('failed' in ready) {
+    return { unread: ready.failed };
+  }
+  const failed = failedWith(settings, holding.secrets);
+  return holding.link(id, ready.server).catch((error: unknown) => ({ unread: failed(error) }));
+}
+
+function linkedOf(linking: Linking): Linked {
+  return 'unread' in linking ? { refused: linking.unread } : linking;
+}
+
+async function linkedIn(holding: Holding, connected: Connected, prepared: Promise<Prepared>): Promise<Linked> {
+  const { links } = holding.held;
+  const { id } = connected;
+  const linking = links.get(id) ?? keptWhile(links, id, linkedOnce(holding, connected, prepared), isLinkedOrRefused);
+  return linkedOf(await linking);
+}
+
+function prunedTo(held: HeldInAnOrg, connections: readonly OrgConnection[]) {
   const connected = new Set(connections.filter(({ state }) => state.status === 'connected').map(({ id }) => id));
-  const gone = [...held.servers.keys()].filter((id) => !connected.has(id));
+  const gone = [...new Set([...held.servers.keys(), ...held.links.keys()])].filter((id) => !connected.has(id));
   const stopping = gone.flatMap((id) => {
     const link = held.links.get(id);
     held.servers.delete(id);
     held.links.delete(id);
-    return link === undefined ? [] : [stopped(link)];
+    return link === undefined ? [] : [link];
   });
-  return Promise.all(stopping);
+  return stoppedEach(stopping);
 }
 
 function unreadinessOf(prepared: Prepared): readonly ConnectionUnready[] {
   return 'unready' in prepared ? [prepared.unready] : [];
 }
 
-export function connectionLinks(source: ConnectionSource, link: LinkConnection): ConnectionLinks {
+function serverOf(holding: Holding, { id, serving, state }: OrgConnection): OrgServer {
+  const settings: Served = { ...serving, connection: id };
+  if (state.status === 'unready') {
+    return unreadyServer(settings, state.unready);
+  }
+  const connected: Connected = { id, settings, state };
+  const prepared = (): Promise<Prepared> => preparedIn(holding, connected);
+  return {
+    settings,
+    checked: async () => unreadinessOf(await prepared()),
+    linked: () => linkedIn(holding, connected, prepared()),
+  };
+}
+
+export function connectionLinks(source: ConnectionSource, link: LinkConnection, secrets: Keeping): ConnectionLinks {
   const heldByOrg = new Map<string, HeldInAnOrg>();
   const heldIn = (org: string): HeldInAnOrg => {
     const held = heldByOrg.get(org) ?? { servers: new Map(), links: new Map() };
     heldByOrg.set(org, held);
     return held;
   };
-  const serverOf = (org: string, { id, serving, state }: OrgConnection, run: Run): OrgServer => {
-    const settings: Served = { ...serving, connection: id };
-    if (state.status === 'unready') {
-      return unreadyServer(settings, state.unready);
-    }
-    const prepared = (): Promise<Prepared> => preparedIn(heldIn(org), id, state, run);
-    return {
-      settings,
-      checked: async () => unreadinessOf(await prepared()),
-      linked: () => linkedIn(heldIn(org), id, prepared(), link),
-    };
-  };
   return {
     serversOf: (org) =>
       Effect.gen(function* () {
         const connections = yield* source.connectionsOf(org);
-        yield* Effect.promise(() => prunedTo(heldIn(org), connections));
-        const run = Effect.runPromiseWith(yield* Effect.context());
-        return connections.map((connection) => serverOf(org, connection, run));
+        const held = heldIn(org);
+        yield* Effect.promise(() => prunedTo(held, connections));
+        const holding: Holding = { held, link, secrets, run: Effect.runPromiseWith(yield* Effect.context()) };
+        return connections.map((connection) => serverOf(holding, connection));
       }),
     close: async () => {
       const links = [...heldByOrg.values()].flatMap((held) => Array.from(held.links.values()));
       heldByOrg.clear();
-      await Promise.all(links.map((each) => stopped(each)));
+      await stoppedEach(links);
     },
   };
 }

@@ -3,44 +3,20 @@ import { Result } from 'effect';
 import type { Timing } from '../bounds/call-bounds.ts';
 import type { Secrets } from '../bounds/secrets.ts';
 import { takenSlot, type ServerSlot } from '../calls/server-slot.ts';
-import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
+import { failureOf } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { Listed } from '../names/tool-naming.ts';
-import type { ServerSettings } from '../settings/server-settings.ts';
-import { ToolServerFailed, type ServerFailedBecause } from './tool-server-failed.ts';
+import { serverFailed, type Unusable } from '../org-servers/server-refusals.ts';
 
 export interface Listing {
   readonly secrets: Secrets;
   readonly timing: Timing;
 }
 
-const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
-  unreachable: 'unreachable',
-  timed_out: 'unreachable',
-  closed: 'unreachable',
-  rate_limited: 'rate_limited',
-  failing: 'failing',
-  forgotten: 'failing',
-  refused: 'failing',
-  key_refused: 'key_refused',
-  too_large: 'failing',
-};
-
-export function serverFailed(
-  { settings }: { readonly settings: Pick<ServerSettings, 'name'> },
-  { kind, message }: ServerFailure,
-  { scrub }: Secrets,
-): ToolServerFailed {
-  return new ToolServerFailed({
-    because: failedBecause[kind],
-    detail: `The tool server ${settings.name} could not be used: ${scrub(message)}`,
-  });
-}
-
 export function listedThrough(
   slot: ServerSlot,
   { secrets, timing }: Listing,
-): Promise<Result.Result<Listed, ToolServerFailed>> {
+): Promise<Result.Result<Listed, Unusable>> {
   return slot
     .connection()
     .listTools(timing.openMs)
@@ -53,10 +29,7 @@ export function listedThrough(
     );
 }
 
-export async function connectedTo(
-  link: ServerLink,
-  listing: Listing,
-): Promise<Result.Result<Listed, ToolServerFailed>> {
+export async function connectedTo(link: ServerLink, listing: Listing): Promise<Result.Result<Listed, Unusable>> {
   const taken = await takenSlot(link);
   return Result.isFailure(taken)
     ? Result.fail(serverFailed(link, taken.failure, listing.secrets))
@@ -70,10 +43,10 @@ export async function released(listed: readonly Listed[]): Promise<void> {
 export async function listedOn(
   links: readonly ServerLink[],
   listing: Listing,
-): Promise<Result.Result<readonly Listed[], ToolServerFailed>> {
+): Promise<Result.Result<readonly Listed[], Unusable>> {
   const connected = await Promise.all(links.map((link) => connectedTo(link, listing)));
   const listed: Listed[] = [];
-  const failures: ToolServerFailed[] = [];
+  const failures: Unusable[] = [];
   for (const each of connected) {
     if (Result.isSuccess(each)) {
       listed.push(each.success);

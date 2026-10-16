@@ -1,15 +1,25 @@
-import { Effect } from 'effect';
+import { Effect, Schema } from 'effect';
 
-import type { McpServerSettings, OpenApiServerSettings } from '../settings/server-settings.ts';
+import type { McpServerSettings, OpenApiServerSettings, ServerSettings } from '../settings/server-settings.ts';
 
 export type ConnectionSettings = McpServerSettings | OpenApiServerSettings;
+
+export function isConnectionSettings(settings: ServerSettings): settings is ConnectionSettings {
+  return settings.type !== 'stdio';
+}
 
 export type ConnectionServing = Pick<
   ConnectionSettings,
   'name' | 'type' | 'orgs' | 'playbooks' | 'allowed' | 'record_content' | 'request_id'
 >;
 
-export type UnreadyBecause = 'connection_pending' | 'connection_broken' | 'connection_not_allowed';
+export const unreadyReasons = ['connection_pending', 'connection_broken', 'connection_not_allowed'] as const;
+
+const UnreadyBecauseSchema = Schema.Literals(unreadyReasons);
+
+export type UnreadyBecause = typeof UnreadyBecauseSchema.Type;
+
+export const isUnready: (because: string) => because is UnreadyBecause = Schema.is(UnreadyBecauseSchema);
 
 export interface ConnectionUnready {
   readonly because: UnreadyBecause;

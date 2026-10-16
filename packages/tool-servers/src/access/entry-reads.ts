@@ -9,8 +9,6 @@ import type { ServerSettings } from '../settings/server-settings.ts';
 
 export type StartingCall = Pick<OneCall, 'org' | 'playbook' | 'reference' | 'input'>;
 
-export type StartOf = (call: StartingCall) => Effect.Effect<StartedFields>;
-
 export type ContentStore = Pick<RecordedContent, 'put'>;
 
 function keepingIn(content: ContentStore): KeepIn {

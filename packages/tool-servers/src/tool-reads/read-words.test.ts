@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { defineDryRun, defineIntrospect } from '../index.ts';
 
-const lookup = { named: () => Effect.void, listServers: () => Effect.succeed([]) };
+const lookup = { lookUp: () => Effect.never };
 
 const introspectWords = defineIntrospect(lookup).registration.plainLanguage;
 

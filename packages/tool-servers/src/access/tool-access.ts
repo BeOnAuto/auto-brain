@@ -1,12 +1,12 @@
 import { ignored } from '../connections/ignored.ts';
 import type { LinkOptions } from '../connections/link-openers.ts';
+import { listingWaysOf, type ListingWays } from '../listing/listing-ways.ts';
 import type { Describing, ToolServers } from '../openapi/described-api.ts';
 import { noConnections, type ConnectionSource } from '../org-servers/connection-source.ts';
 import { orgAccessOf } from '../org-servers/org-access.ts';
 import type { ServerMessage } from './caller-context.ts';
 import { recordingPartsOf, type ContentStore, type RecordingParts } from './entry-reads.ts';
 import type { LinkedAccess } from './linked-access.ts';
-import { listingWaysOf, type ListingWays } from './listing-ways.ts';
 import { runWaysOf, type RunWays } from './run-ways.ts';
 
 export interface ToolAccessOptions {
@@ -23,6 +23,7 @@ export interface ToolAccessOptions {
 
 export interface ToolAccess extends RunWays, ListingWays {
   readonly configured: boolean;
+  readonly takesConnections: boolean;
   readonly close: () => Promise<void>;
 }
 
@@ -39,14 +40,16 @@ export function makeToolAccess(settings: ToolServers, options: ToolAccessOptions
   const loading: { access?: Promise<LinkedAccess> } = {};
   const recording = recordingPartsOf(settings.servers, options.content);
   const source = options.connections ?? noConnections;
-  const access = orgAccessOf(settings, source, () => {
+  const linkedOnUse = (): Promise<LinkedAccess> => {
     loading.access ??= linked(settings, { ...options, ...recording, reportLeftOut: options.reportLeftOut ?? ignored });
     return loading.access;
-  });
+  };
+  const access = orgAccessOf(settings, { source, loaded: linkedOnUse, secrets: recording.secrets });
   return {
     configured: settings.servers.length > 0 || source.takesConnections,
-    ...runWaysOf(access),
-    ...listingWaysOf(access, recording),
+    takesConnections: source.takesConnections,
+    ...runWaysOf(access, recording),
+    ...listingWaysOf(access),
     close: async () => {
       await access.close();
       const loaded = await loading.access;

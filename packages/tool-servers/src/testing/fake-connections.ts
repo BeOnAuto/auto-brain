@@ -1,13 +1,13 @@
 import { Array as Arr, Effect, Option } from 'effect';
 
-import type {
-  ConnectionServer,
-  ConnectionSettings,
-  ConnectionSource,
-  ConnectionUnready,
-  OrgConnection,
+import {
+  isConnectionSettings,
+  type ConnectionServer,
+  type ConnectionSettings,
+  type ConnectionSource,
+  type ConnectionUnready,
+  type OrgConnection,
 } from '../org-servers/connection-source.ts';
-import type { ServerSettings } from '../settings/server-settings.ts';
 import { readToolServerSettings, type Environment } from '../settings/settings-reading.ts';
 
 export interface FakeConnection {
@@ -23,7 +23,8 @@ type Standing =
   | { readonly status: 'pending' }
   | { readonly status: 'broken'; readonly reason: string }
   | { readonly status: 'unreadable'; readonly reason: string }
-  | { readonly status: 'not_allowed'; readonly rule: string };
+  | { readonly status: 'not_allowed'; readonly rule: string }
+  | { readonly status: 'dying'; readonly reason: string };
 
 interface Kept {
   readonly org: string;
@@ -37,22 +38,20 @@ export interface FakeConnections extends ConnectionSource {
   readonly breakOff: (id: string, reason: string) => void;
   readonly loseTheCredentialOf: (id: string, reason: string) => void;
   readonly disallow: (id: string, rule: string) => void;
+  readonly dieOnceWhilePreparing: (id: string, reason: string) => void;
   readonly remove: (id: string) => void;
   readonly credentialReads: () => number;
+  readonly orgReads: () => number;
 }
 
 interface Held {
   readonly kept: Map<string, Kept>;
   readonly standings: Map<string, Standing>;
-  readonly reads: Map<'credential', number>;
+  readonly credentialRead: () => void;
 }
 
 export function pendingWords(name: string): string {
   return `Nobody has approved the connection ${name} yet; the person who added it opens its link, or removes it and adds it again`;
-}
-
-function isConnectionSettings(settings: ServerSettings): settings is ConnectionSettings {
-  return settings.type !== 'stdio';
 }
 
 function settingsOf(org: string, { name, entry, environment = {} }: FakeConnection): ConnectionSettings {
@@ -72,24 +71,22 @@ function unreadyOf(name: string, standing: Standing): ConnectionUnready | undefi
   return standing.status === 'broken' ? { because: 'connection_broken', detail: standing.reason } : undefined;
 }
 
-const noRefusedAddress = new Map<string, string>();
-
-function everyAddress(url: string): string | undefined {
-  return noRefusedAddress.get(url);
+function everyAddress(): string | undefined {
+  return undefined;
 }
 
 function standingOf({ standings }: Held, id: string): Standing {
   return Option.getOrThrow(Option.fromNullishOr(standings.get(id)));
 }
 
-function readsOf({ reads }: Held): number {
-  return Option.getOrThrow(Option.fromNullishOr(reads.get('credential')));
-}
-
 function preparedOf(held: Held, { connection, settings }: Kept): Effect.Effect<ConnectionServer, ConnectionUnready> {
   return Effect.suspend((): Effect.Effect<ConnectionServer, ConnectionUnready> => {
-    held.reads.set('credential', readsOf(held) + 1);
+    held.credentialRead();
     const standing = standingOf(held, connection.id);
+    if (standing.status === 'dying') {
+      held.standings.set(connection.id, { status: 'connected' });
+      return Effect.die(standing.reason);
+    }
     if (standing.status === 'unreadable') {
       held.standings.set(connection.id, { status: 'broken', reason: standing.reason });
       return Effect.fail({ because: 'connection_broken', detail: standing.reason });
@@ -111,7 +108,15 @@ function listedOf(held: Held, kept: Kept): OrgConnection {
 }
 
 export function fakeConnections(): FakeConnections {
-  const held: Held = { kept: new Map(), standings: new Map(), reads: new Map([['credential', 0]]) };
+  let credentialReads = 0;
+  let orgReads = 0;
+  const held: Held = {
+    kept: new Map(),
+    standings: new Map(),
+    credentialRead: () => {
+      credentialReads += 1;
+    },
+  };
   const keep = (org: string, connection: FakeConnection, standing: Standing): void => {
     held.kept.set(connection.id, { org, connection, settings: settingsOf(org, connection) });
     held.standings.set(connection.id, standing);
@@ -119,7 +124,10 @@ export function fakeConnections(): FakeConnections {
   return {
     takesConnections: true,
     connectionsOf: (org) =>
-      Effect.sync(() => [...held.kept.values()].filter((kept) => kept.org === org).map((kept) => listedOf(held, kept))),
+      Effect.sync(() => {
+        orgReads += 1;
+        return [...held.kept.values()].filter((kept) => kept.org === org).map((kept) => listedOf(held, kept));
+      }),
     connect: (org, connection) => {
       keep(org, connection, { status: 'connected' });
     },
@@ -135,9 +143,13 @@ export function fakeConnections(): FakeConnections {
     disallow: (id, rule) => {
       held.standings.set(id, { status: 'not_allowed', rule });
     },
+    dieOnceWhilePreparing: (id, reason) => {
+      held.standings.set(id, { status: 'dying', reason });
+    },
     remove: (id) => {
       held.kept.delete(id);
     },
-    credentialReads: () => readsOf(held),
+    credentialReads: () => credentialReads,
+    orgReads: () => orgReads,
   };
 }

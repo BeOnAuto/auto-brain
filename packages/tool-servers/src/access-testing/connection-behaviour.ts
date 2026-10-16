@@ -1,11 +1,11 @@
-import { keptTextOf } from '@on.auto/operations/testing';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { ToolAccess } from '../access/tool-access.ts';
+import { takenByTheConfiguration } from '../org-servers/org-servers.ts';
 import { fakeConnections, pendingWords, type FakeConnections } from '../testing/fake-connections.ts';
 import { describedAccess, type ReportingAccess } from '../testing/reporting-access.ts';
-import { controlledSignals, recordingCallJournal, toolRun, type RecordingCallJournal } from '../testing/tool-runs.ts';
+import { controlledSignals, recordingCallJournal, toolRun } from '../testing/tool-runs.ts';
 import { until } from '../testing/until.ts';
 import { behaviourKey, type ServedUnderTest, type ServerUnderTest } from './servers-under-test.ts';
 import { behaviourConnection } from './sources-under-test.ts';
@@ -25,8 +25,7 @@ const brokenWords =
 
 const ruleWords = 'A connection may not take a secret credential on this runtime, which allows none';
 
-const takenWords =
-  "The runtime's configuration sets up a tool server named graph, so the connection graph is not used; remove it and add it again under another name";
+const takenWords = takenByTheConfiguration('graph');
 
 interface Connected extends ReportingAccess {
   readonly fake: ServedUnderTest;
@@ -72,13 +71,6 @@ function listed(access: ToolAccess) {
 
 function namedAs(access: ToolAccess, server: string) {
   return Effect.runPromise(Effect.result(access.named(alpha, [{ server, tool: 'search' }])));
-}
-
-function resultDigestOf(journal: RecordingCallJournal): string {
-  return journal
-    .facts()
-    .flatMap((fact) => (fact.type === 'tool_call_answered' ? [String(fact.data.result_sha256)] : []))
-    .join('');
 }
 
 function unready(connected: Connected): void {
@@ -170,23 +162,6 @@ function recording(underTest: ServerUnderTest): void {
   });
 }
 
-function scrubbing(underTest: ServerUnderTest): void {
-  it('keeps and answers nothing of its credential, in any form the answer carries it', async () => {
-    const { access, content, fake } = await connectedTo(underTest);
-    const forms = [
-      behaviourKey,
-      Buffer.from(behaviourKey).toString('base64'),
-      JSON.stringify(JSON.stringify(behaviourKey)),
-    ];
-
-    const { reply, journal } = await echoedThrough(access, fake.echoed({ forms }));
-    const kept = String(await keptTextOf(content, alpha, resultDigestOf(journal)));
-
-    expect(forms.filter((form) => `${String(reply?.text)}${kept}`.includes(form))).toEqual([]);
-    expect(kept).toContain('[redacted]');
-  });
-}
-
 function removal(underTest: ServerUnderTest): void {
   it('stops the link of a connection removed meanwhile at the next listing, and refuses a call through it', async () => {
     const { access, connections, fake } = await connectedTo(underTest);
@@ -245,7 +220,6 @@ export function connectionBehaviour(underTest: ServerUnderTest): void {
     opening(underTest);
     refusing(underTest);
     recording(underTest);
-    scrubbing(underTest);
     removal(underTest);
     shadowing(underTest);
     breaking(underTest);

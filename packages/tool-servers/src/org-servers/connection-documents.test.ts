@@ -23,6 +23,10 @@ const SucceededSchema = Schema.Struct({ output: Schema.Unknown });
 
 const listedTools: unknown = expect.any(Array);
 
+const notReadable: unknown = expect.stringContaining(
+  'The tool server graph could not be used: The document is neither JSON nor YAML',
+);
+
 function unavailable(): Response {
   return new Response('Down for maintenance', { status: 503 });
 }
@@ -89,6 +93,26 @@ describe('a connection to an HTTP API whose document cannot be read', () => {
     expect(unopened).toMatchObject({ kind: 'unopened', refused: 'tool_server_failed', because: 'failing' });
     expect(notOpened).toMatchObject({ _tag: 'tool_server_failed', because: 'failing' });
     expect(read).toMatchObject([{ name: 'graph', connection: 'graph-id', tools: listedTools }]);
+  });
+});
+
+describe('a connection to an HTTP API whose document is refused for what it says', () => {
+  it('is unavailable as failing in the words of its document, which is not read again for as long as the runtime runs', async () => {
+    const reads = { made: 0 };
+    const documentUrl = await servedDocumentAt(() => {
+      reads.made += 1;
+      return Promise.resolve(new Response('[unclosed'));
+    });
+    const access = await accessThrough({
+      entry: { document: documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' } },
+    });
+
+    const first = await Effect.runPromise(access.listServers(alpha));
+    const second = await Effect.runPromise(access.listServers(alpha));
+
+    expect(first).toMatchObject([{ name: 'graph', because: 'failing', unavailable: notReadable }]);
+    expect(second).toEqual(first);
+    expect(reads.made).toBe(1);
   });
 });
 

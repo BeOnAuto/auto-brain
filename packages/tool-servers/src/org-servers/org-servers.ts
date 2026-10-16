@@ -1,22 +1,17 @@
 import { servesOrg } from '@on.auto/config';
-import { Effect, Schema } from 'effect';
+import { Effect, Order } from 'effect';
 
-import { ToolNotOffered } from '../access/tool-not-offered.ts';
-import { ToolServerFailed } from '../access/tool-server-failed.ts';
+import type { ToolNotOffered } from '../access/tool-not-offered.ts';
+import type { ToolServerFailed } from '../access/tool-server-failed.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import type { UnavailableBecause } from '../listing/tool-server.ts';
 import type { LinkedServerSettings } from '../openapi/described-api.ts';
-import type { ConnectionUnready, UnreadyBecause } from './connection-source.ts';
+import type { ConnectionUnready } from './connection-source.ts';
+import { refusalOf, type Unusable } from './server-refusals.ts';
 
 export type Served = Pick<
   LinkedServerSettings,
   'name' | 'type' | 'orgs' | 'playbooks' | 'allowed' | 'record_content' | 'request_id' | 'connection'
 >;
-
-export interface Unusable {
-  readonly because: UnavailableBecause;
-  readonly detail: string;
-}
 
 export type Linked = { readonly link: ServerLink } | { readonly refused: Unusable };
 
@@ -24,14 +19,6 @@ export interface OrgServer {
   readonly settings: Served;
   readonly checked: () => Promise<readonly ConnectionUnready[]>;
   readonly linked: () => Promise<Linked>;
-}
-
-const UnreadyBecauseSchema = Schema.Literals(['connection_pending', 'connection_broken', 'connection_not_allowed']);
-
-export const isUnready: (because: UnavailableBecause) => because is UnreadyBecause = Schema.is(UnreadyBecauseSchema);
-
-function refusalOf({ because, detail }: Unusable): ToolNotOffered | ToolServerFailed {
-  return isUnready(because) ? new ToolNotOffered({ because, detail }) : new ToolServerFailed({ because, detail });
 }
 
 export function linksOf(
@@ -55,11 +42,12 @@ export function unreadyServer(settings: Served, unready: ConnectionUnready): Org
   };
 }
 
+export function takenByTheConfiguration(name: string): string {
+  return `The runtime's configuration sets up a tool server named ${name}, so a connection cannot take that name`;
+}
+
 function takenByTheFile(name: string): ConnectionUnready {
-  return {
-    because: 'connection_not_allowed',
-    detail: `The runtime's configuration sets up a tool server named ${name}, so the connection ${name} is not used; remove it and add it again under another name`,
-  };
+  return { because: 'connection_not_allowed', detail: takenByTheConfiguration(name) };
 }
 
 export function withTheFileFirst(files: readonly OrgServer[], connections: readonly OrgServer[]): readonly OrgServer[] {
@@ -87,14 +75,7 @@ export function namedIn(org: string, servers: readonly OrgServer[]): ReadonlyMap
   return named;
 }
 
-function inOrder(first: string, second: string): number {
-  if (first === second) {
-    return 0;
-  }
-  return first < second ? -1 : 1;
-}
-
-export function byNameFileFirst(first: OrgServer, second: OrgServer): number {
-  const byName = inOrder(first.settings.name, second.settings.name);
-  return byName === 0 ? Number(isOfTheFile(second)) - Number(isOfTheFile(first)) : byName;
-}
+export const byNameFileFirst: Order.Order<OrgServer> = Order.combine(
+  Order.mapInput(Order.String, ({ settings }: OrgServer) => settings.name),
+  Order.mapInput(Order.Boolean, (server: OrgServer) => !isOfTheFile(server)),
+);

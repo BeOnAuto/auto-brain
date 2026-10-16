@@ -31,7 +31,7 @@ const credentialAdvice =
 
 const decodeEntry = Schema.decodeUnknownSync(ServerEntrySchema);
 
-function readEntry(
+export function readEntry(
   name: string,
   written: ServerEntryFields,
   environment: Environment,

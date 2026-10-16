@@ -142,7 +142,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
 
     expect(outcome.compiled).toEqual([]);
     expect(outcome.results.map((result) => plainTextIn(result))).toEqual([
-      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.',
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up, or a person adds one as a connection with add_connection; the give-tools guide says how.',
       'There is 1 playbook: “Alpha”.',
       'Ran the reasoning function “summary”. Its answer: “Profits rose.”',
     ]);

@@ -1,5 +1,6 @@
 import { defaultTiming } from '../bounds/call-bounds.ts';
 import { serverLink, type ServerLink } from '../connections/server-links.ts';
+import { listedServer } from '../listing/tool-servers.ts';
 import { oneCall, type OneCall, type RunCall } from '../one-call/one-call.ts';
 import type { ToolServers } from '../openapi/described-api.ts';
 import { connectionLinkOf } from '../org-servers/connection-linking.ts';
@@ -7,7 +8,6 @@ import type { LinkConnection } from '../org-servers/connection-links.ts';
 import type { OrgServer } from '../org-servers/org-servers.ts';
 import { openedRun, type Opening } from './run-opening.ts';
 import type { LinkedOptions } from './tool-access.ts';
-import { listedServer } from './tool-servers.ts';
 
 type Opened = Pick<Opening, 'context' | 'references' | 'links'>;
 

@@ -1,6 +1,8 @@
 import { Data } from 'effect';
 
-export type ServerFailedBecause = 'failing' | 'rate_limited' | 'unreachable' | 'key_refused';
+export const serverFailedReasons = ['failing', 'rate_limited', 'unreachable', 'key_refused'] as const;
+
+export type ServerFailedBecause = (typeof serverFailedReasons)[number];
 
 export type CallsEndedBecause = Exclude<ServerFailedBecause, 'unreachable' | 'key_refused'>;
 

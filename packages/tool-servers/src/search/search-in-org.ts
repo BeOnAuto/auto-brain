@@ -32,7 +32,10 @@ function withServedPlaybooks(server: ToolServer, asked: OrgSearchAsked, access: 
   return { ...searchedServer(server, asked), playbooks: playbooksShownTo(access, server.playbooks) };
 }
 
-export function defineSearchInOrg(tools: Pick<ToolAccess, 'listServers'>, lookUpPlaybook: PlaybookLookup) {
+export function defineSearchInOrg(
+  tools: Pick<ToolAccess, 'listServers' | 'takesConnections'>,
+  lookUpPlaybook: PlaybookLookup,
+) {
   return defineQuery('org', {
     name: 'search',
     title: 'Search tools',
@@ -60,7 +63,7 @@ export function defineSearchInOrg(tools: Pick<ToolAccess, 'listServers'>, lookUp
     plainLanguage: {
       task: searchTask,
       attempt: (asked) => orgSearchAttempted(asked),
-      outcome: (answer, asked) => orgSearched(answer, asked),
+      outcome: (answer, asked) => orgSearched(answer, asked, tools.takesConnections),
     },
   });
 }

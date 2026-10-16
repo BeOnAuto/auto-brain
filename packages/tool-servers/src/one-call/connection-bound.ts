@@ -3,7 +3,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { Result } from 'effect';
 
 import { takenSlot, type ServerSlot } from '../calls/server-slot.ts';
-import type { ServerFailure } from '../connections/server-failures.ts';
+import { failureOf, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 
 export type Taken = { readonly slot: ServerSlot } | { readonly failure: ServerFailure } | { readonly late: true };
@@ -46,4 +46,9 @@ export function boundedSlot(slot: ServerSlot, connectionMs: number): ServerSlot 
       return restart;
     },
   };
+}
+
+export async function restartedIfExited(slot: ServerSlot): Promise<ServerFailure | undefined> {
+  const restart = await slot.restartIfExited().catch((error: unknown) => failureOf(error));
+  return typeof restart === 'string' ? undefined : restart;
 }

@@ -1,5 +1,6 @@
 import { INVALID_PARAMS, ProtocolError, SdkError, SdkErrorCode, SdkHttpError } from '@modelcontextprotocol/client';
 import { codesOf, isUntrustedCertificate } from '@on.auto/outbound';
+import { Data, Option, Predicate } from 'effect';
 
 import { AnsweredStatus } from '../openapi/answered-status.ts';
 import { ArgumentsRefused } from '../openapi/arguments-refused.ts';
@@ -13,7 +14,8 @@ export type FailureKind =
   | 'timed_out'
   | 'refused'
   | 'key_refused'
-  | 'too_large';
+  | 'too_large'
+  | 'not_allowed';
 
 export interface ServerFailure {
   readonly kind: FailureKind;
@@ -45,6 +47,19 @@ const httpKinds: ReadonlyMap<number, FailureKind> = new Map([
   [404, 'forgotten'],
   [429, 'rate_limited'],
 ]);
+
+export class HostRefused extends Data.TaggedError('host_refused')<{ readonly rule: string }> {}
+
+const mostCausesFollowed = 8;
+
+function refusedRuleIn(error: unknown, followed = 0): Option.Option<string> {
+  if (error instanceof HostRefused) {
+    return Option.some(error.rule);
+  }
+  return followed < mostCausesFollowed && Predicate.hasProperty(error, 'cause')
+    ? refusedRuleIn(error.cause, followed + 1)
+    : Option.none();
+}
 
 export const untrustedCertificate =
   'The TLS certificate of the tool server is not trusted by this server; its operator must add the certificate authority with NODE_EXTRA_CA_CERTS';
@@ -78,7 +93,7 @@ function networkFailure(error: unknown): ServerFailure {
     : { kind: 'failing', message: error instanceof Error ? error.message : String(error) };
 }
 
-export function failureOf(error: unknown): ServerFailure {
+function knownFailureOf(error: unknown): ServerFailure {
   if (error instanceof SdkHttpError || error instanceof AnsweredStatus) {
     return httpFailure(error.status);
   }
@@ -89,4 +104,11 @@ export function failureOf(error: unknown): ServerFailure {
     return sdkFailure(error.code, error.message);
   }
   return error instanceof ProtocolError ? protocolFailure(error.code, error.message) : networkFailure(error);
+}
+
+export function failureOf(error: unknown): ServerFailure {
+  return Option.match(refusedRuleIn(error), {
+    onSome: (rule): ServerFailure => ({ kind: 'not_allowed', message: rule }),
+    onNone: () => knownFailureOf(error),
+  });
 }

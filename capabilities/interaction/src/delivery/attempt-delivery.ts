@@ -60,12 +60,11 @@ export function deliveredOnce(parts: DeliveryParts, plan: DeliveryPlan): Effect.
       startedId === undefined ? undefined : { startedId, end },
     );
   }
-  const call = callOf(plan, rendered.success.input);
-  return Effect.flatMap(
-    Effect.flatMap(parts.tools.startOf(call), (fields) => recordedStart(parts, plan, fields)),
-    (startedId) =>
+  return Effect.flatMap(parts.tools.preparedCall(callOf(plan, rendered.success.input)), ({ fields, called }) =>
+    Effect.flatMap(recordedStart(parts, plan, fields), (startedId) =>
       startedId === undefined
         ? Effect.undefined
-        : Effect.map(parts.tools.callOnce(call), (called): Delivered => ({ startedId, end: endOf(called, record) })),
+        : Effect.map(called, (once): Delivered => ({ startedId, end: endOf(once, record) })),
+    ),
   );
 }

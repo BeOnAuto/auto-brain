@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
+import { calledOnce, closedAfter, oneCallAccess, oneCallKey } from '../testing/one-calls.ts';
 import { serveFakeMcp } from './fake-mcp-server.ts';
-import { calledOnce, closedAfter, oneCallAccess, oneCallKey } from './one-calls.ts';
 
 async function chatServer() {
   const fake = await serveFakeMcp({ bearer: oneCallKey, chat: true });

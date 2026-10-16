@@ -2,8 +2,9 @@ import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { fakeConnections } from '../testing/fake-connections.ts';
-import { fakeApiKey, patientTiming, serveFakeMcp, type FakeMcpServer } from '../testing/index.ts';
-import { reportingAccess } from '../testing/reporting-access.ts';
+import { fakeApiKey, patientTiming, serveFakeApi, serveFakeMcp, type FakeMcpServer } from '../testing/index.ts';
+import { describedAccess, reportingAccess } from '../testing/reporting-access.ts';
+import { takenByTheConfiguration } from './org-servers.ts';
 
 const alpha = { org: 'acme', playbook: 'alpha' };
 
@@ -30,6 +31,21 @@ function connectedTo(fake: FakeMcpServer, org = 'acme') {
   const { access } = reportingAccess({}, { timing: patientTiming, connections });
   closing.push(access.close);
   return { access, connections };
+}
+
+const unforeseen = 'The registry answered something the runtime does not read';
+
+const listedTools: unknown = expect.any(Array);
+
+function unforeseenAtTheBase(url: string): string | undefined {
+  if (new URL(url).pathname.startsWith('/v1')) {
+    throw new Error(unforeseen);
+  }
+  return undefined;
+}
+
+function searchOf(server: string) {
+  return { ...alpha, reference: { server, tool: 'search' }, input: { query: 'acme' }, meta: {} };
 }
 
 describe('a connection checked by name and removed before any link was made to it', () => {
@@ -70,5 +86,105 @@ describe('the links of connections when the access closes', () => {
     await access.close();
 
     expect(fake.openSessions()).toBe(0);
+  });
+});
+
+describe('a connection whose preparation fails for a reason the runtime did not foresee', () => {
+  it('is listed failing in the words of the failure beside the others, and is prepared again at the next use', async () => {
+    const fake = await fakeServer();
+    const { access, connections } = connectedTo(fake);
+    connections.connect('acme', {
+      id: 'wiki-id',
+      name: 'wiki',
+      entry: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } },
+      environment: { GRAPH_API_KEY: fakeApiKey },
+    });
+    connections.dieOnceWhilePreparing('graph-id', unforeseen);
+
+    const failing = await Effect.runPromise(access.listServers(alpha));
+    const prepared = await Effect.runPromise(access.listServers(alpha));
+
+    expect(failing).toMatchObject([
+      { name: 'graph', because: 'failing', unavailable: `The tool server graph could not be used: ${unforeseen}` },
+      { name: 'wiki', tools: listedTools },
+    ]);
+    expect(prepared).toMatchObject([{ name: 'graph', tools: listedTools }, { name: 'wiki' }]);
+    expect(connections.credentialReads()).toBe(3);
+  });
+});
+
+describe('a connection whose link fails for a reason the runtime did not foresee', () => {
+  it('is listed failing in the words of the failure, and its link is made again at the next use', async () => {
+    const fake = await serveFakeApi({ key: fakeApiKey });
+    closing.push(fake.close);
+    const connections = fakeConnections();
+    connections.connect('acme', {
+      id: 'graph-id',
+      name: 'graph',
+      entry: { document: fake.documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' } },
+      environment: { GRAPH_API_KEY: fakeApiKey },
+      reaches: unforeseenAtTheBase,
+    });
+    const { access } = await describedAccess({}, { timing: patientTiming, connections });
+    closing.push(access.close);
+
+    const [first] = await Effect.runPromise(access.listServers(alpha));
+    const [second] = await Effect.runPromise(access.listServers(alpha));
+
+    expect([first, second]).toMatchObject([
+      { name: 'graph', because: 'failing', unavailable: `The tool server graph could not be used: ${unforeseen}` },
+      { name: 'graph', because: 'failing' },
+    ]);
+    expect([connections.credentialReads(), fake.documentReads(), fake.seen()]).toEqual([1, 2, []]);
+  });
+});
+
+describe('an operation over the tools of an org', () => {
+  it('reads the connections of the org once, to record the start of a call and make it, or to check and list a tool', async () => {
+    const fake = await fakeServer();
+    const { access, connections } = connectedTo(fake);
+
+    const prepared = await Effect.runPromise(access.preparedCall(searchOf('graph')));
+    const called = await Effect.runPromise(prepared.called);
+    const afterTheCall = connections.orgReads();
+    const { naming, listed } = await Effect.runPromise(access.lookUp(alpha, { server: 'graph', tool: 'search' }));
+    const server = await Effect.runPromise(listed);
+
+    expect([prepared.fields, called, naming, server]).toMatchObject([
+      { server: 'graph', connection_id: 'graph-id', tool: 'search' },
+      { kind: 'answered', outcome: 'result' },
+      { _tag: 'Success' },
+      { name: 'graph', tools: listedTools },
+    ]);
+    expect([afterTheCall, connections.orgReads(), connections.credentialReads()]).toEqual([1, 2, 1]);
+  });
+});
+
+describe('a connection named as a server the configuration sets up for another org', () => {
+  it('is listed as not used in the words of the configuration, and a call naming it reaches neither server', async () => {
+    const fake = await fakeServer();
+    const connections = fakeConnections();
+    const entry = { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' } };
+    const environment = { GRAPH_API_KEY: fakeApiKey };
+    connections.connect('acme', { id: 'graph-id', name: 'graph', entry, environment });
+    const { access } = reportingAccess(
+      { graph: { ...entry, org: 'globex' } },
+      { environment, timing: patientTiming, connections },
+    );
+    closing.push(access.close);
+
+    const listed = await Effect.runPromise(access.listServers(alpha));
+    const called = await Effect.runPromise(access.callOnce(searchOf('graph')));
+
+    expect(listed).toMatchObject([
+      {
+        name: 'graph',
+        connection: 'graph-id',
+        because: 'connection_not_allowed',
+        unavailable: takenByTheConfiguration('graph'),
+      },
+    ]);
+    expect(called).toMatchObject({ kind: 'unopened', refused: 'tool_not_offered', because: 'connection_not_allowed' });
+    expect([fake.seen(), connections.credentialReads()]).toEqual([[], 0]);
   });
 });

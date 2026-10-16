@@ -54,7 +54,7 @@ describe('one call of a tool', () => {
       retryAfterMs: null,
       annotations: undefined,
     });
-    expect(await Effect.runPromise(access.startOf(echoCall))).toEqual({
+    expect((await Effect.runPromise(access.preparedCall(echoCall))).fields).toEqual({
       server: 'graph',
       tool: 'echo',
       arguments_bytes: 48,
@@ -95,9 +95,13 @@ describe('what one call answers of its tool', () => {
     const keptAnswer = JSON.stringify({ content: [{ type: 'text', text: scrubbed }] });
 
     const called = await calledOnce(access, call);
-    const starts = await Effect.runPromise(
-      Effect.all([access.startOf(call), access.startOf({ ...call, reference: { server: 'wiki', tool: 'echo' } })]),
+    const prepared = await Effect.runPromise(
+      Effect.all([
+        access.preparedCall(call),
+        access.preparedCall({ ...call, reference: { server: 'wiki', tool: 'echo' } }),
+      ]),
     );
+    const starts = prepared.map(({ fields }) => fields);
 
     expect(starts).toEqual([
       {

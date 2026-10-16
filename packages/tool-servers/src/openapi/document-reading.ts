@@ -15,7 +15,14 @@ export interface DocumentReading {
   readonly readMs: number;
 }
 
-type Read = Result.Result<unknown, string>;
+interface DocumentUnread {
+  readonly detail: string;
+  readonly readAgain: boolean;
+}
+
+type Read = Result.Result<unknown, DocumentUnread>;
+
+type Text = Result.Result<string, DocumentUnread>;
 
 const yamlDocument: YamlKind = {
   noun: 'an OpenAPI document',
@@ -24,7 +31,18 @@ const yamlDocument: YamlKind = {
   emptyIsMapping: false,
 };
 
-const tooLarge = `The document takes more than the ${documentBounds.bytes} bytes a document of a tool server may take`;
+const tooLarge: DocumentUnread = {
+  detail: `The document takes more than the ${documentBounds.bytes} bytes a document of a tool server may take`,
+  readAgain: false,
+};
+
+function refused(detail: string): DocumentUnread {
+  return { detail, readAgain: false };
+}
+
+function unread(detail: string): DocumentUnread {
+  return { detail, readAgain: true };
+}
 
 const accepted = 'application/json, application/yaml;q=0.9, text/yaml;q=0.9, */*;q=0.1';
 
@@ -48,26 +66,26 @@ function parsedText(text: string): Read {
     const located = reading.problems
       .slice(0, mostProblemsNamed)
       .map(({ position, detail }) => `line ${position.line}, column ${position.column}: ${detail}`);
-    return Result.fail(`The document is neither JSON nor YAML: ${located.join('; ')}`);
+    return Result.fail(refused(`The document is neither JSON nor YAML: ${located.join('; ')}`));
   }
 }
 
 function boundedParse(text: string): Read {
   return Result.flatMap(parsedText(text), (value) =>
     nestedDeeperThan(value, documentBounds.nesting)
-      ? Result.fail(`The document nests values more than ${documentBounds.nesting} levels deep`)
+      ? Result.fail(refused(`The document nests values more than ${documentBounds.nesting} levels deep`))
       : Result.succeed(value),
   );
 }
 
-async function textAt(url: string, { fetch, readMs }: DocumentReading): Promise<Result.Result<string, string>> {
+async function textAt(url: string, { fetch, readMs }: DocumentReading): Promise<Text> {
   const signal = AbortSignal.timeout(readMs);
   let overflowed = false;
   try {
     const response = await fetch(url, { headers: { accept: accepted }, redirect: 'manual', signal });
     if (!response.ok) {
       await response.body?.cancel();
-      return Result.fail(unreadAnswer(response.status));
+      return Result.fail(unread(unreadAnswer(response.status)));
     }
     const text = await counted(response, documentBounds.bytes, () => {
       overflowed = true;
@@ -78,14 +96,16 @@ async function textAt(url: string, { fetch, readMs }: DocumentReading): Promise<
       return Result.fail(tooLarge);
     }
     return Result.fail(
-      signal.aborted
-        ? `The document was not read within ${readMs} ms`
-        : `The document could not be read: ${failure instanceof Error ? failure.message : String(failure)}`,
+      unread(
+        signal.aborted
+          ? `The document was not read within ${readMs} ms`
+          : `The document could not be read: ${failure instanceof Error ? failure.message : String(failure)}`,
+      ),
     );
   }
 }
 
-async function textIn(path: string): Promise<Result.Result<string, string>> {
+async function textIn(path: string): Promise<Text> {
   try {
     if ((await stat(path)).size > documentBounds.bytes) {
       return Result.fail(tooLarge);
@@ -93,7 +113,9 @@ async function textIn(path: string): Promise<Result.Result<string, string>> {
     return Result.succeed(await readFile(path, 'utf8'));
   } catch (failure) {
     const code = String(Reflect.get(new Object(failure), 'code'));
-    return Result.fail(code === 'ENOENT' ? 'The document does not exist' : `The document could not be read (${code})`);
+    return Result.fail(
+      unread(code === 'ENOENT' ? 'The document does not exist' : `The document could not be read (${code})`),
+    );
   }
 }
 

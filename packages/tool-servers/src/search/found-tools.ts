@@ -1,3 +1,5 @@
+import { Order } from 'effect';
+
 import { isReadOnly } from '../bounds/tool-results.ts';
 import type { AvailableServer, ServerTool, ToolServer } from '../listing/tool-server.ts';
 import type { Found, FoundTool, SearchAsked, SearchedServer } from './search-schemas.ts';
@@ -34,20 +36,11 @@ function candidatesOn(server: ToolServer, asked: SearchAsked): readonly Candidat
   return 'unavailable' in server ? [] : consideredOn(server, asked).map((tool) => ({ server: server.name, tool }));
 }
 
-function inOrder(first: string, second: string): number {
-  if (first === second) {
-    return 0;
-  }
-  return first < second ? -1 : 1;
-}
-
-function bestFirst(first: Scored, second: Scored): number {
-  if (first.score !== second.score) {
-    return second.score - first.score;
-  }
-  const byTool = inOrder(first.tool.name, second.tool.name);
-  return byTool === 0 ? inOrder(first.server, second.server) : byTool;
-}
+const bestFirst: Order.Order<Scored> = Order.combineAll([
+  Order.flip(Order.mapInput(Order.Number, ({ score }: Scored) => score)),
+  Order.mapInput(Order.String, ({ tool }: Scored) => tool.name),
+  Order.mapInput(Order.String, ({ server }: Scored) => server),
+]);
 
 function scoredBy(words: readonly string[]): (candidate: Candidate) => Scored {
   return ({ server, tool }) => ({ server, tool, score: scoreOf(tool, words) });

@@ -16,8 +16,6 @@ const environment = { GRAPH_API_KEY: fakeApiKey, GRAPH_CLIENT_SECRET: clientSecr
 const outsideTheRule =
   'A connection may not reach the host api.billing.example.org on this runtime, which allows *.example.com';
 
-const theRuleSaid: unknown = expect.stringContaining(outsideTheRule);
-
 const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
@@ -71,7 +69,7 @@ describe('a connection whose authorization server the rules do not allow', () =>
 
     const [listed] = await Effect.runPromise(access.listServers(alpha));
 
-    expect(listed).toMatchObject({ name: 'graph', unavailable: theRuleSaid });
+    expect(listed).toMatchObject({ name: 'graph', because: 'connection_not_allowed', unavailable: outsideTheRule });
     expect(fake.tokenRequests()).toBe(0);
   });
 });
@@ -89,7 +87,7 @@ describe('a connection to a server that answers with a redirect', () => {
 
     expect([across, within]).toMatchObject([
       { name: 'graph', because: 'failing' },
-      { name: 'graph', unavailable: theRuleSaid },
+      { name: 'graph', because: 'connection_not_allowed', unavailable: outsideTheRule },
     ]);
     expect([elsewhere.seen().length, fake.seen().length]).toEqual([0, 2]);
   });

@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer';
 
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { serveFakeMcp } from './fake-mcp-server.ts';
+import { serveFakeMcp } from '../mcp-testing/fake-mcp-server.ts';
 import { serveOnLoopback } from './loopback-server.ts';
 
 const closing: (() => Promise<void>)[] = [];

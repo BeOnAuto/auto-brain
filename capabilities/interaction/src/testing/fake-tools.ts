@@ -18,7 +18,7 @@ export type FakeAnswer =
   | { readonly kind: 'not_offered' }
   | { readonly kind: 'unopened'; readonly detail: string };
 
-export type ToolPorts = Pick<ToolAccess, 'named' | 'configured' | 'startOf' | 'callOnce'>;
+export type ToolPorts = Pick<ToolAccess, 'named' | 'configured' | 'preparedCall' | 'callOnce'>;
 
 export interface FakeTools extends ToolPorts, Pick<ChatBoard, 'posted' | 'reply'> {
   readonly calls: () => readonly OneCall[];
@@ -66,6 +66,10 @@ function startOf({ reference, input }: Pick<OneCall, 'reference' | 'input'>): Ef
     arguments_bytes: Buffer.byteLength(argumentsJson),
     arguments_sha256: digest,
   });
+}
+
+function notOfferedOnce({ reference }: OneCall): Effect.Effect<CalledOnce> {
+  return Effect.succeed(notOfferedBy(notConfigured(reference.server)));
 }
 
 function unsentBy(answer: Exclude<FakeAnswer, BoardAnswer>, { reference }: OneCall): CalledOnce {
@@ -123,7 +127,8 @@ export function fakeTools(duringCall: (call: OneCall) => Effect.Effect<unknown> 
   return {
     configured: true,
     named: (_address, references) => namedBy(references.map((reference) => refusalOf(reference, offering))),
-    startOf,
+    preparedCall: (call) =>
+      Effect.map(startOf(call), (fields) => ({ fields, called: Effect.suspend(() => sent(call)) })),
     callOnce: sent,
     calls: () => [...calls],
     posted: board.posted,
@@ -140,6 +145,6 @@ export function fakeTools(duringCall: (call: OneCall) => Effect.Effect<unknown> 
 export const noTools: ToolPorts = {
   configured: false,
   named: (_address, references) => namedBy(references.map(({ server }) => notConfigured(server))),
-  startOf,
-  callOnce: ({ reference }) => Effect.succeed(notOfferedBy(notConfigured(reference.server))),
+  preparedCall: (call) => Effect.map(startOf(call), (fields) => ({ fields, called: notOfferedOnce(call) })),
+  callOnce: notOfferedOnce,
 };

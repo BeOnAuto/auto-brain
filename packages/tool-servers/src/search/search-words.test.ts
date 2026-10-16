@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 
 import { defineSearch, defineSearchInOrg } from '../index.ts';
 
-const words = defineSearch({ listServers: () => Effect.succeed([]) }).registration.plainLanguage;
+const listing = { listServers: () => Effect.succeed([]), takesConnections: false };
 
-const inOrg = defineSearchInOrg({ listServers: () => Effect.succeed([]) }, () => Effect.void).registration
-  .plainLanguage;
+const words = defineSearch(listing).registration.plainLanguage;
+
+const inOrg = defineSearchInOrg(listing, () => Effect.void).registration.plainLanguage;
+
+const takingConnections = { ...listing, takesConnections: true };
 
 function available(name: string, toolCount: number) {
   return { name, type: 'mcp', record_content: true, tool_count: toolCount };
@@ -59,7 +62,15 @@ describe('the plain words of search', () => {
 
   it('say that no tool server is set up for the playbook, who can set one up and where it says what they need', () => {
     expect(words?.outcome({ servers: [], tools: [], scopes: [] }, {})).toBe(
-      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.',
+      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up; the give-tools guide says how.',
+    );
+  });
+
+  it('say a person may add one as a connection only on a runtime that takes connections', () => {
+    const taking = defineSearch(takingConnections).registration.plainLanguage;
+
+    expect(taking?.outcome({ servers: [], tools: [], scopes: [] }, {})).toBe(
+      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up, or a person adds one as a connection with add_connection; the give-tools guide says how.',
     );
   });
 
@@ -121,9 +132,15 @@ describe('the plain words of search for the org', () => {
   });
 
   it('say that no tool server is set up for the org, who can set one up and where it says what they need', () => {
-    expect(inOrg?.outcome({ servers: [], tools: [], scopes: [] }, {})).toBe(
-      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.',
-    );
+    const taking = defineSearchInOrg(takingConnections, () => Effect.void).registration.plainLanguage;
+
+    expect([
+      inOrg?.outcome({ servers: [], tools: [], scopes: [] }, {}),
+      taking?.outcome({ servers: [], tools: [], scopes: [] }, {}),
+    ]).toEqual([
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up; the give-tools guide says how.',
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up, or a person adds one as a connection with add_connection; the give-tools guide says how.',
+    ]);
   });
 });
 

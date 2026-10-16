@@ -1,5 +1,6 @@
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
-import type { Served, Unusable } from '../org-servers/org-servers.ts';
+import type { Served } from '../org-servers/org-servers.ts';
+import type { Unusable } from '../org-servers/server-refusals.ts';
 import { everyPlaybook } from '../settings/server-settings.ts';
 import type { ServerFields, UnavailableServer } from './tool-server.ts';
 

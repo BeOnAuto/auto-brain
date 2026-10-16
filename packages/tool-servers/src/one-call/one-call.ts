@@ -1,20 +1,13 @@
 import { Effect } from 'effect';
 
-import type { Listing } from '../access/server-listing.ts';
 import { recordingOf, type CallJournal, type KeepIn } from '../calls/recorded-calls.ts';
 import { journalledCall, type CallJournalling } from '../calls/tool-caller.ts';
 import type { ServerLink } from '../connections/server-links.ts';
+import type { Listing } from '../listing/server-listing.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import { isUnready, type OrgServer, type Unusable } from '../org-servers/org-servers.ts';
+import type { OrgServer } from '../org-servers/org-servers.ts';
 import { openedFor } from './call-opening.ts';
-import {
-  answeredOnce,
-  failedToOpenOnce,
-  notOfferedOnce,
-  tracedOnce,
-  type CalledOnce,
-  type UnopenedOnce,
-} from './called-once.ts';
+import { answeredOnce, refusedOnce, tracedOnce, type CalledOnce } from './called-once.ts';
 
 export interface OneCall {
   readonly org: string;
@@ -67,13 +60,9 @@ async function calledOnce(call: OneCall, link: ServerLink, { access, journalling
   }
 }
 
-function unopenedBy({ because, detail }: Unusable): UnopenedOnce {
-  return isUnready(because) ? notOfferedOnce({ because, detail }) : failedToOpenOnce({ because, detail });
-}
-
 async function linkedAndCalled(call: OneCall, server: OrgServer, calling: Calling): Promise<CalledOnce> {
   const linked = await server.linked();
-  return 'refused' in linked ? unopenedBy(linked.refused) : calledOnce(call, linked.link, calling);
+  return 'refused' in linked ? refusedOnce(linked.refused) : calledOnce(call, linked.link, calling);
 }
 
 type Awaiting = <A>(effect: Effect.Effect<A>) => Promise<A>;

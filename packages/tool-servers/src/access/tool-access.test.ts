@@ -233,12 +233,13 @@ describe('the secrets of an access', () => {
     await offeredBy(access, 'graph/echo');
     const [, minted] = String(fake.seen().at(-1)?.authorization).split(' ');
 
-    const started = await Effect.runPromise(
-      access.startOf({
+    const { fields: started } = await Effect.runPromise(
+      access.preparedCall({
         org: 'acme',
         playbook: 'alpha',
         reference: { server: 'graph', tool: 'echo' },
         input: { minted },
+        meta: {},
       }),
     );
 

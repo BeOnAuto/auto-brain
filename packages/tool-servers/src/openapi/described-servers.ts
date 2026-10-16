@@ -13,9 +13,12 @@ type Problems = readonly SettingProblem[];
 
 function linkedOf(server: ServerSettings, describing: Describing): Effect.Effect<LinkedServerSettings, Problems> {
   return server.type === 'openapi'
-    ? Effect.flatMap(
-        Effect.promise(async () => (await import('./api-description.ts')).describedApi(server, describing)),
-        Effect.fromResult,
+    ? Effect.mapError(
+        Effect.flatMap(
+          Effect.promise(async () => (await import('./api-description.ts')).describedApi(server, describing)),
+          Effect.fromResult,
+        ),
+        ({ problems }) => problems,
       )
     : Effect.succeed(server);
 }

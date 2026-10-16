@@ -1,11 +1,11 @@
 import { Result } from 'effect';
 
 import type { ServerLink } from '../connections/server-links.ts';
-import { serverFieldsOf, unavailableServer } from '../listing/server-fields.ts';
-import { shownTool, type Showing } from '../listing/shown-tools.ts';
-import type { ToolServer } from '../listing/tool-server.ts';
 import { offeredOn } from '../names/tool-naming.ts';
+import { serverFieldsOf, unavailableServer } from './server-fields.ts';
 import { connectedTo, type Listing } from './server-listing.ts';
+import { shownTool, type Showing } from './shown-tools.ts';
+import type { ToolServer } from './tool-server.ts';
 
 export type ServersListing = Listing & Showing;
 

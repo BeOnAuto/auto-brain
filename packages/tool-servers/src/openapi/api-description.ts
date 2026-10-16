@@ -14,6 +14,15 @@ type Problems = readonly SettingProblem[];
 
 type Refused<A> = Result.Result<A, Problems>;
 
+export interface DescriptionRefused {
+  readonly problems: Problems;
+  readonly readAgain: boolean;
+}
+
+function refusedFor(problems: Problems): DescriptionRefused {
+  return { problems, readAgain: false };
+}
+
 function documentProblems(name: string, problems: readonly DocumentProblem[]): readonly SettingProblem[] {
   return problems.map(({ pointer, detail }) =>
     problem(toolServersSetting, at(name, 'document'), `At ${pointer} of the document: ${detail}`),
@@ -58,29 +67,31 @@ function baseUrlOf(settings: OpenApiServerSettings, document: ApiDocument): Refu
 export async function describedApi(
   settings: OpenApiServerSettings,
   describing: Describing,
-): Promise<Refused<DescribedApiSettings>> {
+): Promise<Result.Result<DescribedApiSettings, DescriptionRefused>> {
   const read = await documentOf(settings.document, {
     fetch: describing.fetch ?? globalThis.fetch,
     readMs: describing.readMs ?? documentBounds.readMs,
   });
   if (Result.isFailure(read)) {
-    return Result.fail([problem(toolServersSetting, at(settings.name, 'document'), read.failure)]);
+    const { detail, readAgain } = read.failure;
+    return Result.fail({ problems: [problem(toolServersSetting, at(settings.name, 'document'), detail)], readAgain });
   }
   const presented = { security: settings.security, auth: settings.auth !== null };
   const derived = Result.flatMap(decodedDocument(read.success), (decoded) =>
     Result.map(derivedTools(decoded, presented), (tools) => ({ document: decoded.document, tools })),
   );
   if (Result.isFailure(derived)) {
-    return Result.fail(documentProblems(settings.name, derived.failure));
+    return Result.fail(refusedFor(documentProblems(settings.name, derived.failure)));
   }
   const { document, tools } = derived.success;
   const unsecured = securityProblemsOf(settings, document);
   if (unsecured.length > 0) {
     return Result.fail(
-      unsecured.map(({ path, detail }) => problem(toolServersSetting, at(settings.name, ...path), detail)),
+      refusedFor(unsecured.map(({ path, detail }) => problem(toolServersSetting, at(settings.name, ...path), detail))),
     );
   }
-  return Result.map(baseUrlOf(settings, document), (baseUrl) => {
+  const based = Result.mapError(baseUrlOf(settings, document), refusedFor);
+  return Result.map(based, (baseUrl) => {
     for (const leftOut of tools.leftOut) {
       describing.reportLeftOut(settings.name, leftOut);
     }
