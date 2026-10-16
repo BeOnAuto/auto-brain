@@ -12,7 +12,7 @@ Functions do not call the tools of a connection yet: `search` lists the tool ser
 2. Auto keeps the connection, `pending`, and answers with a link to Studio's page, `https://studio.on.auto/connect`, which lasts ten minutes. An agent whose client opens links asks the person to open it; any other agent gives the person the link from its answer.
 3. On the page, signed in, the person approves the connection. Where it takes a secret or client credentials, the person types the credential there, and giving it approves the connection. The connection is then `connected`.
 
-On a runtime that signs people in, only the person who added a connection may approve it, signed in as themselves. In [local mode](security.md#local-mode), the link alone binds: whoever holds it within its ten minutes approves the connection.
+On a runtime that signs people in, only the person who added a connection may approve it, signed in as themselves. In [local mode](security.md#local-mode), the link alone binds: whoever holds it within its ten minutes approves the connection. A link is gone after its ten minutes, and nothing gives a pending connection another, so the way on is to remove the connection and add it again.
 
 `list_connections` shows the connections of the org and whether each is `pending`, `connected`, `broken` or `removed`; Studio reads one with `get_connection`. `remove_connection` removes one for good: no playbook may use it any more, and Auto forgets its credential. The [MCP reference](../reference/mcp.md#connections) describes the three tools, and the [HTTP reference](../reference/http.md#connections) the routes, those of Studio's page among them.
 
