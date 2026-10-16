@@ -20,8 +20,16 @@ const ModelEntrySchema = Schema.Struct({
   max_tokens: Schema.optionalKey(
     Count.annotate({ description: 'The most output tokens the model writes, when the provider reports it' }),
   ),
+  alias: Schema.optionalKey(
+    Schema.Literal(true).annotate({
+      description: 'true for an alias its operator named, whether or not resolved_to shows where it is sent',
+    }),
+  ),
   resolved_to: Schema.optionalKey(
-    Schema.String.annotate({ description: 'For an alias, the model reference it is sent to' }),
+    Schema.String.annotate({
+      description:
+        'For an alias, the model reference it is sent to; left out when that is a Bedrock ARN, which names an account and a region',
+    }),
   ),
   pattern: Schema.optionalKey(
     Schema.Literal(true).annotate({

@@ -25,7 +25,7 @@ describe('the plain words for the models a server can call', () => {
     const list = listOf([
       model('anthropic/claude-sonnet-4-5', 'anthropic', { name: 'Claude Sonnet 4.5' }),
       model('gateway/meta/llama-3.3-70b', 'gateway'),
-      model('house/fast', 'gateway', { resolved_to: 'gateway/meta/llama-3.3-70b' }),
+      model('house/fast', 'gateway', { alias: true, resolved_to: 'gateway/meta/llama-3.3-70b' }),
     ]);
 
     expect(modelsListed(list)).toBe(

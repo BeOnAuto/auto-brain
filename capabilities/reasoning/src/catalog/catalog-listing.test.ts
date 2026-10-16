@@ -11,7 +11,7 @@ const anthropicAndGateway: Responder = ({ url }) =>
   jsonResponse(url.startsWith('https://api.anthropic.com/') ? anthropicModels : vercelGatewayModels);
 
 describe('the models a server can call', () => {
-  it('are those of every provider, then the aliases by their own name, sorted, as of the oldest list', async () => {
+  it('are those of every provider, then the aliases by their own name and marked as aliases, sorted, as of the oldest list', async () => {
     const catalog = await catalogFor(
       {
         ANTHROPIC_API_KEY: 'sk-ant-key',
@@ -39,6 +39,7 @@ describe('the models a server can call', () => {
       object: 'model',
       created: 0,
       owned_by: 'gateway',
+      alias: true,
       resolved_to: 'gateway/anthropic/claude-haiku-4-5',
     });
     expect(list.data.find(({ id }) => id === 'openai/*')).toEqual({
@@ -46,9 +47,11 @@ describe('the models a server can call', () => {
       object: 'model',
       created: 0,
       owned_by: 'gateway',
+      alias: true,
       resolved_to: 'gateway/openai/*',
       pattern: true,
     });
+    expect(list.data.filter(({ alias }) => alias === true).map(({ id }) => id)).toEqual(['house/fast', 'openai/*']);
   });
 });
 
@@ -134,7 +137,7 @@ describe('the models of providers that do not list their own', () => {
     ]);
   });
 
-  it('name an alias without where it is sent when its target is an ARN, which names an account and a region', async () => {
+  it('name an alias as one, without where it is sent, when its target is an ARN, which names an account and a region', async () => {
     const target = 'bedrock-anthropic/arn:aws:bedrock:eu-central-1:123456789012:application-inference-profile/a1b2c3';
     const catalog = await catalogFor(
       { AWS_REGION: 'eu-central-1', MODEL_ALIASES: JSON.stringify({ 'house/claims': target }) },
@@ -146,6 +149,7 @@ describe('the models of providers that do not list their own', () => {
       object: 'model',
       created: 0,
       owned_by: 'bedrock-anthropic',
+      alias: true,
     });
   });
 });

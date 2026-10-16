@@ -251,6 +251,7 @@ The result has the shape of the OpenAI API's list of models, with fields of its 
       "object": "model",
       "created": 0,
       "owned_by": "gateway",
+      "alias": true,
       "resolved_to": "gateway/anthropic/claude-haiku-4-5"
     },
     {
@@ -258,6 +259,7 @@ The result has the shape of the OpenAI API's list of models, with fields of its 
       "object": "model",
       "created": 0,
       "owned_by": "gateway",
+      "alias": true,
       "resolved_to": "gateway/openai/*",
       "pattern": true
     },
@@ -278,7 +280,7 @@ The result has the shape of the OpenAI API's list of models, with fields of its 
 | `listed_at`      | When the oldest provider list in the result was read; the time of the response when no provider was queried                                                                                                |
 | `provider_setup` | Only from a runtime started with npx, when no `provider` is given and it lists no model: how the person adds a model provider                                                                              |
 
-Each entry contains `id`, `object: "model"`, `created` and `owned_by`. The last five fields in this table appear only where they apply:
+Each entry contains `id`, `object: "model"`, `created` and `owned_by`. The last six fields in this table appear only where they apply:
 
 | Field            | Meaning                                                                                                                                                                                                    |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -288,6 +290,7 @@ Each entry contains `id`, `object: "model"`, `created` and `owned_by`. The last 
 | `name`           | The provider's name for the model, only when the provider reports one                                                                                                                                      |
 | `context_window` | The most input tokens, only when the provider reports it                                                                                                                                                   |
 | `max_tokens`     | The most output tokens, only when the provider reports it                                                                                                                                                  |
+| `alias`          | `true` for every alias its operator named, whether or not `resolved_to` shows its target; no other entry has it                                                                                            |
 | `resolved_to`    | For an alias, the reference it is sent to; left out when that is a Bedrock ARN, which names an account and a region                                                                                        |
 | `pattern`        | `true` for an id that ends in `*`, which stands for any model id. It is a wildcard alias, or `<provider>/*` for a provider that lists nothing and has no declared models, such as Bedrock, Azure or Vertex |
 

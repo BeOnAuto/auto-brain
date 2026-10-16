@@ -11,7 +11,7 @@ const description = [
   'Lists the models this server can call, so a reasoning function names one that runs.',
   'Each id is what a reasoning function gives as its model, written provider/model;',
   'an id that ends in * stands for any model of that provider and is not itself a model to run,',
-  'and an alias its operator named says in resolved_to the model it is sent to.',
+  'and an alias, marked alias, says in resolved_to where it is sent when it may.',
   'Use it before a reasoning function names its model, or when a run says its model is not offered.',
   '`provider` keeps the models of one provider or gateway, and catalog_status is partial when a provider could not be asked.',
 ].join(' ');
