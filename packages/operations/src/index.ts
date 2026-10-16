@@ -170,7 +170,12 @@ export type {
   StreamedBodyKind,
 } from './definition/definition.ts';
 export { OrgReader } from './ledger/org-reader.ts';
-export { explanationOf, unsuccessfulWords, type ExplainedRejection } from './plain-language/explanation.ts';
+export {
+  explanationOf,
+  refusalInWords,
+  unsuccessfulWords,
+  type ExplainedRejection,
+} from './plain-language/explanation.ts';
 export {
   alternatives,
   articled,

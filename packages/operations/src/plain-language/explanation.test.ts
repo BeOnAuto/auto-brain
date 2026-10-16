@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   explanationOf,
+  refusalInWords,
   rejected,
   unsuccessfulWords,
   type CancelledKind,
@@ -103,6 +104,25 @@ const afterStopping: ReadonlyArray<readonly [OperationKind, string]> = [
   ['command', 'It may or may not have taken effect, so check before trying again.'],
   ['query', 'It can be tried again once the server is back.'],
 ];
+
+describe('the words of a refusal', () => {
+  it('say what each reason did to a run in plain words, and no code', () => {
+    expect(
+      ['invalid_input', 'unavailable', 'not_found', 'forbidden', 'conflict', 'cancelled', 'unanswered', 'teapot'].map(
+        (reason) => refusalInWords(reason),
+      ),
+    ).toEqual([
+      'refused its input',
+      'was not available',
+      'could not be found',
+      'was not allowed',
+      'could not go through',
+      'was cancelled',
+      'went unanswered',
+      'did not go through',
+    ]);
+  });
+});
 
 describe('explanationOf', () => {
   it.each(byReason)('explains %s', (reason, why, remedy) => {
