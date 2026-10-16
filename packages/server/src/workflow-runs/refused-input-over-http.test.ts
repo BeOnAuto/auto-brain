@@ -34,10 +34,10 @@ const travelling = workflowSource(
 `,
 );
 
-const refusedSeats = { pointer: '/input/seats', detail: 'seats, how many seats to hold: expected at least 1.' };
+const refusedSeats = { pointer: '/input/seats', detail: 'seats, How many seats to hold: expected at least 1.' };
 
 const refusedAtTheStep =
-  'The reasoning function seat-hold refused its input, at the step count-seats: seats, how many seats to hold: expected at least 1.';
+  'The reasoning function seat-hold refused its input, at the step count-seats: seats, How many seats to hold: expected at least 1.';
 
 let server: ReasoningServer;
 

@@ -16,11 +16,13 @@ import { descriptionOf, examplesWordsOf, expectedWordsOf } from '../overview/sch
 
 const kindKeywords = ['type', 'enum', 'const', 'anyOf', 'oneOf', 'properties', 'items', 'prefixItems'];
 
-const leadingInitials = /^\p{Lu}{2}/u;
+function withoutFullStop(text: string): string {
+  return text.trim().replace(/\.$/u, '');
+}
 
-function asPhrase(text: string): string {
-  const words = text.trim().replace(/\.$/u, '');
-  return leadingInitials.test(words) ? words : `${words.charAt(0).toLowerCase()}${words.slice(1)}`;
+function asPhrase(words: string): string {
+  const phrase = withoutFullStop(words);
+  return `${phrase.charAt(0).toLowerCase()}${phrase.slice(1)}`;
 }
 
 function plainText(phrases: Phrases): string {
@@ -46,7 +48,10 @@ function describedIn(schema: JsonSchema): readonly string[] {
 function aboutOf(schemas: readonly JsonSchema[]): string {
   const [description] = schemas.flatMap((schema) => describedIn(schema));
   const examples = schemas.flatMap((schema) => listOf(schema, 'examples'));
-  return [...(description === undefined ? [] : [asPhrase(description)]), ...examplesWordsOf(examples, description)]
+  return [
+    ...(description === undefined ? [] : [withoutFullStop(description)]),
+    ...examplesWordsOf(examples, description),
+  ]
     .map((part) => `, ${part}`)
     .join('');
 }

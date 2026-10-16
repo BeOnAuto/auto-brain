@@ -52,7 +52,7 @@ const raisingTheRefusal = `do:
                   issues: '\${ $refusal.issues }'
 `;
 
-const refusedSeats = [{ pointer: '/input/seats', detail: 'seats, how many seats to hold: expected at least 1.' }];
+const refusedSeats = [{ pointer: '/input/seats', detail: 'seats, How many seats to hold: expected at least 1.' }];
 
 describe('a refused input raised again from the error a workflow caught', () => {
   it('keeps the issues of the refusal, which the run is rejected with', async () => {
@@ -60,7 +60,7 @@ describe('a refused input raised again from the error a workflow caught', () => 
       respond: () => ({
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'seats, how many seats to hold: expected at least 1.',
+        detail: 'seats, How many seats to hold: expected at least 1.',
         issues: refusedSeats,
       }),
     });
@@ -69,7 +69,7 @@ describe('a refused input raised again from the error a workflow caught', () => 
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'https://example.com/errors/seats-refused, at the step report: seats, how many seats to hold: expected at least 1.',
+        'https://example.com/errors/seats-refused, at the step report: seats, How many seats to hold: expected at least 1.',
       issues: refusedSeats,
     });
   });

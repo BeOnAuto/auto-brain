@@ -10,12 +10,12 @@ const runtime = errorType('runtime');
 describe('the words of an error', () => {
   it('say its detail first, then the step that raised it by the name the document gives it, then its title', () => {
     const refused = callErrorOf(
-      { status: 'rejected', reason: 'invalid_input', detail: 'seats, how many seats: expected at least 1.' },
+      { status: 'rejected', reason: 'invalid_input', detail: 'seats, How many seats: expected at least 1.' },
       { function: 'book', label: 'the computation function book', reference: '/do/0/work-out-seats' },
     );
 
     expect(describeError(refused)).toBe(
-      'The computation function book refused its input, at the step work-out-seats: seats, how many seats: expected at least 1.',
+      'The computation function book refused its input, at the step work-out-seats: seats, How many seats: expected at least 1.',
     );
   });
 
@@ -57,7 +57,7 @@ describe('the words of an error', () => {
 describe('the issues of a refused input a step met', () => {
   it('carries the issues of a refused input, each at its pointer and in its sentence, into the rejection of the run', () => {
     const issues: readonly Issue[] = [
-      { pointer: '/input/seats', detail: 'seats, how many seats: expected at least 1.' },
+      { pointer: '/input/seats', detail: 'seats, How many seats: expected at least 1.' },
       { pointer: '/input/day', detail: 'day: expected text in the form the schema calls date.' },
     ];
     const refused = callErrorOf(
@@ -70,7 +70,7 @@ describe('the issues of a refused input a step met', () => {
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'The function notify refused its input, at the step ask: seats, how many seats: expected at least 1. day: expected text in the form the schema calls date.',
+        'The function notify refused its input, at the step ask: seats, How many seats: expected at least 1. day: expected text in the form the schema calls date.',
       issues,
     });
     expect(settlementOf({ kind: 'raised', error: { ...refused, status: 503 } })).not.toHaveProperty('issues');

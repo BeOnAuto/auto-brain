@@ -27,20 +27,20 @@ const month = {
 describe('the refusal of a value its schema does not take', () => {
   it('names the field by its name and its description, then the rule it broke, in one sentence', () => {
     expect(wordsOf({ type: 'object', properties: { month } }, { month: 'April' })).toBe(
-      'month, the month to report on, such as "April 2026" or "2026-04": expected at least 6 characters.',
+      'month, The month to report on, such as "April 2026" or "2026-04": expected at least 6 characters.',
     );
     expect(
       wordsOf(
         { type: 'object', properties: { status: { enum: ['draft', 'sent', 'approved'], description: 'The stage' } } },
         { status: 'paid' },
       ),
-    ).toBe('status, the stage: expected one of: draft, sent, approved.');
+    ).toBe('status, The stage: expected one of: draft, sent, approved.');
     expect(
       wordsOf(
         { type: 'object', properties: { seats: { type: 'integer', minimum: 1, description: 'How many seats.' } } },
         { seats: 0 },
       ),
-    ).toBe('seats, how many seats: expected at least 1.');
+    ).toBe('seats, How many seats: expected at least 1.');
   });
 });
 
@@ -92,7 +92,7 @@ describe('the words of a value of another kind', () => {
       'field: expected yes or no.',
       'field: expected text or nothing.',
       'field: expected exactly approve.',
-      'field, the total: expected a whole number.',
+      'field, The total: expected a whole number.',
       'field: expected a record with: city (text).',
     ]);
   });
@@ -108,8 +108,8 @@ describe('the examples of a refused field', () => {
       fieldWords({ type: 'string', minLength: 2, description: 'ID of the order' }, 'x'),
     ]).toEqual([
       'field, such as “ACME-001” or “ACME-002”: expected at least 3 characters.',
-      'field, the code of the part, such as “ACME-001”: expected at least 3 characters.',
-      'field, at least 5 of them: expected at least 2.',
+      'field, The code of the part, such as “ACME-001”: expected at least 3 characters.',
+      'field, At least 5 of them: expected at least 2.',
       'field: expected at least 2 characters.',
       'field, ID of the order: expected at least 2 characters.',
     ]);
@@ -139,8 +139,8 @@ describe('the refusal of a value whose fields do not fit', () => {
   it('names a missing field, or one the schema does not take, at the field that holds it', () => {
     expect(wordsOf(order, { address: {}, extra: true })).toBe(
       'The input: expected no field extra. ' +
-        'The input: expected the field month, the month to report on, such as "April 2026" or "2026-04". ' +
-        'address, where it goes: expected the field city, the city.',
+        'The input: expected the field month, The month to report on, such as "April 2026" or "2026-04". ' +
+        'address, Where it goes: expected the field city, The city.',
     );
   });
 
@@ -153,9 +153,9 @@ describe('the refusal of a value whose fields do not fit', () => {
         totals: { june: 1.5 },
       }),
     ).toBe(
-      'address, then city, the city: expected at least 2 characters. ' +
-        'lines, then item 2, then amount, the amount: expected a whole number. ' +
-        'totals, then june, a total in cents: expected a whole number.',
+      'address, then city, The city: expected at least 2 characters. ' +
+        'lines, then item 2, then amount, The amount: expected a whole number. ' +
+        'totals, then june, A total in cents: expected a whole number.',
     );
     expect(wordsOf(order, { month: 'April 2026', address: { city: 'Paris' }, pair: ['a'] })).toBe(
       'pair: expected item 2.',
@@ -169,9 +169,9 @@ describe('the refusal of a value whose fields do not fit', () => {
     expect(refusalOf(order, { address: { city: 'X' } })?.issues).toEqual([
       {
         pointer: '/month',
-        detail: 'The input: expected the field month, the month to report on, such as "April 2026" or "2026-04".',
+        detail: 'The input: expected the field month, The month to report on, such as "April 2026" or "2026-04".',
       },
-      { pointer: '/address/city', detail: 'address, then city, the city: expected at least 2 characters.' },
+      { pointer: '/address/city', detail: 'address, then city, The city: expected at least 2 characters.' },
     ]);
   });
 });

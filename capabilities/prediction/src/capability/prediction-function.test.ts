@@ -150,10 +150,10 @@ describe('the input of a run of a prediction function', () => {
     expect(
       await Promise.all(questionsRefused.map(async ([, input]) => (await runs.refusing(weeklyOrders, input)).detail)),
     ).toEqual([
-      'series, the series, text of 1 to 256 bytes in UTF-8: expected at most 256 bytes in UTF-8, not 400.',
-      'horizon, how many periods ahead of the last observed: expected one of: 1, 4.',
-      'given, the value of each given feature for the periods up to the one predicted, by its name: expected no field price.',
-      'The input: expected the field series, the series, text of 1 to 256 bytes in UTF-8.',
+      'series, The series, text of 1 to 256 bytes in UTF-8: expected at most 256 bytes in UTF-8, not 400.',
+      'horizon, How many periods ahead of the last observed: expected one of: 1, 4.',
+      'given, The value of each given feature for the periods up to the one predicted, by its name: expected no field price.',
+      'The input: expected the field series, The series, text of 1 to 256 bytes in UTF-8.',
     ]);
   });
 

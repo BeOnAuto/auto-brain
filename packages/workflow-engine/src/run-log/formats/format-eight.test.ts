@@ -16,7 +16,7 @@ const refusedField = {
   type: 'validation',
   status: 400,
   instance: '/do/1/fork/branches/2',
-  issues: [{ pointer: '/input/seats', detail: 'seats, how many seats: expected at least 1.' }],
+  issues: [{ pointer: '/input/seats', detail: 'seats, How many seats: expected at least 1.' }],
 };
 
 function withBranchError(error: Readonly<Record<string, unknown>>): Schema.Json {
