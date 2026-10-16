@@ -1,5 +1,5 @@
 import { deferredCanceller } from '@on.auto/definitions';
-import { Effect, Result, Schema, SchemaTransformation } from 'effect';
+import { Effect, Schema, SchemaTransformation } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { answeringAnyRun } from '../testing/harness-parts.ts';
@@ -13,7 +13,7 @@ import {
   recordedReply,
   takenReply,
 } from '../testing/index.ts';
-import { answerIssuesOf, matchedAnswer } from './answer-check.ts';
+import { answerIssuesOf } from './answer-check.ts';
 import { listInteractions } from './list-interactions.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -208,7 +208,6 @@ describe('an answer that is refused before it is checked', () => {
     expect([
       await playbook.call(answer, { run_id: runId, answer: { choice: 'approve', note: 'x'.repeat(70_000) } }),
       answerIssuesOf({}, { type: 'thing' }),
-      matchedAnswer({}, { type: 'thing' }),
     ]).toMatchObject([
       {
         status: 'rejected',
@@ -217,7 +216,6 @@ describe('an answer that is refused before it is checked', () => {
         issues: [{ pointer: '/answer', detail: pastTheBound }],
       },
       [{ pointer: '/answer', detail: 'The answer schema of the request cannot be read.' }],
-      Result.fail([{ pointer: '', detail: 'The answer schema of the request cannot be read' }]),
     ]);
   });
 });

@@ -8,7 +8,6 @@ import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Effect, Result, Schema } from 'effect';
 
 import type { CallDocument } from '../document/interaction-document.ts';
-import { matchedAnswer } from '../requests/answer-check.ts';
 import { valueAt } from '../tool-blocks/json-pointers.ts';
 
 const isJson = Schema.is(Schema.Json);
@@ -54,7 +53,7 @@ function checkedValue(document: CallDocument, value: Schema.Json, { named, at, u
   if (measureOf(value) === undefined) {
     return unreadable(`${what} nests deeper than the ${mostValueDepth} levels a value may`);
   }
-  return Result.match(matchedAnswer(value, document.output.schema.document), {
+  return Result.match(document.output.schema.validate(value), {
     onSuccess: (output) => Effect.succeed({ output, record: recordOf(document) }),
     onFailure: (issues) => unreadable(`${what} does not match the output schema: ${issuesDetail(issues, 'answer')}`),
   });
