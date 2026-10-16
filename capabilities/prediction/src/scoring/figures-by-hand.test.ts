@@ -6,7 +6,7 @@ import { blockLengthOf, pBetterOf, seedOf } from './bootstrap.ts';
 import { originDifferences, primaryOf, scoredOf } from './metrics.ts';
 import { scoringGridOf } from './scoring-grid.ts';
 
-const daily: Predicts = { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits' };
+const daily: Predicts = { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits', history: 4 };
 
 const grid = scoringGridOf(daily, { window: 12, holdout: 4, firstPeriod: '2026-10-01' });
 
@@ -76,6 +76,7 @@ const toTheWeek: Predicts = {
   horizons: [],
   accumulates: 'week',
   unit: 'sales',
+  history: 14,
 };
 
 const weeks = scoringGridOf(toTheWeek, { window: 21, holdout: 7, firstPeriod: '2026-10-05' });

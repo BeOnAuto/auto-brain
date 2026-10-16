@@ -66,7 +66,8 @@ describe('a prediction function saved over HTTP', () => {
         type: 'prediction',
         media_type: 'text/markdown',
         input_schema: { oneOf: [{ title: 'question' }, { title: 'build' }] },
-        output_schema: { oneOf: [{ title: 'prediction' }, { title: 'build' }] },
+        output_schema: { $id: 'https://on.auto/shapes/series', title: 'series' },
+        details: { shape: 'series' },
       },
     });
     expect(standing).toMatchObject({

@@ -32,3 +32,4 @@ export {
   type ReadThrough,
   type Unread,
 } from '../content-testing/content-samples.ts';
+export { internalTerms, internalTermsIn } from '../plain-language/internal-terms.ts';

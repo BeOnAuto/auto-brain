@@ -19,6 +19,7 @@ export const RejectionBecauseSchema = Schema.Literals([
   'builds_of_the_day',
   'stalled',
   'not_finite',
+  'not_in_order',
   'baseline_check',
 ]);
 

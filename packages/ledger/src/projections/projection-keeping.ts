@@ -1,9 +1,9 @@
 import {
+  advancedColumnsLeftBy,
   playbookStreamOf,
   contextOf,
   messageIdOf,
   rowKeyOf,
-  setsAdvancedColumns,
   type Context,
   type KeyedProjection,
   type ProjectedMessage,
@@ -46,11 +46,9 @@ async function keptAfter(
 ): Promise<void> {
   const stored = await rowIn(execute, dialect, projection, place);
   const row = projection.rowAfter(stored, projectedOf(message));
-  const { type } = message;
   if (row !== undefined) {
-    const written =
-      stored === undefined || setsAdvancedColumns(projection, type) ? 'with_advanced' : 'without_advanced';
-    await execute.command(rowsWrite(dialect, projection, [{ ...place, row }], written));
+    const standing = stored === undefined ? [] : advancedColumnsLeftBy(projection, message.type);
+    await execute.command(rowsWrite(dialect, projection, [{ ...place, row }], standing));
   }
 }
 

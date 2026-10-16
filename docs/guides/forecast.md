@@ -161,13 +161,13 @@ Ask the "<function name>" function in my "<playbook name>" playbook for
 <series>'s <number> <how many> <periods> ahead.
 ```
 
-The agent runs the function with a question, such as `{ "series": "north", "horizon": 1 }`, and the run returns the forecast at once. Read it like this:
+The agent runs the function with a question, such as `{ "series": "north", "horizon": 1 }`, and the run returns the forecast at once. Without `horizon`, it forecasts every horizon the function names. The forecast is a series, which Auto Studio draws on the run's page. Read it like this:
 
-- `value` is the likely value, the model's 50th percentile.
-- `low` and `high` are its 10th and 90th percentiles. The true value should fall between them about eight times in ten.
-- `coverage` is always 0.8, the share of truths such an interval should hold. The card's `coverage` says how often it held on the held-back periods.
-- `origin` is the last observed period, and `period` is the one forecast.
-- `version` is the model version that made the forecast, not the version of the function's document.
+- `origin` is the last observed period.
+- The `observed` line holds the last periods of the data up to the origin, twice the longest horizon unless the document's `predicts.history` says how many.
+- The `predicted` line holds a point for each period forecast. Its `value` is the likely value, the model's 50th percentile.
+- Its `low` and `high` are the 10th and 90th percentiles. The true value should fall between them about eight times in ten.
+- The run's record holds `version`, the model version that made the forecast, not the version of the function's document, and `coverage`, always 0.8, the share of truths such an interval should hold. The card's `coverage` says how often it held on the held-back periods.
 
 A question also gives a value for each feature the document names under `given`, and a function that predicts a total to the end of a period takes no horizon; [A question](../reference/prediction-format.md#a-question) has both. A workflow asks the same question in a task. [In a workflow](../reference/prediction-format.md#in-a-workflow) shows how, including what to do before any model version is active.
 

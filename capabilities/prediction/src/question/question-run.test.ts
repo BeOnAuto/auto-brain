@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
-import { asked, builtFrom, savedFunction } from '../build-testing/built-versions.ts';
+import { activeVisitsOn, asked } from '../build-testing/built-versions.ts';
 import { scriptedModels, type ScriptedModels } from '../build-testing/scripted-models.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { dailyRows, steadyVisits } from '../testing/daily-rows.ts';
@@ -13,13 +13,10 @@ import { uploadDataset } from '../upload/upload-dataset.ts';
 
 const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
 
-const someMilliseconds: unknown = expect.any(Number);
+const outOfOrder = 'The answer does not match the series shape';
 
-async function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
-  const playbook = buildPlaybook(options);
-  await savedFunction(playbook);
-  await builtFrom(playbook, ['visits-mean']);
-  return playbook;
+function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
+  return activeVisitsOn(buildPlaybook(options));
 }
 
 type Deadlines = NonNullable<PortOptions['deadlines']>;
@@ -33,29 +30,6 @@ async function scriptedVisits(deadlines: Deadlines = ordinaryDeadlines, processe
 }
 
 describe('a question to a prediction function', () => {
-  it('is answered by the active version for the step it asks, from the last period of its dataset', async () => {
-    const playbook = await activeVisits();
-
-    expect(await asked(playbook, { series: 'south', horizon: 2 })).toMatchObject({
-      status: 'succeeded',
-      output: {
-        status: 'succeeded',
-        output: {
-          series: 'south',
-          origin: '2026-10-09',
-          period: '2026-10-11',
-          horizon: 2,
-          value: 21,
-          low: 19,
-          high: 23,
-          coverage: 0.8,
-          version: 1,
-        },
-        record: { version: 1, origin: '2026-10-09', dataset_checkpoint: null, duration_ms: someMilliseconds },
-      },
-    });
-  });
-
   it('is refused for a series its dataset does not hold, and once the data part changed since its version was built', async () => {
     const playbook = await activeVisits();
     const unknown = await asked(playbook, { series: 'east', horizon: 1 });
@@ -115,7 +89,35 @@ describe('a question whose model process does not answer', () => {
         status: 'rejected',
         reason: 'unavailable',
         kind: 'model_process_failed',
+        because: 'not_finite',
         detail: 'The model answered something other than finite numbers in the shape its signature gives',
+      },
+    ]);
+  });
+});
+
+describe('a question whose model answers a low above its likely value or a high below it', () => {
+  it('is refused as the model process failing, because its numbers are not in order, in the words of the series shape', async () => {
+    const { scripted, playbook } = await scriptedVisits();
+    scripted.next('low-above');
+    const lowAbove = await asked(playbook, { series: 'north' });
+    scripted.next('high-below');
+    const highBelow = await asked(playbook, { series: 'north' });
+
+    expect([lowAbove, highBelow]).toMatchObject([
+      {
+        status: 'rejected',
+        reason: 'unavailable',
+        kind: 'model_process_failed',
+        because: 'not_in_order',
+        detail: `${outOfOrder}: /lines/1/points/0/low: Expected a low of at most the value`,
+      },
+      {
+        status: 'rejected',
+        reason: 'unavailable',
+        kind: 'model_process_failed',
+        because: 'not_in_order',
+        detail: `${outOfOrder}: /lines/1/points/1/high: Expected a high of at least the value`,
       },
     ]);
   });

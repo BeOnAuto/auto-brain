@@ -6,6 +6,7 @@ import type { SeriesRows } from '../files/series-rows.ts';
 import { scaleOf, type BaselineWalk } from './baselines.ts';
 import { pBetterOf } from './bootstrap.ts';
 import { originDifferences, scoredOf, type SeriesForecast } from './metrics.ts';
+import { answeredInOrder } from './quantile-order.ts';
 import { rounded } from './score-math.ts';
 import { percentiles, type ScoringGrid } from './scoring-grid.ts';
 
@@ -47,9 +48,12 @@ function badlyOf({ grid, rows }: Scoring, answer: WalkedAnswer): string | undefi
   if (wrong !== undefined) {
     return `The model answered ${wrong.length} numbers for a series where ${length} were expected`;
   }
-  return answer.q.some((q) => q.some((value) => !Number.isFinite(value)))
-    ? 'The model answered a number that is not finite'
-    : undefined;
+  if (answer.q.some((q) => q.some((value) => !Number.isFinite(value)))) {
+    return 'The model answered a number that is not finite';
+  }
+  return answer.q.every((q) => answeredInOrder(q))
+    ? undefined
+    : 'The model answered a low above its likely value or a high below it at a held-back origin';
 }
 
 function againstOf(scoring: Scoring, candidate: readonly SeriesForecast[], walk: BaselineWalk): Against {

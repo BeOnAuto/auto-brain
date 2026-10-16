@@ -307,7 +307,7 @@ The task's output is that run's output:
 
 - for a reasoning function, the text or JSON value it returned;
 - for an interaction function, the answer it took from its tool or its request;
-- for a prediction function, the prediction or the build's outcome;
+- for a prediction function, the prediction, a series whose second line holds the periods predicted, or the build's outcome;
 - for a recall function, what it returned from its view;
 - for a computation function, the value its program gave;
 - for a workflow, the output of the workflow it ran.

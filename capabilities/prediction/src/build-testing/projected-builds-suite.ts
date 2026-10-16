@@ -76,23 +76,34 @@ function shadowDecisions(settingsOf: SettingsOf): void {
     expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2 } });
     expect(facts.at(-1)).toMatchObject({ type: 'activation_refused', data: { version: 2, because: 'shadow_failed' } });
   });
+}
 
-  it('keeps out of its predictions what a walk answered that is not finite, and refuses a challenger that answered nothing beside an active version that did', async () => {
-    const projected = await challenged(settingsOf);
-    await performedIn(projected, ['not-finite', 'real', 'not-finite', 'real']);
-    projected.scripted.next('real');
-    await performedUntilQuiet(projected.playbook, 4 * day);
-    const facts = await modelFactsOf(projected.playbook);
+function shadowLeavesOut(settingsOf: SettingsOf): void {
+  it.each<{ readonly script: Script; readonly answered: string }>([
+    { script: 'not-finite', answered: 'a number that is not finite' },
+    { script: 'walks-low-above', answered: 'a low above its likely value' },
+  ])(
+    'keeps out of its predictions a series a walk answered $answered for, and refuses a challenger that answered nothing beside an active version that did',
+    async ({ script }) => {
+      const projected = await challenged(settingsOf);
+      await performedIn(projected, [script, 'real', script, 'real']);
+      projected.scripted.next('real');
+      await performedUntilQuiet(projected.playbook, 4 * day);
+      const facts = await modelFactsOf(projected.playbook);
 
-    expect(facts.filter(({ type }) => type === 'shadow_predicted')).toMatchObject([
-      { data: { of: 2, count: 0, missing: 2 } },
-      { data: { of: 1, count: 2, missing: 0 } },
-      { data: { of: 2, count: 0, missing: 2 } },
-      { data: { of: 1, count: 2, missing: 0 } },
-    ]);
-    expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2, challenger: null } });
-    expect(facts.at(-1)).toMatchObject({ type: 'activation_refused', data: { version: 2, because: 'shadow_failed' } });
-  });
+      expect(facts.filter(({ type }) => type === 'shadow_predicted')).toMatchObject([
+        { data: { of: 2, count: 0, missing: 2 } },
+        { data: { of: 1, count: 2, missing: 0 } },
+        { data: { of: 2, count: 0, missing: 2 } },
+        { data: { of: 1, count: 2, missing: 0 } },
+      ]);
+      expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2, challenger: null } });
+      expect(facts.at(-1)).toMatchObject({
+        type: 'activation_refused',
+        data: { version: 2, because: 'shadow_failed' },
+      });
+    },
+  );
 }
 
 function shadowSuperseded(settingsOf: SettingsOf): void {
@@ -185,7 +196,17 @@ function shadowGaps(settingsOf: SettingsOf): void {
     await performedUntilQuiet(projected.playbook, 4 * day);
     const graded = (await modelFactsOf(projected.playbook)).filter(({ type }) => type === 'shadow_graded');
 
-    expect(east).toMatchObject({ output: { status: 'succeeded', output: { value: 30, low: 28, high: 32 } } });
+    expect(east).toMatchObject({
+      output: {
+        status: 'succeeded',
+        output: {
+          lines: [
+            { name: 'observed', points: [{ value: 30 }, { value: 30 }] },
+            { name: 'predicted', points: [{ value: 30, low: 28, high: 32 }] },
+          ],
+        },
+      },
+    });
     expect(graded.length).toBeGreaterThanOrEqual(4);
     expect(graded[0]).toMatchObject({ data: { graded: 3, missing: 1 } });
   });
@@ -198,6 +219,7 @@ export function projectedBuildsSuite(settingsOf: SettingsOf): void {
 
   describe('the shadow of a challenger over a projected dataset', { timeout: testTimeoutMs }, () => {
     shadowDecisions(settingsOf);
+    shadowLeavesOut(settingsOf);
   });
 
   describe('the shadow of a challenger that has to wait', { timeout: testTimeoutMs }, () => {

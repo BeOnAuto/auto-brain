@@ -1,6 +1,7 @@
 import { setTimeout } from 'node:timers/promises';
 
-import { internalTermsIn, withMcpSession } from '@on.auto/api/testing';
+import { withMcpSession } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { movedClock } from '@on.auto/workflow-host/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

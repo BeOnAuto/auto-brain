@@ -154,7 +154,10 @@ export async function questionTimings(files: MeasuredFiles): Promise<QuestionTim
   }
   const { y } = window.answer;
   await Effect.runPromise(
-    models.run({ sha256: 'mean', path: files.mean }, { y, x: null, given: null, h: null, features: 0, givens: 0 }),
+    models.run(
+      { sha256: 'mean', path: files.mean },
+      { y: Float32Array.from(y), x: null, given: null, h: null, features: 0, givens: 0 },
+    ),
   );
   const runMs = millisecondsOf(read);
   const heapGrowth = process.memoryUsage().heapUsed - heapBefore;

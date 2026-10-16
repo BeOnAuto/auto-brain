@@ -3,6 +3,7 @@ import {
   functionCategoryLabels,
   functionResourceLabels,
   outputInWords,
+  publishedOutputOf,
   type DefinitionSummary,
   type Capability,
 } from '@on.auto/definitions';
@@ -35,8 +36,7 @@ function summarize({ description, input, output }: ComputationFunctionDefinition
   return {
     ...(description === undefined ? {} : { description }),
     ...(input.schema === undefined ? {} : { inputSchema: input.schema.document }),
-    ...(output.schema === undefined ? {} : { outputSchema: output.schema.document }),
-    ...(output.shape === undefined ? {} : { details: { shape: output.shape.name } }),
+    ...publishedOutputOf({ schema: output.schema?.document, shape: output.shape }),
   };
 }
 

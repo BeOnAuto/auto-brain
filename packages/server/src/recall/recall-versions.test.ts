@@ -1,4 +1,4 @@
-import { internalTermsIn } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { foldOf, recallDocument } from '@on.auto/recall/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';

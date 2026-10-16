@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  advancedColumnsLeftBy,
   advancedColumnsOf,
   playbookStreamOf,
   requireAdvancedColumns,
   rowKeyOf,
-  setsAdvancedColumns,
 } from './keyed-projection.ts';
 import { runTallyRows } from './tally-rows.ts';
 import { topicRows } from './topic-rows.ts';
@@ -54,16 +54,25 @@ describe('the key of the row a fact changes', () => {
 });
 
 describe('the columns a reader advances', () => {
-  it('are those a projection declares, set by the fold only for the types it names', () => {
+  it('are those a projection declares, each set by the fold only for the types it names for that column', () => {
+    const noteOpens = {
+      ...topicRows,
+      advanced: [
+        { column: 'open', setBy: ['topic_opened', 'topic_noted'] },
+        { column: 'next_at', setBy: ['topic_opened'] },
+      ],
+    };
+
     expect([advancedColumnsOf(runTallyRows), advancedColumnsOf(topicRows)]).toEqual([
       [],
       ['open', 'next_at', 'due_at'],
     ]);
     expect([
-      setsAdvancedColumns(topicRows, 'topic_opened'),
-      setsAdvancedColumns(topicRows, 'topic_noted'),
-      setsAdvancedColumns(runTallyRows, 'run_began'),
-    ]).toEqual([true, false, false]);
+      advancedColumnsLeftBy(topicRows, 'topic_opened'),
+      advancedColumnsLeftBy(topicRows, 'topic_noted'),
+      advancedColumnsLeftBy(noteOpens, 'topic_noted'),
+      advancedColumnsLeftBy(runTallyRows, 'run_began'),
+    ]).toEqual([[], ['open', 'next_at', 'due_at'], ['next_at'], []]);
   });
 
   it('refuse a column the projection does not let its reader advance', () => {

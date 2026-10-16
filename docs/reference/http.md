@@ -135,7 +135,7 @@ The `source` is a [reasoning function document](reasoning-format.md). These rule
 - Changing a document creates a version. Updating it with identical source records no change.
 - A run uses the latest active version.
 - A retired definition can be read, but cannot be edited or run.
-- A definition carries its `input_schema` and `output_schema` where its document declares them. A reasoning function, a computation function or a workflow whose `output.shape` names an [output shape](output-shapes.md) has the shape's schema as its `output_schema`, and the shape's name as `details.shape`, such as `"details": { "shape": "series" }`; `details` is left out otherwise. `list_definitions` shows both too.
+- A definition carries its `input_schema` and `output_schema` where its document declares them. A reasoning function, a computation function or a workflow whose `output.shape` names an [output shape](output-shapes.md) has the shape's schema as its `output_schema`, and the shape's name as `details.shape`, such as `"details": { "shape": "series" }`; `details` is left out otherwise. A prediction function has the `series` shape so, since its questions answer a series. `list_definitions` shows both too.
 
 `create_definition`, `update_definition`, `get_definition` and `retire_definition` return the definition with its `overview`; `list_definitions` leaves it out. The overview describes the definition in plain words, for a person who does not read its document:
 
@@ -273,7 +273,7 @@ A recall function keeps a view: a JSON value its module builds from the playbook
 Prediction functions use the operations of reasoning functions, with `prediction` in place of `reasoning` in each route, such as `POST /definitions/prediction` and `POST /definitions/prediction/{name}/run`. The `source` is a [prediction function document](prediction-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
 
 - A playbook may have at most 32 active prediction functions.
-- A question finishes within the request that asks it, and the function's active version makes the prediction.
+- A question finishes within the request that asks it, and the function's active version makes the prediction. A question such as `{ "series": "north", "horizon": 1 }` answers a [series](output-shapes.md#series) whose `observed` line holds the last periods of the dataset and whose `predicted` line holds the period asked, with its `value`, `low` and `high`; without `horizon` it holds every horizon the function names. The run's `record` holds the model's `version` and the `coverage`. [The input and the output](prediction-format.md#the-input-and-the-output) has every field, and [A question](prediction-format.md#a-question) an answer in full.
 - A build (the input `{ build: {} }`) responds with `200` and `status: started`, then waits for its trainer, as [A build](prediction-format.md#a-build) explains.
 - `get_definition` adds the dataset's and the models' `standing`.
 
@@ -415,7 +415,7 @@ A cancelled run's rejection names the kind of its cancellation:
 
 ## Runs and results
 
-A run records its `run_id`, `type`, `name`, `definition_version`, `status`, timestamps and caller identity. A successful run includes `output`, and a rejected run includes a rejection. `get_run` also returns the detailed `record`.
+A run records its `run_id`, `type`, `name`, `definition_version`, `status`, timestamps and caller identity. A successful run includes `output`, and a rejected run includes a rejection. `get_run` also returns the detailed `record`. A run whose output takes an [output shape](output-shapes.md#what-a-run-shows) says it as `output_shape`, such as `"output_shape": "series"` on a question to a prediction function; a build of a prediction function, and a run of a definition that declares no shape, has none.
 
 Most runs finish within the request that starts them. These runs finish later, so `run_definition` returns them `started`, unless one ended before its first wait:
 
@@ -1113,7 +1113,7 @@ A `500` response contains an incident reference: its `instance` and the `x-reque
 `Retry-After` comes only with an `unavailable` response that a retry of the same request may resolve. It never comes:
 
 - with the kinds `tools_unfinished`, `tool_not_offered` or `model_not_offered`;
-- with `because` set to `builds_of_the_day`, `stalled` or `not_finite`, which no wait resolves;
+- with `because` set to `builds_of_the_day`, `stalled`, `not_finite` or `not_in_order`, which no wait resolves;
 - with `cancelled`.
 
 ### Models and tools a function may not use

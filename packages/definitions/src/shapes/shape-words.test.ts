@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { outputSection, outputShapeNames, type OverviewBlock, type Phrases } from '../index.ts';
+import { outputSection, outputShapeNames, seriesPathBlocks, type OverviewBlock, type Phrases } from '../index.ts';
 import { shapeNamed } from '../testing/index.ts';
 
 function plain(phrases: Phrases): string {
@@ -39,5 +39,29 @@ describe('the words of an output of a shape', () => {
 
   it('leave the fields of a schema without a shape to the words of the schema', () => {
     expect(outputSection({ type: 'string' }).blocks.map((block) => shown(block))).toEqual(['Text.']);
+  });
+});
+
+describe('the words of a series of the periods observed and of the points ahead', () => {
+  it('say the observed periods it answers and the periods ahead in order, each with its likely value, low and high', () => {
+    expect(
+      [
+        seriesPathBlocks({ period: 'week', observed: 8, ahead: { periods: [4, 1] } }),
+        seriesPathBlocks({ period: 'day', observed: 1, ahead: { periods: [1] } }),
+        seriesPathBlocks({ period: 'month', observed: 0, ahead: { periods: [3] } }),
+      ].map((blocks) => blocks.map((block) => shown(block))),
+    ).toEqual([
+      ['It answers the last 8 observed weeks and 1 and 4 weeks ahead, each with a likely value, a low and a high.'],
+      ['It answers the last observed day and 1 day ahead, with a likely value, a low and a high.'],
+      ['It answers 3 months ahead, with a likely value, a low and a high.'],
+    ]);
+  });
+
+  it('say a total to the end of the enclosing period as one point', () => {
+    expect(
+      seriesPathBlocks({ period: 'day', observed: 14, ahead: { totalTo: 'week' } }).map((block) => shown(block)),
+    ).toEqual([
+      'It answers the last 14 observed days and the total from the next day to the end of its week, with a likely value, a low and a high.',
+    ]);
   });
 });

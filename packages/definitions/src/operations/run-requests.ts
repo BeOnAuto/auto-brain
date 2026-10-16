@@ -6,7 +6,7 @@ import type { RunOutcome, RunRequest, InterruptedAttempt } from '../runs/run-com
 import { claimOf, runTaken } from '../runs/run-decisions.ts';
 import { answerOf } from '../runs/run-lookup.ts';
 import { toolCallJournal, type RunJournal } from '../tool-calls/tool-call-journal.ts';
-import { preparedDefinition, preparedVersion, type VersionToRun } from './definition-preparation.ts';
+import { outputShapeOf, preparedDefinition, preparedVersion, type VersionToRun } from './definition-preparation.ts';
 import { loadRun, loadRunStream, newRunId, recordRun } from './run-access.ts';
 import { attempt, failedAttempt, interruptedAttempt } from './run-attempt.ts';
 
@@ -63,12 +63,14 @@ const longestRunsIn = Effect.fnUntraced(function* (capabilities: readonly Capabi
 
 function startOf(request: RunRequest, { definition, prepared, createOnly }: Prepared, given: GivenLineage) {
   const { depth, callDepth, calledBy, trigger } = given;
+  const shape = outputShapeOf(prepared, request.input);
   return {
     type: 'start' as const,
     ...request,
     definition_version: definition.version,
     calls_tools: prepared.callsTools,
     finishes_later: prepared.finishesLaterFor(request.input),
+    ...(shape === undefined ? {} : { output_shape: shape }),
     depth,
     call_depth: callDepth,
     ...(calledBy === null ? {} : { called_by: calledBy }),

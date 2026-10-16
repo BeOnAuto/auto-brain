@@ -51,4 +51,15 @@ describe('internalTermsIn', () => {
   it('still finds a status code beside a measured number', () => {
     expect(internalTermsIn('It answered 404 after 126 ms.')).toEqual(['404']);
   });
+
+  it('leaves alone a number and a range in a unit the text measures in, and still finds a status code there', () => {
+    const measured = 'It predicts 131 orders in 2026-W45 (100 to 160 orders) and 120 sign-ups.';
+
+    expect([
+      internalTermsIn(measured, ['orders', 'sign-ups']),
+      internalTermsIn(measured),
+      internalTermsIn('It answered 404 for 131 orders.', ['orders']),
+      internalTermsIn('It answered 404 and 3 rows.'),
+    ]).toEqual([[], ['131'], ['404'], ['404']]);
+  });
 });

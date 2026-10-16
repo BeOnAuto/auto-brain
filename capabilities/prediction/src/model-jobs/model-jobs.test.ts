@@ -128,7 +128,7 @@ describe('the window of a series read in a model process', () => {
       await asked('window', { ...window, series: 'east' }),
     ]).toEqual([
       {
-        y: Float32Array.of(10, Number.NaN, 14, Number.NaN),
+        y: Float64Array.of(10, Number.NaN, 14, Number.NaN),
         x: Float32Array.of(1, Number.NaN, 0, Number.NaN),
         origin: periodOfForm('day', '2026-10-04'),
       },

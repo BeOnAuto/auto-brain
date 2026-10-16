@@ -1,4 +1,5 @@
-import { internalTermsIn, plainTextIn, type McpSession } from '@on.auto/api/testing';
+import { plainTextIn, type McpSession } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { answers, jsonResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';

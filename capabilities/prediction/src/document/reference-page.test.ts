@@ -75,6 +75,7 @@ describe('the bounds on the reference page of the document of a prediction funct
   it('are the bounds the code holds a document to', () => {
     expect([
       valueOf('Horizons'),
+      valueOf('History'),
       valueOf('Holdout'),
       valueOf('Window'),
       valueOf('Season'),
@@ -84,6 +85,7 @@ describe('the bounds on the reference page of the document of a prediction funct
       valueOf('The brief'),
     ]).toEqual([
       expect.stringContaining(`1 to ${bounds.mostHorizons}, each 1 to ${bounds.mostHorizon} periods`),
+      expect.stringContaining(`0 to ${bounds.mostHistory} periods, at most the window`),
       expect.stringContaining(`at least ${bounds.leastHoldout}`),
       expect.stringContaining(`at most ${counted.format(bounds.mostWindow)}`),
       expect.stringContaining(`${bounds.leastSeason} to ${bounds.mostSeason} periods`),

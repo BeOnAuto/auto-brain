@@ -10,7 +10,7 @@ import { predictsOf } from './predicts-part.ts';
 import { rulesOf, sourceOf } from './source-part.ts';
 
 export function partsOf(front: PredictionFrontMatter, { lines }: ReadFrontMatter, parts: DocumentParts) {
-  const predicts = predictsOf(front.predicts, front.data.target, lines);
+  const predicts = predictsOf(front.predicts, front.data, lines);
   return {
     predicts,
     data: dataOf(front.data, front.predicts.target, lines),

@@ -23,7 +23,6 @@
     "yaml": "2.9.1"
   },
   "devDependencies": {
-    "@on.auto/api": "workspace:*",
     "@on.auto/prediction": "workspace:*",
     "@vitest/coverage-v8": "catalog:",
     "vitest": "catalog:"

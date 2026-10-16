@@ -160,6 +160,7 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   builds_of_the_day: 'because the function has had its builds of the day',
   stalled: 'because its dataset stopped at an event its fold could not take',
   not_finite: 'because the model answered something other than finite numbers',
+  not_in_order: 'because the model answered a low above its likely value or a high below it',
   baseline_check: 'because the process that checks a build’s baselines ended before it answered',
 };
 
@@ -186,6 +187,10 @@ const explanationByKindAndBecause: Readonly<
   model_process_failed: {
     not_finite: {
       why: 'the model answered something other than finite numbers in the shape its signature gives',
+      remedy: 'Trying again gives the same answer; a new build gives the function another model.',
+    },
+    not_in_order: {
+      why: 'the model answered a low above its likely value or a high below it',
       remedy: 'Trying again gives the same answer; a new build gives the function another model.',
     },
     baseline_check: {

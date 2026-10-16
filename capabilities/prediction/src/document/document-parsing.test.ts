@@ -27,7 +27,7 @@ describe('a prediction function document', () => {
   it('reads what it predicts, its data, its evaluation with the defaults, where its builds go and its rules', () => {
     expect(documentOf(weeklyOrders)).toMatchObject({
       description: 'Predicts the orders of each region one and four weeks ahead',
-      predicts: { target: 'orders', period: 'week', season: 52, horizons: [1, 4], unit: 'orders' },
+      predicts: { target: 'orders', period: 'week', season: 52, horizons: [1, 4], unit: 'orders', history: 8 },
       data: {
         events: [{ type: 'order.placed' }],
         time: '/placed_at',
@@ -159,6 +159,13 @@ describe('the defaults of a prediction function document', () => {
       ['persistence'],
       [],
     ]);
+  });
+
+  it('answer twice the longest horizon of history unless another is written, as few as none and as many as the window', () => {
+    const historyOf = (history: string): number =>
+      documentOf(weeklyOrdersWith(['  unit: orders', `  unit: orders\n  history: ${history}`])).predicts.history;
+
+    expect([documentOf(weeklyOrders).predicts.history, historyOf('0'), historyOf('156')]).toEqual([8, 0, 156]);
   });
 
   it('send a build to the trainer unless another party is named', () => {

@@ -10,7 +10,7 @@ import { sha256Of, uploaded } from './dataset-uploads.ts';
 
 const testTimeoutMs = 90_000;
 
-const [, , , sendBuild, nextWeekOrders] = blocksInOrderOf('reference/prediction-format.md').map(({ body }) => body);
+const [, , , sendBuild, , nextWeekOrders] = blocksInOrderOf('reference/prediction-format.md').map(({ body }) => body);
 
 const weeks = Array.from({ length: 20 }, (_, at) => `2026-W${String(21 + at).padStart(2, '0')}`);
 
@@ -65,10 +65,7 @@ describe('the workflow of the prediction function format, through the server', {
       200, 201, 201, 200, 200,
     ]);
     expect(before).toMatchObject({ status: 'succeeded', output: { forecast: null } });
-    expect(after).toMatchObject({
-      status: 'succeeded',
-      output: { forecast: { series: 'north', horizon: 1, value: 1, low: -1, high: 3, coverage: 0.8, version: 1 } },
-    });
+    expect(after).toMatchObject({ status: 'succeeded', output: { forecast: 1 } });
   });
 });
 

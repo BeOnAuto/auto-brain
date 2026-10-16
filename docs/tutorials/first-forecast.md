@@ -426,7 +426,7 @@ The build's run has `status: succeeded` and this output. Its `version` is the mo
 }
 ```
 
-The model version's **card** records how it was built and how it scored. The playbook keeps it as the `version_built` event on the function's models stream, the part of its history about the function's models, which `list_playbook_events` shows. The card scores the model and the `persistence` baseline, which repeats the last week, on the held-back weeks:
+The figures from here on are those of one run, as an illustration: uv installs the newest scikit-learn, onnx and numpy each time, so a fit on your machine may differ in its last digits. The model version's **card** records how it was built and how it scored. The playbook keeps it as the `version_built` event on the function's models stream, the part of its history about the function's models, which `list_playbook_events` shows. The card scores the model and the `persistence` baseline, which repeats the last week, on the held-back weeks:
 
 | Horizon | Truths scored (`pairs`) | The model's `mase` | `persistence`'s `mase` |
 | ------- | ----------------------- | ------------------ | ---------------------- |
@@ -446,29 +446,45 @@ Use the auto-forecast connection. Ask the "Weekly sign-ups" function in the
 "Forecasts" playbook for north's sign-ups one week ahead.
 ```
 
-The agent runs the function with `{ "series": "north", "horizon": 1 }`. The run succeeds at once with the prediction:
+The agent runs the function with `{ "series": "north", "horizon": 1 }`. The run succeeds at once with the prediction, a series. Its observed weeks are the data's own; its predicted figures, like the card's, illustrate one run:
 
 ```json
 {
-  "series": "north",
+  "unit": "sign-ups",
+  "period": "week",
   "origin": "2026-W40",
-  "period": "2026-W41",
-  "horizon": 1,
-  "value": 212.5055389404297,
-  "low": 204.46560668945312,
-  "high": 220.54547119140625,
-  "coverage": 0.8,
-  "version": 1
+  "lines": [
+    {
+      "name": "observed",
+      "points": [
+        { "at": "2026-W33", "value": 172 },
+        { "at": "2026-W34", "value": 176 },
+        { "at": "2026-W35", "value": 185 },
+        { "at": "2026-W36", "value": 191 },
+        { "at": "2026-W37", "value": 200 },
+        { "at": "2026-W38", "value": 202 },
+        { "at": "2026-W39", "value": 209 },
+        { "at": "2026-W40", "value": 206 }
+      ]
+    },
+    {
+      "name": "predicted",
+      "points": [
+        { "at": "2026-W41", "value": 212.5055389404297, "low": 204.46560668945312, "high": 220.54547119140625 }
+      ]
+    }
+  ]
 }
 ```
 
-- `origin` is the last week of the data, and `period` is the week forecast.
-- `value` is the likely value, the model's 50th percentile: about 213 sign-ups.
-- `low` and `high` are the model's 10th and 90th percentiles, about 204 and 221.
-- `coverage` is always 0.8, the share of truths an interval from the 10th to the 90th percentile should hold. The card's `coverage`, 0.787879, is how often this model's interval held on the held-back weeks.
-- `version` is the model version that made the prediction, not the version of the document.
+- `origin` is the last week of the data.
+- The `observed` line holds north's last 8 weeks, twice the longest horizon, as the data holds them.
+- The `predicted` line holds the week forecast. Its `value` is the likely value, the model's 50th percentile: about 213 sign-ups.
+- Its `low` and `high` are the model's 10th and 90th percentiles, about 204 and 221.
 
-A question for `west` four weeks ahead predicts the week 2026-W44. A question takes only the horizons the function names, 1 or 4.
+The run's record holds `version`, 1, the model version that made the prediction, not the version of the document, and `coverage`, 0.8, the share of truths an interval from the 10th to the 90th percentile should hold. The card's `coverage`, 0.787879, is how often this model's interval held on the held-back weeks.
+
+A question for `west` four weeks ahead predicts the week 2026-W44. A question without a horizon predicts both weeks, 2026-W41 and 2026-W44. A question takes only the horizons the function names, 1 or 4.
 
 ## 9. Remove the forecast runtime
 

@@ -63,8 +63,12 @@ function deferred(
   );
 }
 
+function changedBy(row: BuildRow, message: ProjectedMessage, changes: Partial<BuildRow>): BuildRow {
+  return { ...row, ...changes, cause: message.id };
+}
+
 function dueNow(row: BuildRow, message: ProjectedMessage, changes: Partial<BuildRow> = {}): BuildRow {
-  return { ...row, ...changes, next_due_at: Date.parse(message.context.at), cause: message.id };
+  return changedBy(row, message, { ...changes, next_due_at: Date.parse(message.context.at) });
 }
 
 function scoringFrom(row: BuildRow, message: ProjectedMessage): BuildRow {
@@ -87,7 +91,7 @@ function onRun(row: BuildRow, fact: RecordedRunEvent, message: ProjectedMessage)
   const child = childReferences.has(message.context.calledBy?.reference ?? '');
   if (fact.type === 'run_started') {
     return child && row.standing === 'starting_request'
-      ? { ...row, standing: 'waiting_for_trainer', next_due_at: null }
+      ? changedBy(row, message, { standing: 'waiting_for_trainer', next_due_at: null })
       : undefined;
   }
   if (fact.type === 'request_answered') {
@@ -96,17 +100,15 @@ function onRun(row: BuildRow, fact: RecordedRunEvent, message: ProjectedMessage)
   return child ? childEnding(row, fact.type, message) : ownEnding(row, fact.type, message);
 }
 
-const workTypes: ReadonlySet<string> = new Set([
-  'candidate_uploaded',
-  'candidate_scored',
-  'candidate_disqualified',
-  'baseline_scored',
-  'baseline_not_walked',
-]);
+const uploadType = 'candidate_uploaded';
+
+const scoringTypes = ['candidate_scored', 'candidate_disqualified', 'baseline_scored', 'baseline_not_walked'];
+
+const workTypes: ReadonlySet<string> = new Set([uploadType, ...scoringTypes]);
 
 function onWork(row: BuildRow, type: string, message: ProjectedMessage): BuildRow {
-  if (type === 'candidate_uploaded') {
-    return { ...row, uploaded: row.uploaded + 1, staged: true, cause: message.id };
+  if (type === uploadType) {
+    return changedBy(row, message, { uploaded: row.uploaded + 1, staged: true });
   }
   return type === 'candidate_scored' || type === 'candidate_disqualified'
     ? dueNow(row, message, { scored: row.scored + 1 })
@@ -155,16 +157,9 @@ function keyOf(message: ProjectedMessage, stream: ProjectedStream): string | und
   return calledBy !== undefined && childReferences.has(calledBy.reference) ? calledBy.runId : stream.id;
 }
 
-const types = [
-  'run_deferred',
-  'run_started',
-  'request_answered',
-  'run_succeeded',
-  'run_rejected',
-  'run_failed',
-  ...workTypes,
-  ...versionFactTypes,
-];
+const runTypes = ['run_started', 'request_answered', 'run_succeeded', 'run_rejected', 'run_failed'];
+
+const types = ['run_deferred', ...runTypes, ...workTypes, ...versionFactTypes];
 
 export const predictionBuilds: KeyedProjection = {
   name: predictionBuildsName,
@@ -197,6 +192,9 @@ export const predictionBuilds: KeyedProjection = {
     { name: 'builds_scoring', columns: ['scoring_since'], acrossPlaybooks: true, whereSet: 'scoring_since' },
   ],
   keyOf,
-  advanced: { columns: ['next_due_at', 'staged'], setBy: types },
+  advanced: [
+    { column: 'next_due_at', setBy: [...runTypes, ...scoringTypes, ...versionFactTypes] },
+    { column: 'staged', setBy: [uploadType] },
+  ],
   rowAfter,
 };

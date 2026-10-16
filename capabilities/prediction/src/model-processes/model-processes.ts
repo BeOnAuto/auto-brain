@@ -20,6 +20,8 @@ export const modelProcessModule = new URL('../model-jobs/model-process.ts', impo
 
 const Floats = Schema.declare((value: unknown): value is Readonly<Float32Array> => value instanceof Float32Array);
 
+const Doubles = Schema.declare((value: unknown): value is Readonly<Float64Array> => value instanceof Float64Array);
+
 const SignatureSchema = Schema.Union([
   Schema.Struct({
     loaded: Schema.Literal(true),
@@ -38,7 +40,7 @@ const WalkAnswerSchema = Schema.Struct({ series: Schema.Array(Schema.String), q:
 
 const WindowAnswerSchema = Schema.Union([
   Schema.Struct({ unknown: Schema.Literal(true) }),
-  Schema.Struct({ y: Floats, x: Schema.NullOr(Floats), origin: Schema.Number }),
+  Schema.Struct({ y: Doubles, x: Schema.NullOr(Floats), origin: Schema.Number }),
 ]);
 
 const BaselinesAnswerSchema = Schema.Struct({ perfect: Schema.NullOr(BaselineSchema), unscorable: Schema.Boolean });
