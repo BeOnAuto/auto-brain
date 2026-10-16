@@ -2,7 +2,7 @@ import { servesPlaybook } from '@on.auto/config';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { readToolServerSettings, type Environment, type ServerSettings } from '../index.ts';
+import { readToolServerSettings, serverNameProblems, type Environment, type ServerSettings } from '../index.ts';
 
 const context = { modelProviders: ['openai'] };
 
@@ -138,6 +138,23 @@ describe('the orgs a server serves', () => {
       'TOOL_SERVERS /graph/org: Expected at least one org id',
       'TOOL_SERVERS /crm/org/1: Expected an org id; * stands alone, for every org',
       'TOOL_SERVERS /wiki/playbooks: Expected no playbooks beside every org, since a playbook id belongs to one org',
+    ]);
+  });
+});
+
+describe('the name of a server, checked alone', () => {
+  it('passes a name a function can give, and refuses one of the wrong shape or of a model provider', () => {
+    expect(serverNameProblems('crm', ['openai'])).toEqual([]);
+    expect([...serverNameProblems('Crm', ['openai']), ...serverNameProblems('openai', ['openai'])]).toEqual([
+      {
+        setting: 'TOOL_SERVERS',
+        detail: '/Crm: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+      },
+      {
+        setting: 'TOOL_SERVERS',
+        detail:
+          '/openai: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      },
     ]);
   });
 });

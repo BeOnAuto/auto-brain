@@ -61,6 +61,10 @@ function checkedName(name: string, providers: readonly string[]): Checked<string
     : accepted(name);
 }
 
+export function serverNameProblems(name: string, providers: readonly string[]): readonly SettingProblem[] {
+  return problemsOf(checkedName(name, providers));
+}
+
 function foreignFieldProblems(name: string, fields: ServerEntryFields, type: ServerType): readonly SettingProblem[] {
   const own: readonly string[] = fieldsOfKinds[type];
   const foreign = [...new Set(serverTypes.flatMap((kind) => fieldsOfKinds[kind]))].filter(
