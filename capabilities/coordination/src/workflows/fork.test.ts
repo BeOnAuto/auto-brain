@@ -77,7 +77,7 @@ do:
     expect((await interpret(document)).settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'https://example.com/first (at /do/0/race/fork/branches/0/first)',
+      detail: 'https://example.com/first, at the step first.',
     });
   });
 });
@@ -96,7 +96,7 @@ describe('a fork whose branch fails', () => {
     expect((await interpret(failingAtOnce)).settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'https://example.com/broken (at /do/0/both/fork/branches/1/failing)',
+      detail: 'https://example.com/broken, at the step failing.',
     });
   });
 

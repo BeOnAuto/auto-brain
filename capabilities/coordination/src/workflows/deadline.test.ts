@@ -42,7 +42,8 @@ describe('a duration computed longer than the most a workflow may run', () => {
     expect(settlement).toStrictEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'A duration of the task, 14400000 ms, is longer than the 10800000 ms a workflow may run (at /do/0/pause)',
+      detail:
+        'A duration of the task, 14400000 ms, is longer than the 10800000 ms a workflow may run, at the step pause.',
     });
   });
 });

@@ -57,7 +57,7 @@ do:
       started: deliveringAt([1, { id: 'p1', type: 'ping' }], [2, { id: 'p1', type: 'ping' }], [3, { type: 'ping' }]),
     });
 
-    expect(settlement).toMatchObject({ detail: 'The task did not finish within 60000 ms (at /do/1/second)' });
+    expect(settlement).toMatchObject({ detail: 'The task did not finish within 60000 ms, at the step second.' });
   });
 });
 

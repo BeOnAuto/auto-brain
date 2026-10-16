@@ -24,7 +24,7 @@ describe('a workflow whose expressions do too much work', () => {
 
     expect(ending).toMatchObject({ kind: 'failed' });
     expect(settlement).toMatchObject({ status: 'rejected', reason: 'unavailable' });
-    expect(rejectionOf(settlement)).toContain('an expression may do 250 checkpoints of work (at /do/0/t0)');
+    expect(rejectionOf(settlement)).toContain('an expression may do 250 checkpoints of work, at the step t0.');
   });
 
   it('fails once one task does more than one input may, since it can yield only between tasks', async () => {
@@ -69,7 +69,7 @@ describe('a value a workflow holds', () => {
     const { settlement } = await interpret(workflow(`do:\n  - pair: { set: { a: ${half}, b: ${half} } }`));
 
     expect(rejectionOf(settlement)).toContain(
-      'units of work to visit, more than the 8000000 a workflow may hold (at /do/0/pair)',
+      'units of work to visit, more than the 8000000 a workflow may hold, at the step pair.',
     );
   });
 
@@ -81,7 +81,7 @@ describe('a value a workflow holds', () => {
         settlement: {
           status: 'rejected',
           reason: 'unavailable',
-          detail: 'A value takes 8000016 units of work to visit, more than the 8000000 a workflow may hold (at /)',
+          detail: 'A value takes 8000016 units of work to visit, more than the 8000000 a workflow may hold.',
         },
       },
     ]);
@@ -93,13 +93,13 @@ describe('a value a workflow holds', () => {
       { input: { text: 'x'.repeat(600_000) } },
     );
 
-    expect(rejectionOf(settlement)).toContain('a workflow may hold (at /do/3/t3)');
+    expect(rejectionOf(settlement)).toContain('a workflow may hold, at the step t3.');
   });
 
   it('may not nest more than 512 levels deep', async () => {
     const deep = `'\${ Array.from({ length: 511 }).reduce((inner) => [inner], 0) }'`;
     const { settlement } = await interpret(workflow(`do:\n  - deep: { set: { a: { b: ${deep} } } }`));
 
-    expect(rejectionOf(settlement)).toContain('A value nests more than 512 levels deep (at /do/0/deep)');
+    expect(rejectionOf(settlement)).toContain('A value nests more than 512 levels deep, at the step deep.');
   });
 });

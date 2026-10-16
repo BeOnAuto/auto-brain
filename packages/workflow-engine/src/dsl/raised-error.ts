@@ -1,4 +1,5 @@
 import {
+  asSentence,
   isKindWithType,
   problemTypeOf,
   reasonOfKind,
@@ -14,6 +15,7 @@ import type { DslError } from '../machine/dsl-error.ts';
 import { mostOutputBytes } from '../machine/limits.ts';
 import type { CancelOrder } from '../machine/run-input.ts';
 import { field, jsonBytesOf, textField, type Json, type JsonObject } from './json.ts';
+import { stepNamedAt } from './tasks.ts';
 
 export type ErrorKind =
   | 'configuration'
@@ -97,8 +99,26 @@ export function errorFromJson(definition: JsonObject, instance: string): DslErro
   };
 }
 
+const theWholeWorkflow: ReadonlySet<string> = new Set(['', '/']);
+
+function placeOf(instance: string): string {
+  const step = stepNamedAt(instance);
+  if (step !== undefined) {
+    return `, at the step ${step}`;
+  }
+  return theWholeWorkflow.has(instance) ? '' : `, at ${instance}`;
+}
+
+function withoutFinalPeriod(text: string): string {
+  return text.replace(/\.$/u, '');
+}
+
 export function describeError({ type, title, detail, instance }: DslError): string {
-  return `${title ?? type}${detail === undefined ? '' : `: ${detail}`} (at ${instance})`;
+  const summary = title ?? type;
+  const place = placeOf(instance);
+  return detail === undefined
+    ? `${withoutFinalPeriod(summary)}${place}.`
+    : `${withoutFinalPeriod(detail)}${place}. ${asSentence(summary)}`;
 }
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);

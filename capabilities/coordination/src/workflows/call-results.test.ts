@@ -100,7 +100,7 @@ describe('a rejected run that names its kind and because', () => {
     expect((await interpret(branching, { respond: rejectedAs('tool_server_failed') })).ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'The reasoning function lookup rejected the run with unavailable: No (at /do/0/lookup/try/0/fetch)',
+      message: 'No, at the step fetch. The reasoning function lookup rejected the run with unavailable.',
     });
   });
 });
@@ -131,8 +131,7 @@ describe('a run of a function that called tools and could not finish', () => {
     expect(ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message:
-        'The reasoning function lookup rejected the run with unavailable: It stopped (at /do/0/lookup/try/0/fetch)',
+      message: 'It stopped, at the step fetch. The reasoning function lookup rejected the run with unavailable.',
     });
     expect(calls).toEqual(['run 1']);
   });
@@ -167,7 +166,7 @@ describe('a step that meets a run whose tools may have been called', () => {
       status: 'rejected',
       reason: 'conflict',
       detail:
-        'The reasoning function lookup rejected the run with conflict: It may have called tools (at /do/0/lookup/try/0/fetch)',
+        'It may have called tools, at the step fetch. The reasoning function lookup rejected the run with conflict.',
       kind: 'tools_called',
     });
   });

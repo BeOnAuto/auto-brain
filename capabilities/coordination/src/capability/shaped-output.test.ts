@@ -135,7 +135,7 @@ describe('the run of a workflow whose output names a shape', () => {
           reason: 'conflict',
           kind: 'unworkable',
           detail:
-            'The output of the workflow does not match the shape categories: /values/1/name: Expected a name no value before it has; /values/1/high: Expected a high of at least the value (at /)',
+            'The output of the workflow does not match the shape categories: /values/1/name: Expected a name no value before it has; /values/1/high: Expected a high of at least the value.',
         },
       },
     });

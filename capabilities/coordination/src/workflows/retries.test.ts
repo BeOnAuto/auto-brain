@@ -129,7 +129,7 @@ describe('the conditions of a retry policy', () => {
 
   it('raises a configuration error when it names a policy use.retries lacks', async () => {
     expect((await interpret(retrying('nowhere'), { respond: failingTimes(5) })).settlement).toMatchObject({
-      detail: 'use.retries has no retry policy nowhere (at /do/0/guarded)',
+      detail: 'use.retries has no retry policy nowhere, at the step guarded.',
     });
   });
 });

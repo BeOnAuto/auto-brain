@@ -121,7 +121,7 @@ do:
 describe('the bodies of tasks', () => {
   it('raise a configuration error for a task of no type', async () => {
     expect((await interpret(workflow('do:\n  - dance: { tango: true }'))).settlement).toMatchObject({
-      detail: 'The task has no type this runtime knows (at /do/0/dance)',
+      detail: 'The task has no type this runtime knows, at the step dance.',
     });
   });
 });

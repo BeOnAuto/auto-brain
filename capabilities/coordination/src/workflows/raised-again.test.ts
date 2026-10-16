@@ -70,8 +70,7 @@ describe('an error raised again from the one a workflow caught', () => {
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail:
-        'https://on.auto/problems/tools_unfinished: A tool server kept failing (at /do/0/lookup/catch/do/0/report)',
+      detail: 'A tool server kept failing, at the step report. https://on.auto/problems/tools_unfinished.',
       kind: 'tools_unfinished',
       because: 'server_failed',
     });

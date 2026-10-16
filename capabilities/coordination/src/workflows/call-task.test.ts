@@ -97,7 +97,7 @@ describe('the arguments of run_definition', () => {
   ])('are rejected when they evaluate to %s', async (_case, source, title) => {
     const { settlement, commands } = await interpret(workflow(source));
 
-    expect(settlement).toMatchObject({ status: 'rejected', detail: `${title} (at /do/0/x)` });
+    expect(settlement).toMatchObject({ status: 'rejected', detail: `${title}, at the step x.` });
     expect(callsIn(commands)).toEqual([]);
   });
 
@@ -108,7 +108,7 @@ describe('the arguments of run_definition', () => {
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'The input of run_definition takes 262211 bytes as JSON, more than the 262144 a run takes (at /do/0/summarize)',
+        'The input of run_definition takes 262211 bytes as JSON, more than the 262144 a run takes, at the step summarize.',
     });
   });
 });

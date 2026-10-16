@@ -18,7 +18,7 @@ do:
       settlement: {
         status: 'rejected',
         reason: 'unavailable',
-        detail: `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end (at /do/0/spin)`,
+        detail: `The workflow ran ${mostStepsWithoutWaiting} tasks without waiting for anything; it would never end, at the step spin.`,
       },
     });
   });

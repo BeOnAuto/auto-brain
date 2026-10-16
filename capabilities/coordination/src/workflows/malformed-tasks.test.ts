@@ -5,7 +5,7 @@ import { interpret, workflow } from '../testing/workflows.ts';
 describe('tasks a document reached the machine with, malformed', () => {
   it('raise a configuration error for a raise of no definition', async () => {
     expect((await interpret(workflow('do:\n  - reject: { raise: 3 }'))).settlement).toMatchObject({
-      detail: 'raise names no error with a type and a status (at /do/0/reject)',
+      detail: 'raise names no error with a type and a status, at the step reject.',
     });
   });
 
@@ -31,7 +31,7 @@ do:
     const forking = workflow('do:\n  - none: { fork: 3 }');
 
     expect((await interpret(looping)).settlement).toMatchObject({
-      detail: 'for.in must give an array to iterate over (at /do/0/loop)',
+      detail: 'for.in must give an array to iterate over, at the step loop.',
     });
     expect((await interpret(forking)).ending).toEqual({ kind: 'completed', output: [] });
   });
@@ -42,7 +42,7 @@ do:
     );
 
     expect((await interpret(document)).settlement).toMatchObject({
-      detail: 'The task did not finish within 1000 ms (at /do/0/deaf)',
+      detail: 'The task did not finish within 1000 ms, at the step deaf.',
     });
   });
 });
@@ -82,6 +82,6 @@ do:
       'do:\n  - reject: { raise: { error: { type: x, status: 400 } }, timeout: { after: PT1S } }',
     );
 
-    expect((await interpret(document)).settlement).toMatchObject({ detail: 'x (at /do/0/reject)' });
+    expect((await interpret(document)).settlement).toMatchObject({ detail: 'x, at the step reject.' });
   });
 });

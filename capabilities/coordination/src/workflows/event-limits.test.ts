@@ -64,7 +64,7 @@ describe('events a workflow has not consumed', () => {
     expect(pastIt.settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: `The workflow was sent more events than it consumed: more than ${mostWaitingEvents} events or ${mostWaitingEventBytes} bytes waiting, the most a workflow holds (at /)`,
+      detail: `The workflow was sent more events than it consumed: more than ${mostWaitingEvents} events or ${mostWaitingEventBytes} bytes waiting, the most a workflow holds.`,
     });
   });
 });

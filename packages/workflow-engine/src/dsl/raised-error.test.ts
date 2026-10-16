@@ -30,13 +30,13 @@ describe('the rejection of an uncaught error of a kind with a type of its own', 
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the run with conflict: Called before (at /do/0/ask)',
+        detail: 'Called before, at the step ask. The function notify rejected the run with conflict.',
         kind: 'tools_called',
       },
       {
         status: 'rejected',
         reason: 'unavailable',
-        detail: 'The function notify rejected the run with unavailable: Stopped (at /do/0/ask)',
+        detail: 'Stopped, at the step ask. The function notify rejected the run with unavailable.',
         kind: 'tools_unfinished',
         because: 'run_bound',
       },
@@ -62,14 +62,14 @@ describe('the rejection of an uncaught error whose effect is unknown', () => {
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        detail: 'Called, at the step ask. The function notify rejected the run with conflict.',
         kind: 'effect_unknown',
         because: 'tool_error',
       },
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        detail: 'Called, at the step ask. The function notify rejected the run with conflict.',
         kind: 'effect_unknown',
       },
     ]);
@@ -160,12 +160,12 @@ describe('the error of a call whose run was cancelled', () => {
     expect(settlementOf({ kind: 'raised', error })).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The function notify rejected the run with cancelled: Out (at /do/0/ask)',
+      detail: 'Out, at the step ask. The function notify rejected the run with cancelled.',
     });
     expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'overrun' } })).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The function notify rejected the run with cancelled: Out (at /do/0/ask)',
+      detail: 'Out, at the step ask. The function notify rejected the run with cancelled.',
     });
   });
 });
@@ -198,18 +198,18 @@ describe('the error of a call whose request went unanswered', () => {
         status: 'rejected',
         reason: 'unanswered',
         kind: 'expired',
-        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'Nobody answered, at the step ask. The function approve rejected the run with unanswered.',
       },
       {
         status: 'rejected',
         reason: 'unanswered',
         kind: 'undelivered',
-        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'Nobody answered, at the step ask. The function approve rejected the run with unanswered.',
       },
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'Nobody answered, at the step ask. The function approve rejected the run with unanswered.',
       },
     ]);
   });
@@ -232,12 +232,12 @@ describe('the settlement of a workflow that ended otherwise', () => {
         error: { type: errorType('runtime'), status: 409, instance: '/', kind: 'stalled' },
       }),
     ]).toEqual([
-      { status: 'rejected', reason: 'unavailable', detail: 'No (at /)' },
-      { status: 'rejected', reason: 'unavailable', detail: 'No (at /)' },
+      { status: 'rejected', reason: 'unavailable', detail: 'No.' },
+      { status: 'rejected', reason: 'unavailable', detail: 'No.' },
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime (at /)',
+        detail: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime.',
       },
     ]);
   });
@@ -268,7 +268,7 @@ describe('the settlement of a workflow whose output or run broke', () => {
     expect(settlementOf({ kind: 'raised', error: rebuilding })).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'The function notify rejected the run with unavailable: Still building (at /do/0/ask)',
+      detail: 'Still building, at the step ask. The function notify rejected the run with unavailable.',
       kind: 'rebuilding',
     });
   });
