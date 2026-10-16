@@ -1,11 +1,10 @@
 import { execFile } from 'node:child_process';
-import { setTimeout } from 'node:timers/promises';
 
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
-import { counting, countingElsewhere } from '../pool-testing/counting-workers.ts';
+import { begun, counting, countingElsewhere } from '../pool-testing/counting-workers.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
 import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
 import { programPool } from './program-pool.ts';
@@ -92,8 +91,9 @@ describe('the workers of a pool and its permits', () => {
     const fullOfIdle = threadsAlive() - before;
     const elsewhere = await counted(pool, countingElsewhere);
     const afterTheOther = threadsAlive() - before;
+    const beginning = begun(4);
     const holding = held(pool, 4);
-    await setTimeout(150);
+    await beginning;
     const whileHolding = threadsAlive() - before;
     const again = await holding;
 
@@ -122,11 +122,12 @@ describe('the workers of a pool and its permits, while a worker is let go of', (
     const pool = poolOf({ workers: 2 });
     await Promise.all([run(pool, 'count'), run(pool, 'linger')]);
 
+    const beginning = begun(2);
     const both = Promise.all([
       run(pool, 'hold', countingElsewhere, 20_000),
       run(pool, 'hold', countingElsewhere, 20_000),
     ]);
-    await setTimeout(100);
+    await beginning;
     const whileTheLastDies = threadsAlive() - before;
     const answered = await both;
 

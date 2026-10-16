@@ -1,9 +1,9 @@
 import { execFile } from 'node:child_process';
-import { setTimeout } from 'node:timers/promises';
 
 import { Schema } from 'effect';
 import { afterAll, afterEach, describe, expect, it } from 'vitest';
 
+import { longerThanTheTestMs, until } from '../pool-testing/waiting.ts';
 import { fakeProcesses, isAlive } from '../process-testing/fake-processes.ts';
 import {
   processPool,
@@ -112,6 +112,27 @@ describe('the processes of a pool and its permits', () => {
   });
 });
 
+describe('a pool one of whose processes is blocked', () => {
+  it('answers a job of another key while the blocked job runs', async () => {
+    const pool = poolOf();
+    const warm = await echoed(pool, 'a');
+    const other = await echoed(pool, 'b');
+    const settled = { blocked: false };
+
+    const blocked = run(pool, 'block', { key: 'a', deadlineMs: longerThanTheTestMs }).then((outcome) => {
+      settled.blocked = true;
+      return outcome;
+    });
+    await until(() => fake.announced(warm.pid, 'began'));
+    const elsewhere = await echoed(pool, 'b');
+    const answeredWhileBlocked = !settled.blocked;
+    await pool.close();
+
+    expect([elsewhere.pid === other.pid, answeredWhileBlocked]).toEqual([true, true]);
+    expect(await blocked).toMatchObject({ ended: 'closing' });
+  });
+});
+
 describe('the deadline of a job of a process', () => {
   it('starts once the job holds its process, so a job that waited for a permit still has the whole of it to run', async () => {
     const pool = poolOf();
@@ -139,26 +160,15 @@ describe('the deadline of a job of a process', () => {
     expect([waited.milliseconds > 3000, waited.milliseconds < 6000]).toEqual([true, true]);
   });
 
-  it('kills a warm process blocked past it, while a process of another key answers and the pool goes on, and the next job of its key starts afresh', async () => {
+  it('kills a warm process blocked past it, no sooner, and the next job of its key starts afresh', async () => {
     const pool = poolOf();
     const warm = await echoed(pool, 'a');
-    const other = await echoed(pool, 'b');
-    const started = performance.now();
-    const settled = { run: false };
 
-    const blocked = run(pool, 'block', { key: 'a', deadlineMs: 1000 }).then((outcome) => {
-      settled.run = true;
-      return outcome;
-    });
-    const ticked = await setTimeout(100, performance.now() - started);
-    const elsewhere = await echoed(pool, 'b');
-    const answeredFirst = !settled.run;
-    const outcome = await blocked;
+    const outcome = await run(pool, 'block', { key: 'a', deadlineMs: 1000 });
     const after = await echoed(pool, 'a');
 
     expect(outcome).toMatchObject({ ended: 'timed_out' });
     expect(outcome.milliseconds).toBeGreaterThanOrEqual(1000 - timerSlackMs);
-    expect([ticked < 1000, answeredFirst, elsewhere.pid === other.pid]).toEqual([true, true, true]);
     expect([after.jobs, after.pid === warm.pid, isAlive(warm.pid)]).toEqual([1, false, false]);
   });
 });
@@ -167,20 +177,23 @@ describe('a pool of processes that closes', () => {
   it('ends its idle processes and its busy ones, a busy job as closing, and runs no job after', async () => {
     const pool = poolOf();
     const idle = await echoed(pool, 'a');
-    const busy = run(pool, 'sleep', { key: 'b', payload: 5000 });
-    await setTimeout(200);
+    const warm = await echoed(pool, 'b');
+    const busy = run(pool, 'begin and wait', { key: 'b', deadlineMs: longerThanTheTestMs });
+    await until(() => fake.announced(warm.pid, 'began'));
 
     await pool.close();
     const after = await run(pool, 'echo', { key: 'a' });
 
-    expect([(await busy).ended, after.ended, isAlive(idle.pid)]).toEqual(['closing', 'closing', false]);
+    expect([(await busy).ended, after.ended]).toEqual(['closing', 'closing']);
+    expect([isAlive(idle.pid), isAlive(warm.pid)]).toEqual([false, false]);
   });
 
   it('ends as closing a job that waits for a permit', async () => {
     const pool = poolOf({ processes: 1 });
-    const busy = run(pool, 'sleep', { key: 'a', payload: 5000 });
-    const waiting = run(pool, 'echo', { key: 'b' });
-    await setTimeout(200);
+    const warm = await echoed(pool, 'a');
+    const busy = run(pool, 'begin and wait', { key: 'a', deadlineMs: longerThanTheTestMs });
+    const waiting = run(pool, 'echo', { key: 'b', deadlineMs: longerThanTheTestMs });
+    await until(() => fake.announced(warm.pid, 'began'));
 
     await pool.close();
 
