@@ -445,7 +445,7 @@ For each baseline, it estimates `p_better`: how sure it is that the candidate is
 A candidate is disqualified when:
 
 - its model process takes longer than 10 minutes, runs out of memory or ends;
-- it returns a tensor of another shape, or a number that is not finite;
+- it returns a tensor of another shape, a number that is not finite, or, at any origin, a 10th percentile above its 50th or a 90th below it, which a question would refuse;
 - its interval holds fewer truths than `coverage_floor`;
 - it does not beat every walked baseline with the `confidence` asked.
 
@@ -477,7 +477,7 @@ The first version a function builds activates under its rule on its holdout alon
 
 - The shadow lasts `shadow_periods` closes of the grain, or of the enclosing period with `accumulates`.
 - At each close, both versions predict every series. Once the predicted periods close, the predictions are graded against what happened, over the series both versions predicted.
-- Some series are counted apart: a series without a truth, and one for which a version returned no number or a number that is not finite.
+- Some series are counted apart: a series without a truth, and one for which a version returned no number, a number that is not finite, or a 10th percentile above its 50th or a 90th below it.
 - The new version passes its shadow when its `metric` over those series is no higher than the active version's. It fails otherwise. It also fails when it predicted nothing the active version did, and passes when the active version predicted nothing.
 - While neither version has a graded series, for example before the first truth arrives, the shadow is undecided. It runs one more close, up to 52 closes in all. A shadow that reaches 52 without a graded series fails. Its `shadow_failed` names the closes that graded nothing, and the version is refused `shadow_failed`.
 - A version passes at once when its function reads an uploaded dataset, which gains no rows, or has `shadow_periods: 0`.

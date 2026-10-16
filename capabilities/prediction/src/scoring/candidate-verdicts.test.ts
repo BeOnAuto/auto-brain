@@ -119,6 +119,20 @@ describe('the verdict on a candidate that answers badly', () => {
     ]);
   });
 
+  it('disqualifies one whose low is above its likely value, or whose high is below it, at one origin alone', () => {
+    const lowAbove = answeredWith(0.5);
+    lowAbove[12] = Number(lowAbove[13]) + 1;
+    const highBelow = answeredWith(0.5);
+    highBelow[20] = Number(highBelow[19]) - 1;
+    const crossed = {
+      verdict: 'disqualified',
+      because: 'answered_badly',
+      detail: 'The model answered a low above its likely value or a high below it at a held-back origin',
+    };
+
+    expect([verdictFor(lowAbove), verdictFor(highBelow)]).toEqual([crossed, crossed]);
+  });
+
   it('is compared with no baseline that walked no series', () => {
     const seasonal = scoringGridOf({ ...daily, season: 12 }, { window: 12, holdout: 4, firstPeriod: '2026-10-01' });
     const onlySeasonal = {
