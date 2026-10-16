@@ -87,6 +87,7 @@ const allowances: readonly Allowance[] = [
   { text: 'application inference profile', in: ['docs/self-host/models.md'] },
   { text: 'InferenceSession', in: [modelSessions] },
   { text: 'executionMode', in: [modelSessions] },
+  { text: '(.execution // {})', in: ['.github/turbo/show-run-summary.sh'] },
   {
     text: 'toolSpec',
     in: [

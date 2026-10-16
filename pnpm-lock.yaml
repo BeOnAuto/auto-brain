@@ -218,15 +218,6 @@ importers:
       '@commitlint/types':
         specifier: 21.2.3
         version: 21.2.3
-      '@on.auto/api':
-        specifier: workspace:*
-        version: link:packages/api
-      '@on.auto/definitions':
-        specifier: workspace:*
-        version: link:packages/definitions
-      '@on.auto/server':
-        specifier: workspace:*
-        version: link:packages/server
       '@types/node':
         specifier: 26.6.5
         version: 26.6.5
@@ -1050,6 +1041,24 @@ importers:
       vitest:
         specifier: 'catalog:'
         version: 5.0.3(@opentelemetry/api@1.9.1)(@types/node@26.6.5)(@vitest/coverage-v8@5.0.3)(vite@8.3.4(@types/node@26.6.5)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.51.2)(yaml@2.9.1))
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
+
+  scripts:
+    devDependencies:
+      '@on.auto/api':
+        specifier: workspace:*
+        version: link:../packages/api
+      '@on.auto/definitions':
+        specifier: workspace:*
+        version: link:../packages/definitions
+      '@on.auto/server':
+        specifier: workspace:*
+        version: link:../packages/server
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
       yaml:
         specifier: 2.9.1
         version: 2.9.1

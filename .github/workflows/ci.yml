@@ -23,7 +23,79 @@ jobs:
       - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
           egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - name: Restore the tasks turbo cached on the last run of this job under the same lockfile and turbo configuration
+        id: turbo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-verify-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-${{ github.sha }}
+          restore-keys: turbo-verify-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-
+      - run: pnpm install --frozen-lockfile
+      - name: Check the format, the lint rules and the types, and run knip and sherif
+        run: pnpm exec turbo run format:check lint typecheck knip sherif
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
+          TURBO_RUN_SUMMARY: true
+      - name: Check the documentation
+        run: pnpm docs:check
+      - name: Show the inputs of turbo's global hash and, for each task, its hash, its cache status and its time
+        if: ${{ !cancelled() }}
+        run: .github/turbo/show-run-summary.sh
+      - name: Keep in turbo's cache only the tasks of this run, so the cache it saves holds one run and does not grow
+        if: ${{ !cancelled() && steps.turbo-cache.outputs.cache-hit != 'true' }}
+        run: .github/turbo/keep-only-this-run.sh
+      - name: Save turbo's cache for the next run of this job
+        if: ${{ !cancelled() && steps.turbo-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
+
+  test:
+    name: Test (${{ join(matrix.packages, ', ') }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - packages: [server]
+            services: true
+          - packages: [ledger, workflow-host, prediction, object-storage, workflow-engine]
+            services: true
+          - packages:
+              - api
+              - computation
+              - config
+              - connections
+              - coordination
+              - definitions
+              - identity
+              - interaction
+              - json-schema
+              - operations
+              - outbound
+              - playbooks
+              - reasoning
+              - recall
+              - tool-servers
+            services: false
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
       - name: Start PostgreSQL and the object store, after the runner is hardened, so no restart of Docker stops them
+        if: matrix.services
         run: |
           docker run --detach --name postgresql --publish 5432:5432 --env POSTGRES_PASSWORD=ledger-ci \
             postgres:18.6-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
@@ -38,8 +110,16 @@ jobs:
         with:
           node-version-file: .nvmrc
           cache: pnpm
+      - name: Restore the tasks turbo cached on the last run of this group under the same lockfile and turbo configuration
+        id: turbo-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: turbo-test-${{ join(matrix.packages, '-') }}-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-${{ github.sha }}
+          restore-keys: turbo-test-${{ join(matrix.packages, '-') }}-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-
       - run: pnpm install --frozen-lockfile
       - name: Wait until PostgreSQL and the object store answer on their ports
+        if: matrix.services
         run: |
           for attempt in $(seq 1 30); do
             docker exec postgresql pg_isready --host 127.0.0.1 --username postgres && break
@@ -51,15 +131,34 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:9000/health
-      - name: Format, lint, type-check, test with 100% coverage, knip, sherif
-        run: pnpm check:ci
+      - name: Run the tests of the group's packages two at a time, each with 100% coverage per file
+        run: |
+          filters=()
+          for name in $PACKAGES; do
+            filters+=("--filter=@on.auto/$name")
+          done
+          pnpm exec turbo run test --concurrency=2 "${filters[@]}"
         env:
+          PACKAGES: ${{ join(matrix.packages, ' ') }}
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
-          LEDGER_TEST_POSTGRESQL_URL: postgresql://postgres:ledger-ci@127.0.0.1:5432/postgres
-          CONTENT_TEST_OBJECT_STORE_URL: http://content-ci:content-ci-secret@127.0.0.1:9000/content-ci
-      - name: Show the logs of PostgreSQL and the object store when the gate failed
-        if: failure()
+          TURBO_RUN_SUMMARY: true
+          LEDGER_TEST_POSTGRESQL_URL: ${{ matrix.services && 'postgresql://postgres:ledger-ci@127.0.0.1:5432/postgres' || '' }}
+          CONTENT_TEST_OBJECT_STORE_URL: ${{ matrix.services && 'http://content-ci:content-ci-secret@127.0.0.1:9000/content-ci' || '' }}
+      - name: Show the inputs of turbo's global hash and, for each task, its hash, its cache status and its time
+        if: ${{ !cancelled() }}
+        run: .github/turbo/show-run-summary.sh
+      - name: Keep in turbo's cache only the tasks of this run, so the cache it saves holds one run and does not grow
+        if: ${{ !cancelled() && steps.turbo-cache.outputs.cache-hit != 'true' }}
+        run: .github/turbo/keep-only-this-run.sh
+      - name: Save turbo's cache for the next run of this group
+        if: ${{ !cancelled() && steps.turbo-cache.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .turbo/cache
+          key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
+      - name: Show the logs of PostgreSQL and the object store when the tests failed
+        if: failure() && matrix.services
         run: |
           docker logs postgresql
           docker logs object-store
@@ -839,7 +938,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [verify, container, package, pull-request-title, workflows]
+    needs: [verify, test, container, package, pull-request-title, workflows]
     runs-on: ubuntu-latest
     permissions: {}
     steps:

@@ -492,4 +492,4 @@ LEDGER_TEST_POSTGRESQL_URL=postgresql://postgres:ledger-test@127.0.0.1:19632/pos
 docker rm --force ledger-pg-test
 ```
 
-CI's Verify job runs it on every pull request against a PostgreSQL service container.
+CI runs it on every pull request, in the test job of the group that holds the ledger, against PostgreSQL in a container that job starts.
