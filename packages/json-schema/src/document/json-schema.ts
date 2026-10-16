@@ -1,11 +1,11 @@
-import { JsonSchema, Result, Schema, SchemaIssue, SchemaRepresentation, type StandardSchema } from 'effect';
+import { JsonSchema, Result, Schema, SchemaRepresentation } from 'effect';
 
+import { foundIssuesOf, type FoundIssue } from './found-issues.ts';
 import {
   boundedIssues,
   hiddenIssues,
   mostIssues,
   nestedDeeperThan,
-  pointerOf,
   utf8Bytes,
   type SchemaIssue as Issue,
 } from './json-bounds.ts';
@@ -20,7 +20,9 @@ export const jsonSchemaLimits = {
 
 export interface CompiledSchema {
   readonly document: Schema.JsonObject;
+  readonly what: string;
   readonly validate: (value: unknown) => Result.Result<Schema.Json, readonly Issue[]>;
+  readonly issuesOf: (value: unknown) => readonly FoundIssue[];
 }
 
 export type FurtherCheck = (value: Schema.Json) => readonly Issue[];
@@ -33,21 +35,19 @@ export interface Validation {
 
 type Decoder = (input: unknown) => Result.Result<unknown, Schema.SchemaError>;
 
-type IssueSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
+type Checked = Result.Result<Schema.Json, readonly FoundIssue[]>;
 
 const isJsonObject = Schema.is(Schema.JsonObject);
 
 const isJson = Schema.is(Schema.Json);
-
-const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
 
 const strictly = { onExcessProperty: 'error', errors: 'all' } as const;
 
 const draft07 = 'http://json-schema.org/draft-07/schema';
 
 const issueBounds = {
-  keyOf: ({ pointer, detail }: Issue) => `${pointer}\u0000${detail}`,
-  hidden: (count: number): Issue => ({ pointer: '', detail: hiddenIssues(count) }),
+  keyOf: ({ pointer, detail }: FoundIssue) => `${pointer}\u0000${detail}`,
+  hidden: (count: number): FoundIssue => ({ pointer: '', detail: hiddenIssues(count) }),
 };
 
 function rootIssue(detail: string): readonly Issue[] {
@@ -96,28 +96,19 @@ function decoderOf(document: Schema.JsonObject): Result.Result<Decoder, readonly
   }
 }
 
-function isPropertyKey(segment: IssueSegment): segment is PropertyKey {
-  return typeof segment !== 'object';
-}
-
 function nothingFurther(): readonly Issue[] {
   return [];
 }
 
-function schemaIssuesOf(decode: Decoder, value: Schema.Json): readonly Issue[] {
+function schemaIssuesOf(decode: Decoder, value: Schema.Json): readonly FoundIssue[] {
   const decoded = decode(value);
-  return Result.isSuccess(decoded)
-    ? []
-    : formatIssues(decoded.failure.issue).issues.map(({ message, path = [] }) => ({
-        pointer: pointerOf(path.filter((segment) => isPropertyKey(segment))),
-        detail: message,
-      }));
+  return Result.isSuccess(decoded) ? [] : foundIssuesOf(decoded.failure.issue);
 }
 
-function validatorOf(
+function checkerOf(
   decode: Decoder,
   { what, nesting, further = nothingFurther }: Validation,
-): CompiledSchema['validate'] {
+): (value: unknown) => Checked {
   return (value) => {
     if (nestedDeeperThan(value, nesting)) {
       return Result.fail(rootIssue(`The ${what} nests more than ${nesting} levels`));
@@ -130,14 +121,26 @@ function validatorOf(
   };
 }
 
+function withoutBreaches(issues: readonly FoundIssue[]): readonly Issue[] {
+  return issues.map(({ pointer, detail }) => ({ pointer, detail }));
+}
+
+function compiledOf(document: Schema.JsonObject, decode: Decoder, validation: Validation): CompiledSchema {
+  const checked = checkerOf(decode, validation);
+  return {
+    document,
+    what: validation.what,
+    validate: (value) => Result.mapError(checked(value), withoutBreaches),
+    issuesOf: (value) => Result.match(checked(value), { onSuccess: () => [], onFailure: (issues) => issues }),
+  };
+}
+
 export function compileJsonSchema(
   document: unknown,
   validation: Validation,
 ): Result.Result<CompiledSchema, readonly Issue[]> {
   return boundedJsonSchema(document).pipe(
     Result.flatMap(wellFormedDocument),
-    Result.flatMap((usable) =>
-      Result.map(decoderOf(usable), (decode) => ({ document: usable, validate: validatorOf(decode, validation) })),
-    ),
+    Result.flatMap((usable) => Result.map(decoderOf(usable), (decode) => compiledOf(usable, decode, validation))),
   );
 }

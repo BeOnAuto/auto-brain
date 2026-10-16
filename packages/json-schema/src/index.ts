@@ -16,5 +16,6 @@ export {
   type FurtherCheck,
   type Validation,
 } from './document/json-schema.ts';
+export { type Breach, type FoundIssue } from './document/found-issues.ts';
 export { isKnownKeyword, shapeIssues } from './document/schema-shape.ts';
 export { issuesDetail, schemaCheckOf, type SchemaCheck } from './checking/schema-checks.ts';
