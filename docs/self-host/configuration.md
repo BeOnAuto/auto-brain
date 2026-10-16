@@ -46,10 +46,10 @@ A value counts as a credential written out when:
 
 - its key names a credential, such as `api_key`, `Authorization`, `client_secret`, `password` or `token`, and it holds no reference. `credential_kinds` of the `connections` section names sorts of credential and not one, so its values are judged by their shape alone;
 - the text written out in it has the shape of one, such as `Bearer ...`, an `sk-...` provider key or an `abk_...` API key;
-- it is a URL with a password, or whose user or query value has that shape;
+- it is a URL with a password, whose user or query value has that shape, or whose query names a parameter as a key that names a credential does, such as `?api_key=...`, and holds no reference there;
 - it is an argument whose part after its `=` has that shape.
 
-Inside a URL or an argument, only the value is judged, never the name the URL or the argument gives it.
+Inside an argument, only the value is judged, never the name the argument gives it.
 
 ## What to set for what
 

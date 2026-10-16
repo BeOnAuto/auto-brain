@@ -75,6 +75,12 @@ describe('the facts of adding a connection', () => {
 
 const heldValues = [
   [
+    'a credential in the query of its url',
+    { ...crm.entry, url: 'https://crm.example.com/mcp?api_key=abc123' },
+    '/entry/url',
+    "Looks like a credential, which a connection's entry never holds: the person gives it on the page the link opens",
+  ],
+  [
     'a value that looks like a credential',
     { ...crm.entry, headers: { Authorization: 'Bearer sk-live-0123456789abcdef' } },
     '/entry/headers/Authorization',
@@ -93,7 +99,7 @@ describe('an entry that holds what a connection never holds', () => {
     const outcome = await adding(harness(), { ...crm, entry, credential: { kind: 'none' } });
 
     expect(issuesIn(outcome)).toEqual([{ pointer, detail }]);
-    expect(JSON.stringify(outcome)).not.toMatch(/sk-live|CRM_TENANT/u);
+    expect(JSON.stringify(outcome)).not.toMatch(/sk-live|CRM_TENANT|abc123/u);
   });
 });
 

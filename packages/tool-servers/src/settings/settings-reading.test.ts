@@ -262,13 +262,13 @@ describe('a credential written into the url or the args of a server', () => {
     expect(JSON.stringify(refusal)).not.toContain('sk-');
   });
 
-  it('is judged by the value, never by the name it is given', () => {
-    const [notes, graphOfTokens] = serversOf({
-      notes: { ...limitless, args: ['--token-file=/run/secrets/notes', '--api-key-env=NOTES_API_KEY'] },
-      graph: { ...graph, url: 'https://graph.example.com/mcp?token_type=bearer' },
-    });
+  it('is judged in an argument by the value, never by the name it is given, and in a query by its name too', () => {
+    const notes = { ...limitless, args: ['--token-file=/run/secrets/notes', '--api-key-env=NOTES_API_KEY'] };
 
-    expect([notes?.name, graphOfTokens?.name]).toEqual(['notes', 'graph']);
+    expect(serversOf({ notes }).map(({ name }) => name)).toEqual(['notes']);
+    expect(problemsOf({ graph: { ...graph, url: 'https://graph.example.com/mcp?api_key=graph-4f1d9a7c' } })).toEqual([
+      'TOOL_SERVERS: /graph/url: Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as ${GRAPH_API_KEY}',
+    ]);
   });
 });
 

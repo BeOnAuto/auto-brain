@@ -51,6 +51,14 @@ function looksLikeCredential(text: string): boolean {
   return credentialShapes.some((shape: Readonly<RegExp>) => shape.test(literal));
 }
 
+function queryHoldsCredential(text: string): boolean {
+  const url = URL.parse(text.trim());
+  return (
+    url !== null &&
+    [...url.searchParams].some(([name, value]: readonly [string, string]) => namedAsCredential(name, value))
+  );
+}
+
 function urlHoldsCredential(text: string): boolean {
   const url = URL.parse(literalTextOf(text).trim());
   if (url === null) {
@@ -59,7 +67,8 @@ function urlHoldsCredential(text: string): boolean {
   return (
     url.password !== '' ||
     looksLikeCredential(url.username) ||
-    [...url.searchParams.values()].some((value) => looksLikeCredential(value))
+    [...url.searchParams.values()].some((value) => looksLikeCredential(value)) ||
+    queryHoldsCredential(text)
   );
 }
 

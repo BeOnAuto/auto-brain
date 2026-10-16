@@ -212,10 +212,9 @@ describe('a credential written in a URL or an argument', () => {
     expect(message).not.toContain('sk-live-x');
   });
 
-  it('judges the values of a URL and an argument, never the names they give them', () => {
+  it('judges the values of an argument and of a URL, never the names of an argument', () => {
     const plain = {
       link: 'https://a.example/v1?api-version=2026-01-01',
-      tokenType: 'https://a.example/v1?token_type=bearer',
       mode: '--mode=read',
       tokenFile: '--token-file=/run/secrets/notes',
       keyEnv: '--api-key-env=NOTES_API_KEY',
