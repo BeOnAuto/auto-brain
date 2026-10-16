@@ -5,7 +5,7 @@ import type { Baseline } from '../document/prediction-document.ts';
 import type { BuildWorkOf } from '../facts/build-facts.ts';
 import { executed, modelsOf } from '../models/model-commands.ts';
 import { versionOfBuild } from '../models/model-state.ts';
-import { baselineWalk } from './candidate-scoring.ts';
+import { baselineWalk } from './baselines.ts';
 import { primaryOf } from './metrics.ts';
 import { scoringOf, type ScoredBuild } from './scoring-inputs.ts';
 import { versionCardOf, type TrainerAnswer } from './version-card.ts';

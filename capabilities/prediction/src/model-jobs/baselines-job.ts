@@ -1,5 +1,5 @@
 import { seriesRowsIn } from '../files/series-rows.ts';
-import { baselineWalk } from '../scoring/candidate-scoring.ts';
+import { baselineWalk } from '../scoring/baselines.ts';
 import { losesNothing } from '../scoring/metrics.ts';
 import { scoringGridOf } from '../scoring/scoring-grid.ts';
 import type { BaselinesJob } from './model-feeds.ts';
