@@ -1,6 +1,6 @@
 import { INVALID_PARAMS, ProtocolError, SdkError, SdkErrorCode, SdkHttpError } from '@modelcontextprotocol/client';
-import { codesOf, isUntrustedCertificate } from '@on.auto/outbound';
-import { Data, Option, Predicate } from 'effect';
+import { causesOf, codesOf, isUntrustedCertificate } from '@on.auto/outbound';
+import { Data } from 'effect';
 
 import { AnsweredStatus } from '../openapi/answered-status.ts';
 import { ArgumentsRefused } from '../openapi/arguments-refused.ts';
@@ -50,15 +50,12 @@ const httpKinds: ReadonlyMap<number, FailureKind> = new Map([
 
 export class HostRefused extends Data.TaggedError('host_refused')<{ readonly rule: string }> {}
 
-const mostCausesFollowed = 8;
+function isHostRefused(cause: object): cause is HostRefused {
+  return cause instanceof HostRefused;
+}
 
-function refusedRuleIn(error: unknown, followed = 0): Option.Option<string> {
-  if (error instanceof HostRefused) {
-    return Option.some(error.rule);
-  }
-  return followed < mostCausesFollowed && Predicate.hasProperty(error, 'cause')
-    ? refusedRuleIn(error.cause, followed + 1)
-    : Option.none();
+function refusedRuleIn(error: unknown): string | undefined {
+  return causesOf(error).find((cause) => isHostRefused(cause))?.rule;
 }
 
 export const untrustedCertificate =
@@ -107,8 +104,6 @@ function knownFailureOf(error: unknown): ServerFailure {
 }
 
 export function failureOf(error: unknown): ServerFailure {
-  return Option.match(refusedRuleIn(error), {
-    onSome: (rule): ServerFailure => ({ kind: 'not_allowed', message: rule }),
-    onNone: () => knownFailureOf(error),
-  });
+  const rule = refusedRuleIn(error);
+  return rule === undefined ? knownFailureOf(error) : { kind: 'not_allowed', message: rule };
 }

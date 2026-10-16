@@ -4,7 +4,7 @@ How the server calls systems on the internet. It tells a certificate the server 
 
 ## Certificates
 
-`isUntrustedCertificate(error)` says whether any of the causes of a failed call, eight deep at most, carries the code of a certificate the server does not trust, and `codesOf(error)` names those codes.
+`causesOf(error)` is the one walk of a failure's causes: the failure and each `cause` it wraps, eight at most, ending at the first that is no object, which the tool-servers package also reads for the refusal of a host it wraps. `codesOf(error)` names the code of each, and `isUntrustedCertificate(error)` says whether any of them is the code of a certificate the server does not trust.
 
 ## AWS clients
 
@@ -16,4 +16,4 @@ How the server calls systems on the internet. It tells a certificate the server 
 
 ## Source
 
-`src/certificates` holds the classification, `src/proxy` the settings of the environment proxy, and `src/aws` the settings of AWS clients.
+`src/causes` holds the walk of a failure's causes, `src/certificates` the classification, `src/proxy` the settings of the environment proxy, and `src/aws` the settings of AWS clients.

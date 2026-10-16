@@ -1,4 +1,4 @@
-import { Predicate } from 'effect';
+import { codesOf } from '../causes/error-causes.ts';
 
 const untrustedCertificateCodes: ReadonlySet<unknown> = new Set([
   'UNABLE_TO_VERIFY_LEAF_SIGNATURE',
@@ -13,18 +13,6 @@ const untrustedCertificateCodes: ReadonlySet<unknown> = new Set([
   'CERT_SIGNATURE_FAILURE',
   'ERR_TLS_CERT_ALTNAME_INVALID',
 ]);
-
-const mostCauses = 8;
-
-export function codesOf(error: unknown): readonly unknown[] {
-  const codes: unknown[] = [];
-  let current: unknown = error;
-  for (let depth = 0; depth < mostCauses && Predicate.isObject(current); depth += 1) {
-    codes.push(Predicate.hasProperty(current, 'code') ? current.code : undefined);
-    current = current['cause'];
-  }
-  return codes;
-}
 
 export function isUntrustedCertificate(error: unknown): boolean {
   return codesOf(error).some((code) => untrustedCertificateCodes.has(code));
