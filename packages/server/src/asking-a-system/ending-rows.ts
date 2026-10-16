@@ -118,7 +118,7 @@ export const beforeAnything: ReadonlyArray<readonly [string, Row, Ending]> = [
     {
       status: 422,
       type: `${problems}invalid_input`,
-      detail: 'The definition reads a field the input does not have',
+      detail: 'The definition reads input.thread on line 1, which the input does not have',
       retryAfter: null,
     },
   ],

@@ -68,9 +68,7 @@ describe('a reply from the answerer the rule cannot read', () => {
       { because: 'not_an_answer' },
     ]);
     expect(tellingsOf(playbook)).toEqual([
-      expect.stringMatching(
-        /^That reply is not an answer this request takes: \/note: .*To answer, reply with one of approve, reject/u,
-      ),
+      'That reply is not an answer this request takes: note: expected at most 2,000 characters. To answer, reply with one of approve, reject; what follows is kept as the note.',
       'A reply may hold at most 8,192 bytes.',
       'To answer, reply with one of approve, reject; what follows is kept as the note.',
     ]);

@@ -1,10 +1,10 @@
 import { Buffer } from 'node:buffer';
 
 import type { Issue } from '@on.auto/operations';
-import { Result, type Schema } from 'effect';
+import type { Schema } from 'effect';
 
 import type { ReplyRefusal } from '../facts/run-facts.ts';
-import { checkedAnswer } from '../requests/answer-check.ts';
+import { answerIssuesOf } from '../requests/answer-check.ts';
 import type { OpenRequestRow } from '../requests/request-rows.ts';
 import { interactionBounds } from '../run/run-bounds.ts';
 import { answerOfReply, type ReplyRule } from './reply-rule.ts';
@@ -65,15 +65,8 @@ function answeredBy(request: KeptRequest, words: string): ReplyDecision {
   if (answer === undefined) {
     return refused(request, 'not_an_answer');
   }
-  return Result.match(checkedAnswer(answer, request.answerSchema), {
-    onSuccess: (checked): ReplyDecision => ({ kind: 'take', request, answer: checked }),
-    onFailure: (issues) =>
-      refused(
-        request,
-        'invalid',
-        issues.map(({ pointer, detail }) => ({ pointer: `/answer${pointer}`, detail })),
-      ),
-  });
+  const issues = answerIssuesOf(answer, request.answerSchema);
+  return issues.length === 0 ? { kind: 'take', request, answer } : refused(request, 'invalid', issues);
 }
 
 export function decisionOf(reply: Reply, kept: readonly KeptRequest[], answered: ReadonlySet<string>): ReplyDecision {

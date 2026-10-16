@@ -61,7 +61,7 @@ describe('the depth of an answer', () => {
     expect(deeper).toMatchObject({
       status: 'rejected',
       reason: 'invalid_input',
-      issues: [{ pointer: '/answer', detail: `The answer nests more than ${interactionBounds.answerDepth} levels` }],
+      issues: [{ pointer: '/answer', detail: `The answer nests more than ${interactionBounds.answerDepth} levels.` }],
     });
     expect(deepest).toMatchObject({ status: 'succeeded', output: { run_id: runId } });
   });
