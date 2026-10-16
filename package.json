@@ -20,7 +20,6 @@
     "typecheck:watch": "tsc --watch",
     "check": "pnpm check:tasks && pnpm docs:check",
     "check:tasks": "turbo run format:check lint typecheck test knip sherif",
-    "check:ci": "pnpm check:tasks --concurrency=2 && pnpm docs:check",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "oxlint *.ts",

@@ -7,6 +7,8 @@
   "devDependencies": {
     "@on.auto/api": "workspace:*",
     "@on.auto/definitions": "workspace:*",
-    "@on.auto/server": "workspace:*"
+    "@on.auto/server": "workspace:*",
+    "effect": "catalog:",
+    "yaml": "2.9.1"
   }
 }

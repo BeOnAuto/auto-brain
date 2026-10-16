@@ -1056,6 +1056,12 @@ importers:
       '@on.auto/server':
         specifier: workspace:*
         version: link:../packages/server
+      effect:
+        specifier: 'catalog:'
+        version: 4.0.0
+      yaml:
+        specifier: 2.9.1
+        version: 2.9.1
 
 packages:
 
