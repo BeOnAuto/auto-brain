@@ -3,19 +3,23 @@ import { Unavailable, type PlaybookAddress } from '@on.auto/operations';
 import { Clock, Effect, Option, Schema } from 'effect';
 
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
-import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
+import type { PredictionFunctionDefinitionDocument, Predicts } from '../document/prediction-document.ts';
 import { enclosingOf, periodsToTheEnd } from '../periods/enclosing.ts';
 import { periodForm } from '../periods/grains.ts';
 import { activeVersionOf } from './active-version.ts';
+import { checkedAnswer } from './answer-check.ts';
 import { seriesWindow, type SeriesWindow } from './series-window.ts';
 
 const QuestionSchema = Schema.Struct({
   series: Schema.String,
   horizon: Schema.optionalKey(Schema.Int),
   given: Schema.optionalKey(Schema.Record(Schema.String, Schema.Number)),
+  marks: Schema.optionalKey(Schema.Array(Schema.Struct({ label: Schema.String, value: Schema.Number }))),
 });
 
 type Question = typeof QuestionSchema.Type;
+
+const coverage = 0.8;
 
 const busy = new Unavailable({ detail: 'Every model process is busy; try again shortly', kind: 'model_process_busy' });
 
@@ -27,31 +31,39 @@ const notFinite = new Unavailable({
   because: 'not_finite',
 });
 
-interface Asked {
-  readonly steps: number;
-  readonly period: string;
-  readonly horizon: number;
+interface AskedPoint {
   readonly step: number;
+  readonly period: number;
 }
 
-function askedOf({ predicts }: PredictionFunctionDefinitionDocument, origin: number, question: Question): Asked {
-  const { period: grain, accumulates } = predicts;
+interface Asked {
+  readonly steps: number;
+  readonly summed: number | null;
+  readonly points: readonly AskedPoint[];
+}
+
+type ObservedPoint = { readonly at: string; readonly value: number };
+
+type PredictedPoint = ObservedPoint & { readonly low: number; readonly high: number };
+
+function askedOf({ period: grain, horizons, accumulates }: Predicts, origin: number, question: Question): Asked {
   if (accumulates === undefined) {
-    const horizon = Number(question.horizon);
+    const asked =
+      question.horizon === undefined ? horizons.toSorted((left, right) => left - right) : [question.horizon];
     return {
-      steps: Math.max(...predicts.horizons),
-      period: periodForm(grain, origin + horizon),
-      horizon,
-      step: horizon - 1,
+      steps: Math.max(...horizons),
+      summed: null,
+      points: asked.map((horizon) => ({ step: horizon - 1, period: origin + horizon })),
     };
   }
   const remaining = periodsToTheEnd(grain, accumulates, origin);
-  return {
-    steps: remaining,
-    period: periodForm(accumulates, enclosingOf(grain, accumulates, origin + 1)),
-    horizon: remaining,
-    step: 0,
-  };
+  return { steps: remaining, summed: remaining, points: [{ step: 0, period: origin + remaining }] };
+}
+
+function aheadOf({ period: grain, accumulates }: Predicts, origin: number) {
+  return accumulates === undefined
+    ? { line: 'predicted', record: {} }
+    : { line: 'total', record: { total_to: periodForm(accumulates, enclosingOf(grain, accumulates, origin + 1)) } };
 }
 
 function givenOf(
@@ -64,6 +76,29 @@ function givenOf(
   }
   const values = document.data.given.map((name) => Number(given[name]));
   return Float32Array.from(Array.from({ length: steps }, () => values).flat());
+}
+
+function predictedOf(
+  q: Readonly<Float32Array>,
+  { period: grain }: Predicts,
+  points: readonly AskedPoint[],
+): readonly PredictedPoint[] | undefined {
+  const predicted: readonly PredictedPoint[] = points.map(({ step, period }) => {
+    const [low, value, high] = Array.from(q.subarray(step * 3, step * 3 + 3));
+    return { at: periodForm(grain, period), value: Number(value), low: Number(low), high: Number(high) };
+  });
+  return predicted.every(({ low, value, high }) => [low, value, high].every((each) => Number.isFinite(each)))
+    ? predicted
+    : undefined;
+}
+
+function observedOf({ y, origin }: SeriesWindow, { period: grain, history }: Predicts): readonly ObservedPoint[] {
+  const first = origin - history + 1;
+  const shown: readonly ObservedPoint[] = Array.from(y.subarray(y.length - history), (value, at) => ({
+    at: periodForm(grain, first + at),
+    value,
+  }));
+  return shown.filter(({ value }) => Number.isFinite(value));
 }
 
 interface Answering {
@@ -79,16 +114,16 @@ function answered(
   window: SeriesWindow,
 ) {
   return Effect.gen(function* () {
-    const asked = askedOf(document, window.origin, question);
+    const asked = askedOf(document.predicts, window.origin, question);
     const kept = yield* ports.caches.models.pathOf(active.file, () => ports.ledger.content.get(playbook, active.file));
     const path = Option.getOrThrow(Option.fromNullishOr(kept));
     const outcome = yield* ports.models.run(
       { sha256: active.file, path },
       {
-        y: window.y,
+        y: Float32Array.from(window.y),
         x: window.x,
         given: givenOf(document, question, asked.steps),
-        h: document.predicts.accumulates === undefined ? null : asked.horizon,
+        h: asked.summed,
         features: document.data.features.length,
         givens: document.data.given.length,
       },
@@ -102,13 +137,12 @@ function answered(
     if (outcome.ended !== 'answered') {
       return yield* Effect.fail(ended);
     }
-    const expected = `1,${document.predicts.accumulates === undefined ? asked.steps : 1},3`;
-    const [low, value, high] = outcome.answer.q.subarray(asked.step * 3, asked.step * 3 + 3);
-    const numbers = [low, value, high].map(Number);
-    if (outcome.answer.dims.join(',') !== expected || !numbers.every((each) => Number.isFinite(each))) {
+    const expected = `1,${asked.summed === null ? asked.steps : 1},3`;
+    const predicted = predictedOf(outcome.answer.q, document.predicts, asked.points);
+    if (outcome.answer.dims.join(',') !== expected || predicted === undefined) {
       return yield* Effect.fail(notFinite);
     }
-    return { asked, numbers, milliseconds: outcome.milliseconds };
+    return { predicted, milliseconds: outcome.milliseconds };
   });
 }
 
@@ -120,6 +154,7 @@ export function questionRun(
 ): Effect.Effect<CapabilityAnswer, CapabilityRejection> {
   const playbook = { org: context.org, playbook: context.playbook };
   const question = Schema.decodeUnknownSync(QuestionSchema)(input);
+  const { predicts } = document;
   return Effect.gen(function* () {
     const active = yield* activeVersionOf({
       ledger: ports.ledger,
@@ -130,23 +165,27 @@ export function questionRun(
     });
     const now = yield* Clock.currentTimeMillis;
     const window = yield* seriesWindow(ports, { playbook, document, series: question.series, now });
-    const { asked, numbers, milliseconds } = yield* answered({ ports, playbook, document, question }, active, window);
-    const [low, value, high] = numbers;
+    const { predicted, milliseconds } = yield* answered({ ports, playbook, document, question }, active, window);
+    const origin = periodForm(predicts.period, window.origin);
+    const ahead = aheadOf(predicts, window.origin);
+    const output = {
+      unit: predicts.unit,
+      period: predicts.period,
+      origin,
+      lines: [
+        { name: 'observed', points: observedOf(window, predicts) },
+        { name: ahead.line, points: predicted },
+      ],
+      ...(question.marks === undefined ? {} : { marks: question.marks }),
+    };
+    yield* checkedAnswer(output);
     return {
-      output: {
-        series: question.series,
-        origin: periodForm(document.predicts.period, window.origin),
-        period: asked.period,
-        horizon: asked.horizon,
-        value: Number(value),
-        low: Number(low),
-        high: Number(high),
-        coverage: 0.8,
-        version: active.version,
-      },
+      output,
       record: {
         version: active.version,
-        origin: periodForm(document.predicts.period, window.origin),
+        coverage,
+        ...ahead.record,
+        origin,
         dataset_checkpoint: window.checkpoint,
         duration_ms: Math.round(milliseconds),
       },

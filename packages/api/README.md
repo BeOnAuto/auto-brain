@@ -39,7 +39,7 @@ An outcome that is not a success becomes a problem document. The problem documen
 | failed    | `500` `internal`, saying nothing about the cause; its `instance` is `urn:uuid:<id>`, the incident id under which the server logs the error                                                                                                                                                                                                         |
 | cancelled | `499` `client_closed_request` when the client went away, `503` `unavailable` when the server is stopping                                                                                                                                                                                                                                           |
 
-A route refuses a caller its principal does not admit to the org of the path with `403` `forbidden`, "The caller does not belong to this org", before it reads the input, as the MCP endpoints do; the dispatcher's own check of the org still holds for every call. A `403` `forbidden` also carries `WWW-Authenticate: Bearer error="insufficient_scope"`, and, with sign-in on, the operation's permissions, its registration's `permissions`, any one of which permits it, as `scope` and `resource_metadata` with the root metadata, for a caller of another org as for a caller that lacks the permission; `insufficientScope(resource, permissions, resourcePath?)` of `src/authentication/challenges.ts` builds it. With sign-in off the challenge names no scope, since there is no authorization server to ask. A `503` `unavailable` carries `Retry-After: 5` when a retry of the same request may resolve it, so not for the kind `tools_unfinished`, a run that called tools that only read and could not finish, which the same request answers with `tools_called` and a new run may make, nor for the kinds `tool_not_offered` and `model_not_offered`, which only a change of the function or the configuration resolves, nor for a rejection whose `because` is `builds_of_the_day`, a prediction function that has had its builds of the day, `stalled`, a dataset stopped at an event, or `not_finite`, a model that answers what it cannot, which no wait resolves (`notResolvedByWaiting`). A `410` `unanswered` carries none: the same request answers it again.
+A route refuses a caller its principal does not admit to the org of the path with `403` `forbidden`, "The caller does not belong to this org", before it reads the input, as the MCP endpoints do; the dispatcher's own check of the org still holds for every call. A `403` `forbidden` also carries `WWW-Authenticate: Bearer error="insufficient_scope"`, and, with sign-in on, the operation's permissions, its registration's `permissions`, any one of which permits it, as `scope` and `resource_metadata` with the root metadata, for a caller of another org as for a caller that lacks the permission; `insufficientScope(resource, permissions, resourcePath?)` of `src/authentication/challenges.ts` builds it. With sign-in off the challenge names no scope, since there is no authorization server to ask. A `503` `unavailable` carries `Retry-After: 5` when a retry of the same request may resolve it, so not for the kind `tools_unfinished`, a run that called tools that only read and could not finish, which the same request answers with `tools_called` and a new run may make, nor for the kinds `tool_not_offered` and `model_not_offered`, which only a change of the function or the configuration resolves, nor for a rejection whose `because` is `builds_of_the_day`, a prediction function that has had its builds of the day, `stalled`, a dataset stopped at an event, `not_finite`, a model that answers what it cannot, or `not_in_order`, a model whose low is above its likely value or whose high is below it, which no wait resolves (`notResolvedByWaiting`). A `410` `unanswered` carries none: the same request answers it again.
 
 ## The OpenAPI document
 
@@ -132,7 +132,7 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | succeeded                   | the first text content says in plain words what happened, the second is the output as JSON text, and `structuredContent` is the same output, with no output schema to check it against |
 | rejected, failed, cancelled | `isError: true`; the first text content says in plain words what could not be done, and the second is the problem document HTTP would answer with, as JSON; no `structuredContent`     |
 
-Human-readable results name reasoning functions, workflows and runs. They omit ids, versions, formats and status codes, which remain in the structured result. `get_guide` serves the format of each definition type; no tool description carries one. The words of an outcome take at most 400 characters and those of a refusal at most 600: `withinCharacters` of `@on.auto/operations` keeps the whole sentences that fit and says the rest is in the details below, the JSON beside them.
+Human-readable results name reasoning functions, workflows and runs. They omit ids, versions, formats and status codes, which remain in the structured result. `internalTermsIn` of `@on.auto/operations/testing` finds what they must omit. `get_guide` serves the format of each definition type; no tool description carries one. The words of an outcome take at most 400 characters and those of a refusal at most 600: `withinCharacters` of `@on.auto/operations` keeps the whole sentences that fit and says the rest is in the details below, the JSON beside them.
 
 Each operation supplies `plainLanguage`: a `task` and an `attempt` describing the action, and an `outcome` based on its output. It may also give `remedies` of its own by `because`, which take the place of the shared remedy in the words of its refusals, as `execute` and the reads of one tool name what `search` shows where a function's refusal speaks of the function. Each adapter gives the noun for its definitions and a sentence for a run's result. An endpoint refuses to mount an operation without them.
 
@@ -171,11 +171,11 @@ The bound on a listing is bytes because a listing is what an agent's client load
 
 | Endpoint                                    | Tools | Bytes on the wire | Bound  |
 | ------------------------------------------- | ----- | ----------------- | ------ |
-| `POST /mcp`                                 | 28    | 43,094            | 48,000 |
-| `POST /orgs/{org}/mcp`                      | 10    | 12,549            | 13,000 |
+| `POST /mcp`                                 | 28    | 43,095            | 48,000 |
+| `POST /orgs/{org}/mcp`                      | 10    | 12,550            | 13,000 |
 | `POST /orgs/{org}/playbooks/{playbook}/mcp` | 20    | 30,769            | 40,000 |
 
-The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, as decision 0031 records: its listing takes 12,549 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
+The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, since its listing takes 12,550 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
 
 **Which errors look how.** An MCP endpoint answers in three shapes:
 
@@ -209,6 +209,7 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
       "object": "model",
       "created": 0,
       "owned_by": "gateway",
+      "alias": true,
       "resolved_to": "gateway/llama-3.3-70b"
     },
     {
@@ -216,6 +217,7 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
       "object": "model",
       "created": 0,
       "owned_by": "gateway",
+      "alias": true,
       "resolved_to": "gateway/openai/*",
       "pattern": true
     }
@@ -226,7 +228,7 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
 }
 ```
 
-`id` is the model as a definition names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `resolved_to` only for an alias, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, `narrowed` is `true` when the operator allows only some models, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
+`id` is the model as a definition names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `alias: true` for every alias and only for one, `resolved_to` for an alias whose target is not a Bedrock ARN, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, `narrowed` is `true` when the operator allows only some models, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
 
 ## Lifecycle
 

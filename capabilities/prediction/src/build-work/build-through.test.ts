@@ -2,20 +2,10 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
-import {
-  askedBuild,
-  readOf,
-  runOf,
-  savedFunction,
-  standingOf,
-  uploaded,
-  visitsRows,
-  workOf,
-} from '../build-testing/built-versions.ts';
-import { sendingDocument } from '../build-testing/called-documents.ts';
+import { readOf, runOf, standingOf, uploaded, workOf } from '../build-testing/built-versions.ts';
 import { candidateSha256, performedOnce, performedUntilQuiet } from '../build-testing/due-driving.ts';
+import { sentThrough } from '../build-testing/sent-builds.ts';
 import { predictionBuildsName } from '../builds/build-rows.ts';
-import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { readBuildBrief } from '../trainer/build-reads.ts';
 import { childIdOf } from './child-runs.ts';
 
@@ -24,22 +14,6 @@ const alpha = { org: 'acme', playbook: 'alpha' };
 const endedUnanswered: unknown = expect.stringMatching(
   /^The interaction function send-build that carries the build to its trainer ended without an answer: /u,
 );
-
-async function sentThrough(playbook: BuildPlaybook, expires = 'P1D'): Promise<string> {
-  expect(
-    await playbook.call(playbook.operations.create, {
-      type: 'interaction',
-      name: 'send-build',
-      source: sendingDocument(expires),
-    }),
-  ).toMatchObject({ status: 'succeeded' });
-  const source = uploadedDailyVisits(visitsRows.sha256).replace(
-    '  expires: P1D',
-    '  expires: P1D\n  through: send-build',
-  );
-  await savedFunction(playbook, { source });
-  return askedBuild(playbook);
-}
 
 function dueAgain(playbook: BuildPlaybook, build: string): Promise<void> {
   return Effect.runPromise(

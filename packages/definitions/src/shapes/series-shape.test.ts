@@ -1,6 +1,7 @@
 import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { rangeHolds } from '../index.ts';
 import { shapeNamed } from '../testing/index.ts';
 
 const { check } = shapeNamed('series');
@@ -183,6 +184,16 @@ describe('the value of a point', () => {
       { pointer: '/lines/0/points/0/low', detail: 'Expected a low of at most the value' },
       { pointer: '/lines/0/points/0/high', detail: 'Expected a high of at least the value' },
     ]);
+  });
+
+  it('holds its range when its low is at most it and its high at least it, each where given', () => {
+    expect([
+      rangeHolds({ low: 1, value: 2, high: 3 }),
+      rangeHolds({ low: 2, value: 2, high: 2 }),
+      rangeHolds({ value: 2 }),
+      rangeHolds({ low: 3, value: 2, high: 4 }),
+      rangeHolds({ low: 1, value: 2, high: 1.5 }),
+    ]).toEqual([true, true, true, false, false]);
   });
 
   it('is a number, and its point is not read further without one', () => {

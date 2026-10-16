@@ -2,6 +2,7 @@ import { ActedOnRunContextSchema, RunContextSchema, factOf, type Decided } from 
 import { CallAnsweredSchema, CallFailedSchema, CallStartedSchema } from '@on.auto/tool-servers';
 import { Schema, SchemaTransformation } from 'effect';
 
+import { OutputShapeNameSchema } from '../shapes/shape-names.ts';
 import { RunRejectionSchema } from './run.ts';
 
 const numbered = { number: Schema.Int };
@@ -23,6 +24,7 @@ const coreFactSchemas = [
       input: Schema.Json,
       calls_tools: Schema.optionalKey(Schema.Literal(true)),
       finishes_later: Schema.optionalKey(Schema.Literal(true)),
+      output_shape: Schema.optionalKey(OutputShapeNameSchema),
     }),
     RunContextSchema,
   ),

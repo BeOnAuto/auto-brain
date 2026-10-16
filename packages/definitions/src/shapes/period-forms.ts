@@ -2,7 +2,7 @@ import type { Schema } from 'effect';
 
 export const grains = ['day', 'week', 'month', 'quarter', 'year'] as const;
 
-type Grain = (typeof grains)[number];
+export type SeriesGrain = (typeof grains)[number];
 
 export interface Timeline {
   readonly words: string;
@@ -60,7 +60,7 @@ function yearMoment(year: number): number {
   return year;
 }
 
-const forms: Readonly<Record<Grain, Form>> = {
+const forms: Readonly<Record<SeriesGrain, Form>> = {
   day: {
     pattern: /^(\d{4})-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/u,
     words: 'a day in the form YYYY-MM-DD',

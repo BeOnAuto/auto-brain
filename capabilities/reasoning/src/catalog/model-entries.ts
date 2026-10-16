@@ -21,6 +21,7 @@ export function aliasEntryOf([alias, target]: readonly [string, string]): ModelE
     object: 'model',
     created: 0,
     owned_by: Option.getOrThrow(parseModelReference(target)).provider,
+    alias: true,
     ...(namesAnArn(target) ? {} : { resolved_to: target }),
     ...(isWildcardAlias(alias) ? { pattern: true } : {}),
   };

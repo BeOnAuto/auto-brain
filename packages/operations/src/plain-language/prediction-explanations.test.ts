@@ -38,6 +38,10 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
     { reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite' },
     'the model answered something other than finite numbers in the shape its signature gives',
   ],
+  [
+    { reason: 'unavailable', kind: 'model_process_failed', because: 'not_in_order' },
+    'the model answered a low above its likely value or a high below it',
+  ],
 ];
 
 const aSentence: unknown = expect.stringMatching(/\.$/u);

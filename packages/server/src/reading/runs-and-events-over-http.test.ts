@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { internalTermsIn } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { Client } from 'pg';

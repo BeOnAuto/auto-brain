@@ -473,12 +473,12 @@ A warm run costs its work and well under a millisecond more, with or without an 
 | the warm page less its folds, of 6 runs                              |                                      | 4.5, 1.0, 4.9, 4.9, 8.1 and −1.4 ms    |
 | the JSON round trip of the page's bytes, in and out, of 6 runs       | 0.65 and 0.65 ms                     | 0.59 to 0.71 ms                        |
 
-On the machine at rest, against the bounds of the decision:
+On the machine at rest, against the bounds the pool is held to:
 
 - a warm run costs at most the round trip of its request and 2 ms, 0.07 to 0.09 ms against about 2.004 ms, with and without an output schema: met;
 - a warm page costs less than a cold one by more than a fold worker's start alone, 149.3 to 162.3 ms against 99.9 to 102.9 ms for this pool's worker and 31 ms for one that loads no `effect`: met;
 - the first job of a worker starts in at most 200 ms, 100.7 and 104.1 ms, and 125.4 ms after a minute idle: met. It is about three and a half times the 29 ms of a worker that loads no `effect`, which the job loop decodes its envelopes with;
-- a warm page costs at most 10 ms beyond its folds, measured at rest: 4.5, 1.0, 4.9, 4.9, 8.1 and −1.4 ms in six runs, a median of about 4.7 ms, on folds of 281 to 290 ms, and 0.7 and −0.3 ms in an independent measurement at rest: met. The decision first allowed the round trip of the page's bytes and 2 ms, about 2.6 to 2.7 ms, which the second measurement met and the first did not: at this resolution the difference of a page of about 285 ms and its folds on another thread spreads over several milliseconds from run to run, more than that allowance.
+- a warm page costs at most 10 ms beyond its folds, measured at rest: 4.5, 1.0, 4.9, 4.9, 8.1 and −1.4 ms in six runs, a median of about 4.7 ms, on folds of 281 to 290 ms, and 0.7 and −0.3 ms in an independent measurement at rest: met. The bound first allowed the round trip of the page's bytes and 2 ms, about 2.6 to 2.7 ms, which the second measurement met and the first did not: at this resolution the difference of a page of about 285 ms and its folds on another thread spreads over several milliseconds from run to run, more than that allowance.
 
 Measured again on 2026-10-09, on Node 26.10.0 on the Apple M4 Max at a load average of about 2 to 4, with the example's fold written in TypeScript and each view of a page in a fresh instance of the sandbox, 296,750 bytes as JSON in and out: a fold worker's start took 184.3 ms at the median of 9, the page 640.6 ms cold, on a fresh pool, 436.9 ms warm and 435.0 ms folded on the thread that measures, so a warm page cost 202.8 ms less than a cold one and 2.6 ms more than its folds, and the JSON round trip of its bytes 0.80 ms.
 

@@ -18,6 +18,7 @@ export interface Predicts {
   readonly horizons: readonly number[];
   readonly accumulates?: Enclosing;
   readonly unit: string;
+  readonly history: number;
 }
 
 export interface Measure {
@@ -77,7 +78,6 @@ export interface DataExpression {
 
 export interface DerivedSchemas {
   readonly input: Schema.JsonObject;
-  readonly output: Schema.JsonObject;
   readonly question: CompiledSchema;
   readonly build: CompiledSchema;
 }

@@ -1,6 +1,5 @@
 import { mostListingBytes } from '@on.auto/api';
 import {
-  internalTermsIn,
   listedTools,
   mcpClientKinds,
   plainTextIn,
@@ -9,6 +8,7 @@ import {
   type ListedTool,
   type ToolResult,
 } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Option, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -87,8 +87,8 @@ interface Endpoint {
 }
 
 const endpoints: readonly Endpoint[] = [
-  { path: '/mcp', tools: 28, bytes: 43_094, mostBytes: mostListingBytes['own org'] },
-  { path: '/orgs/local/mcp', tools: 10, bytes: 12_549, mostBytes: mostListingBytes.org },
+  { path: '/mcp', tools: 28, bytes: 43_095, mostBytes: mostListingBytes['own org'] },
+  { path: '/orgs/local/mcp', tools: 10, bytes: 12_550, mostBytes: mostListingBytes.org },
   { path: '/orgs/local/playbooks/alpha/mcp', tools: 20, bytes: 30_769, mostBytes: mostListingBytes.playbook },
 ];
 

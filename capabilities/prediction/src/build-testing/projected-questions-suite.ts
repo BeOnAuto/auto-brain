@@ -7,7 +7,7 @@ import type { SettingsOf } from '../dataset-testing/dataset-stores.ts';
 import { periodForm, periodOfDay } from '../periods/grains.ts';
 import { asked, buildAsked, builtFrom, modelFactsOf } from './built-versions.ts';
 import { performedUntilQuiet } from './due-driving.ts';
-import { orders, totals, visits } from './projected-fixtures.ts';
+import { orders, tenthVisits, totals, visits } from './projected-fixtures.ts';
 import { day, projectedSales } from './projected-visits.ts';
 import { today } from './suite-clock.ts';
 
@@ -18,15 +18,25 @@ const someCheckpoint: unknown = expect.any(String);
 const aWeek: unknown = expect.stringMatching(/^\d{4}-W\d{2}$/u);
 
 function questions(settingsOf: SettingsOf): void {
-  it('reads the last window of its series at the checkpoint of the dataset', async () => {
-    const { playbook } = await projectedSales(settingsOf, visits);
+  it('reads the last window of its series at the checkpoint of the dataset, and its history as the rows hold it', async () => {
+    const { playbook } = await projectedSales(settingsOf, tenthVisits);
     await builtFrom(playbook, ['visits-mean']);
+    const history = [4, 3, 2, 1].map((ago) => today - ago);
 
-    expect(await asked(playbook, { series: 'north', horizon: 1 })).toMatchObject({
+    expect(await asked(playbook, { series: 'north' })).toMatchObject({
       output: {
         status: 'succeeded',
-        output: { origin: periodForm('day', today - 1), period: periodForm('day', today), version: 1 },
-        record: { dataset_checkpoint: someCheckpoint },
+        output: {
+          origin: periodForm('day', today - 1),
+          lines: [
+            {
+              name: 'observed',
+              points: history.map((each) => ({ at: periodForm('day', each), value: tenthVisits.valueOf(10, each) })),
+            },
+            { name: 'predicted', points: [{ at: periodForm('day', today) }, { at: periodForm('day', today + 1) }] },
+          ],
+        },
+        record: { version: 1, dataset_checkpoint: someCheckpoint },
       },
     });
     expect(await asked(playbook, { series: 'east', horizon: 1 })).toMatchObject({
@@ -84,10 +94,7 @@ function featured(settingsOf: SettingsOf): void {
         status: 'succeeded',
         output: {
           origin: periodForm('week', week - 1),
-          period: periodForm('week', week + 3),
-          value: 1,
-          low: -1,
-          high: 3,
+          lines: [{}, { points: [{ at: periodForm('week', week + 3), value: 1, low: -1, high: 3 }] }],
         },
       },
     });

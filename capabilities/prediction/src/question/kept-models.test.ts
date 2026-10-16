@@ -14,7 +14,7 @@ describe('a question to a version whose file the model processes no longer hold'
     rmSync(join(playbook.test.directory, 'models'), { recursive: true, force: true });
 
     expect(await asked(playbook, { series: 'north', horizon: 1 })).toMatchObject({
-      output: { status: 'succeeded', output: { value: 11 } },
+      output: { status: 'succeeded', output: { lines: [{}, { points: [{ value: 11 }] }] } },
     });
   });
 });

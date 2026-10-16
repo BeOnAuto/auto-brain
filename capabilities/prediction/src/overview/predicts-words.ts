@@ -1,17 +1,18 @@
-import { listedPhrases, named, paragraph, sectionOf, type OverviewSection, type Phrases } from '@on.auto/definitions';
-import { listed, type Noun } from '@on.auto/operations';
+import {
+  listedPhrases,
+  named,
+  paragraph,
+  periodNouns,
+  sectionOf,
+  seriesPathBlocks,
+  type OverviewSection,
+  type Phrases,
+} from '@on.auto/definitions';
+import { listed } from '@on.auto/operations';
 
 import { figure } from '../capability/figures.ts';
 import type { DataPart, Predicts } from '../document/prediction-document.ts';
 import type { Grain } from '../periods/grains.ts';
-
-const periodNouns: Readonly<Record<Grain, Noun>> = {
-  day: { one: 'day', other: 'days' },
-  week: { one: 'week', other: 'weeks' },
-  month: { one: 'month', other: 'months' },
-  quarter: { one: 'quarter', other: 'quarters' },
-  year: { one: 'year', other: 'years' },
-};
 
 export function periodsOf(period: Grain, count: number): string {
   const { one, other } = periodNouns[period];
@@ -47,7 +48,7 @@ function seasonWords({ period, season }: Predicts): readonly Phrases[] {
 function questionWords(predicts: Predicts, { given }: DataPart): Phrases {
   const asked =
     predicts.accumulates === undefined
-      ? `A question names a series and how many ${periodNouns[predicts.period].other} ahead`
+      ? 'A question names a series, and one horizon when it asks for that one alone'
       : 'A question names a series';
   const planned =
     given.length === 0
@@ -63,12 +64,21 @@ function questionWords(predicts: Predicts, { given }: DataPart): Phrases {
   return [asked, ...planned, '.'];
 }
 
+function answerBlocks({ period, history, horizons, accumulates }: Predicts) {
+  return seriesPathBlocks({
+    period,
+    observed: history,
+    ahead: accumulates === undefined ? { periods: horizons } : { totalTo: accumulates },
+  });
+}
+
 export function predictedSection(predicts: Predicts, data: DataPart): OverviewSection {
   return sectionOf(
     'What it predicts',
     paragraph(...predictedWords(predicts)),
     ...seasonWords(predicts).map((words) => paragraph(...words)),
     paragraph(...questionWords(predicts, data)),
-    paragraph('It answers with a likely value, a low and a high: the 50th, 10th and 90th percentiles of its model.'),
+    ...answerBlocks(predicts),
+    paragraph('The likely value is the 50th percentile of its model, the low the 10th and the high the 90th.'),
   );
 }

@@ -1,15 +1,31 @@
 import { outputInWords } from '@on.auto/definitions';
-import { plainNumber, quoted } from '@on.auto/operations';
+import { listed } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
-const PredictionSchema = Schema.Struct({
-  series: Schema.String,
-  period: Schema.String,
-  horizon: Schema.Number,
+import { figure } from './figures.ts';
+
+const PredictedPointSchema = Schema.Struct({
+  at: Schema.String,
   value: Schema.Number,
   low: Schema.Number,
   high: Schema.Number,
-  version: Schema.Number,
+});
+
+const PredictionSchema = Schema.Struct({
+  unit: Schema.String,
+  origin: Schema.String,
+  lines: Schema.Tuple([
+    Schema.Struct({ name: Schema.Literal('observed') }),
+    Schema.Struct({
+      name: Schema.Literals(['predicted', 'total']),
+      points: Schema.NonEmptyArray(PredictedPointSchema),
+    }),
+  ]),
+});
+
+const RecordSchema = Schema.Struct({
+  version: Schema.optionalKey(Schema.Number),
+  total_to: Schema.optionalKey(Schema.String),
 });
 
 const BuildSchema = Schema.Struct({
@@ -20,12 +36,39 @@ const BuildSchema = Schema.Struct({
 
 const decodePrediction = Schema.decodeUnknownOption(PredictionSchema);
 
+const decodeRecord = Schema.decodeUnknownOption(RecordSchema);
+
 const decodeBuild = Schema.decodeUnknownOption(BuildSchema);
 
 const asAResult = outputInWords('result');
 
-function predictionWords({ series, period, horizon, value, low, high, version }: typeof PredictionSchema.Type): string {
-  return `It predicts ${plainNumber(value)} for ${quoted(series)} in ${period}, ${horizon === 1 ? 'one period' : `${horizon} periods`} ahead, between ${plainNumber(low)} and ${plainNumber(high)} eight times in ten, from version ${version} of its model.`;
+type PredictedPoint = typeof PredictedPointSchema.Type;
+
+type Recorded = typeof RecordSchema.Type;
+
+function rangeWords({ low, high }: PredictedPoint, unit: string): string {
+  return `(${figure(low)} to ${figure(high)} ${unit})`;
+}
+
+function pointWords(point: PredictedPoint, unit: string): string {
+  return `${figure(point.value)} ${unit} in ${point.at} ${rangeWords(point, unit)}`;
+}
+
+function totalWords(point: PredictedPoint, unit: string, { total_to: to }: Recorded): string {
+  return `${figure(point.value)} ${unit} by the end of ${to ?? point.at} ${rangeWords(point, unit)}`;
+}
+
+function versionWords({ version }: Recorded): string {
+  return version === undefined ? '' : `, from version ${version} of its model`;
+}
+
+function predictionWords({ unit, origin, lines }: typeof PredictionSchema.Type, record: unknown): string {
+  const [, { name, points }] = lines;
+  const recorded = Option.getOrElse(decodeRecord(record), () => ({}));
+  const said =
+    name === 'total' ? totalWords(points[0], unit, recorded) : listed(points.map((point) => pointWords(point, unit)));
+  const each = points.length === 1 ? 'its range holding' : 'each range holding';
+  return `From ${origin}, it predicts ${said}, ${each} the truth eight times in ten${versionWords(recorded)}.`;
 }
 
 function buildWords({ version, winner, candidates }: typeof BuildSchema.Type): string {
@@ -38,9 +81,9 @@ function buildWords({ version, winner, candidates }: typeof BuildSchema.Type): s
     : `The build kept no version: none of its ${scored} beat the baselines on the held-back periods.`;
 }
 
-export function describeOutput(output: Schema.Json): string {
+export function describeOutput(output: Schema.Json, record?: Schema.JsonObject): string {
   return Option.match(decodePrediction(output), {
-    onSome: predictionWords,
+    onSome: (prediction) => predictionWords(prediction, record),
     onNone: () => Option.match(decodeBuild(output), { onSome: buildWords, onNone: () => asAResult(output) }),
   });
 }

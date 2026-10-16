@@ -1,5 +1,5 @@
-import { internalTermsIn } from '@on.auto/api/testing';
 import { PublicEventSchema, mostPublicEventDataBytes, presentationOf, type RecordedEvent } from '@on.auto/operations';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { nothingKept } from '@on.auto/operations/testing';
 import { RunLogEventSchema, type RunLogEvent, type Step } from '@on.auto/workflow-engine';
 import { Result, Schema } from 'effect';

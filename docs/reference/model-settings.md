@@ -78,7 +78,7 @@ What else aliases change:
 
 - The result of a run records the model as requested, as resolved, and as the provider reported it.
 - A provider reached only through a wildcard alias is not a configured provider. With the alias above, `anthropic` stays unconfigured in the [start-up line](../self-host/models.md#check-the-start-up-line).
-- `list_models` lists each alias by its own name, unless the provider of its target is not configured. A model that an alias sends elsewhere is not listed: with `anthropic/*` sent to a gateway, the models Anthropic lists are left out, and `anthropic/*` is listed.
+- `list_models` lists each alias by its own name, marked `alias: true`, unless the provider of its target is not configured. A model that an alias sends elsewhere is not listed: with `anthropic/*` sent to a gateway, the models Anthropic lists are left out, and `anthropic/*` is listed.
 
 ## Allowed models
 
@@ -128,7 +128,7 @@ declared_models:
 
 - The keys are `bedrock`, `bedrock-anthropic`, `azure`, `vertex`, `vertex-anthropic` and the names of the gateways. `anthropic`, `openai` and `google` list their own models and cannot be keys.
 - Each model id is written as the provider receives it: 1 to 256 characters, without spaces, control characters or a `*`, and once per provider.
-- A Bedrock ARN is refused, because it names an account and a region. Give it an alias instead, which is listed by its own name.
+- A Bedrock ARN is refused, because it names an account and a region. Give it an alias instead, which is listed by its own name with `alias: true` and without `resolved_to`, so the ARN is never shown.
 - A broken rule stops the start with `model_settings_invalid`.
 
 ## Listing the models

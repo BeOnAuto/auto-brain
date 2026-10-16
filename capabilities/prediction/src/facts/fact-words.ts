@@ -75,7 +75,7 @@ const modelWords = {
   version_built: ({ version, file }: ModelFactOf<'version_built'>['data']) =>
     `Version ${version} of the model was built from candidate ${shortOf(file.sha256)}`,
   shadow_predicted: ({ version, of, origin, count, missing }: ModelFactOf<'shadow_predicted'>['data']) =>
-    `Version ${of} predicted ${figure(count)} series from ${origin} in the shadow of version ${version}, and ${figure(missing)} with no finite answer`,
+    `Version ${of} predicted ${figure(count)} series from ${origin} in the shadow of version ${version}, and ${figure(missing)} whose answer was not finite or had a low above its likely value or a high below it`,
   shadow_graded: ({ of, period, graded, answered, missing }: ModelFactOf<'shadow_graded'>['data']) =>
     `The shadow predictions of version ${of} for ${period} were graded: ${figure(graded)} graded beside the other version's, of ${figure(answered)} it answered, ${figure(missing)} without an answer or a truth`,
   shadow_passed: (data: ModelFactOf<'shadow_passed'>['data']) => `The shadow passed for ${verdictWords(data)}`,

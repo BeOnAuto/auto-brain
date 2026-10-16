@@ -8,7 +8,7 @@ import { uploadedDailyTotals } from '../testing/daily-documents.ts';
 import { uploadedWeeklyOrders } from '../testing/weekly-orders.ts';
 
 describe('a build of a function that predicts a total to the end of the week', () => {
-  it('scores the total against the run-rate, builds the version and answers the total to the end of the next week', async () => {
+  it('scores the total against the run-rate, builds the version in a run of no output shape, and answers the total to the end of the next week', async () => {
     const playbook = buildPlaybook();
     const source = uploadedDailyTotals(weekdaysAndWeekends.sha256).replace(
       '  holdout: 14',
@@ -17,13 +17,22 @@ describe('a build of a function that predicts a total to the end of the week', (
     await savedFunction(playbook, { name: 'weekly-sales', rows: weekdaysAndWeekends, source });
     const build = await builtFrom(playbook, ['totals-run-rate'], 'weekly-sales');
 
-    expect(await runOf(playbook, build)).toMatchObject({
+    const built = await runOf(playbook, build);
+
+    expect(built).toMatchObject({
       output: { status: 'succeeded', output: { version: 1, winner: candidateSha256('totals-run-rate') } },
     });
+    expect(built).not.toHaveProperty('output.output_shape');
     expect(await asked(playbook, { series: 'north' }, { name: 'weekly-sales' })).toMatchObject({
       output: {
         status: 'succeeded',
-        output: { series: 'north', origin: '2026-10-25', period: '2026-W44', horizon: 7, value: 78, version: 1 },
+        output: {
+          unit: 'sales',
+          period: 'day',
+          origin: '2026-10-25',
+          lines: [{ name: 'observed' }, { name: 'total', points: [{ at: '2026-11-01', value: 78 }] }],
+        },
+        record: { version: 1, total_to: '2026-W44' },
       },
     });
   });
@@ -48,7 +57,10 @@ describe('a build of a function whose data has features and given features', () 
     ).toMatchObject({
       output: {
         status: 'succeeded',
-        output: { origin: '2026-W40', period: '2026-W44', horizon: 4, value: 5, low: 3, high: 7 },
+        output: {
+          origin: '2026-W40',
+          lines: [{ name: 'observed' }, { name: 'predicted', points: [{ at: '2026-W44', value: 5, low: 3, high: 7 }] }],
+        },
       },
     });
   });

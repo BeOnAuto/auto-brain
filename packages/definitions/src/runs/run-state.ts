@@ -82,11 +82,17 @@ function definitionOf({ definitionType, definitionName, definitionVersion }: Run
 type RecordedFinish = RecordedRunFact<'run_succeeded' | 'run_rejected' | 'run_failed'>;
 
 function startedRun({ data, context }: RecordedRunFact<'run_started'>, earlier: RunState): RecordedRunState {
-  const { input, calls_tools, finishes_later } = data;
+  const { input, calls_tools, finishes_later, output_shape } = data;
   const { at, by, depth = 0, callDepth = 0, calledBy, trigger } = context;
   return {
     input,
-    run: { ...definitionOf(context), status: 'started', started_at: at, started_by: by },
+    run: {
+      ...definitionOf(context),
+      ...(output_shape === undefined ? {} : { output_shape }),
+      status: 'started',
+      started_at: at,
+      started_by: by,
+    },
     finishesLater: finishes_later === true,
     deferred: false,
     callsTools: calls_tools === true,
@@ -111,11 +117,19 @@ function resultOf(event: RecordedFinish): RunResult {
 }
 
 function finishedRecord(
-  { type, name, definition_version, started_at, started_by }: RunRecord,
+  { type, name, definition_version, output_shape, started_at, started_by }: RunRecord,
   result: RunResult,
   at: string,
 ): RunRecord {
-  const attempt = { type, name, definition_version, started_at, started_by, finished_at: at };
+  const attempt = {
+    type,
+    name,
+    definition_version,
+    ...(output_shape === undefined ? {} : { output_shape }),
+    started_at,
+    started_by,
+    finished_at: at,
+  };
   if (result.type === 'run_succeeded') {
     return { ...attempt, status: 'succeeded', output: result.data.output };
   }

@@ -122,6 +122,9 @@ export const conversations: KeyedProjection = {
     const fact = factOf(message);
     return fact === undefined ? undefined : conversationKeyOf(fact.place);
   },
-  advanced: { columns: ['open', 'active_at', 'reads', 'next_read_at', 'due_at'], setBy: ['delivery_succeeded'] },
+  advanced: ['open', 'active_at', 'reads', 'next_read_at', 'due_at'].map((column) => ({
+    column,
+    setBy: ['delivery_succeeded'],
+  })),
   rowAfter,
 };

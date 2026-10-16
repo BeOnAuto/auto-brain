@@ -35,9 +35,9 @@ interface Allowance {
   readonly in: readonly string[];
 }
 
-const internalTerms = 'packages/api/src/testing/vocabulary/internal-terms.ts';
+const internalTerms = 'packages/operations/src/plain-language/internal-terms.ts';
 
-const internalTermsTest = 'packages/api/src/testing/vocabulary/internal-terms.test.ts';
+const internalTermsTest = 'packages/operations/src/plain-language/internal-terms.test.ts';
 
 const reasoningReference = 'docs/engineering/reference/reasoning-format.md';
 

@@ -57,6 +57,27 @@ const predicts: readonly Refusal[] = [
     [['  unit: orders', "  unit: ' '"]],
     ['Line 8, /predicts/unit: The unit is text of 1 to 64 characters, such as orders'],
   ],
+  [
+    'a history past 500 periods',
+    [['  unit: orders', '  unit: orders\n  history: 501']],
+    [
+      'Line 9, /predicts/history: The history is a whole number of periods from 0 to 500, not 501; leave it out for twice the longest horizon',
+    ],
+  ],
+  [
+    'a history that is not whole',
+    [['  unit: orders', '  unit: orders\n  history: 2.5']],
+    [
+      'Line 9, /predicts/history: The history is a whole number of periods from 0 to 500, not 2.5; leave it out for twice the longest horizon',
+    ],
+  ],
+  [
+    'a history longer than the window',
+    [['  unit: orders', '  unit: orders\n  history: 157']],
+    [
+      'Line 9, /predicts/history: The history of 157 periods is more than the window of 156, which a question reads it from',
+    ],
+  ],
 ];
 
 const evaluation: readonly Refusal[] = [

@@ -1,9 +1,10 @@
-import { alternatives } from '@on.auto/operations';
+import { alternatives, listed, type Noun } from '@on.auto/operations';
 
 import { named, paragraph, type OverviewBlock, type Phrases } from '../overview/overview.ts';
 import { nothing, numbers, text, yesOrNo } from '../overview/schema-nouns.ts';
 import { categoriesBounds } from './categories-shape.ts';
-import type { OutputShape, OutputShapeName } from './output-shape.ts';
+import type { OutputShape } from './output-shape.ts';
+import type { SeriesGrain } from './period-forms.ts';
 import { seriesBounds } from './series-shape.ts';
 import { counted } from './shape-values.ts';
 import { tableBounds } from './table-shape.ts';
@@ -72,7 +73,7 @@ const textWords: Phrases = [
   `: Markdown of at most ${counted.format(textBounds.mostBytes)} bytes.`,
 ];
 
-const shapeWords: Readonly<Record<OutputShapeName, Phrases>> = {
+const shapeWords: Readonly<Record<OutputShape['name'], Phrases>> = {
   series: seriesWords,
   categories: categoriesWords,
   table: tableWords,
@@ -81,4 +82,49 @@ const shapeWords: Readonly<Record<OutputShapeName, Phrases>> = {
 
 export function shapeBlocks({ name }: OutputShape): readonly OverviewBlock[] {
   return [paragraph(...shapeWords[name])];
+}
+
+export const periodNouns: Readonly<Record<SeriesGrain, Noun>> = {
+  day: { one: 'day', other: 'days' },
+  week: { one: 'week', other: 'weeks' },
+  month: { one: 'month', other: 'months' },
+  quarter: { one: 'quarter', other: 'quarters' },
+  year: { one: 'year', other: 'years' },
+};
+
+type PointsAhead = { readonly periods: readonly number[] } | { readonly totalTo: SeriesGrain };
+
+interface SeriesPath {
+  readonly period: SeriesGrain;
+  readonly observed: number;
+  readonly ahead: PointsAhead;
+}
+
+function observedWords(period: SeriesGrain, observed: number): string {
+  const { one, other } = periodNouns[period];
+  if (observed === 0) {
+    return '';
+  }
+  return observed === 1
+    ? `the last observed ${one} and `
+    : `the last ${counted.format(observed)} observed ${other} and `;
+}
+
+function aheadWords(period: SeriesGrain, ahead: PointsAhead): string {
+  if ('totalTo' in ahead) {
+    return `the total from the next ${period} to the end of its ${ahead.totalTo}, with`;
+  }
+  const { periods } = ahead;
+  const { one, other } = periodNouns[period];
+  const noun = periods.length === 1 && periods[0] === 1 ? one : other;
+  const each = periods.length === 1 ? 'with' : 'each with';
+  return `${listed(periods.toSorted((left, right) => left - right).map((count) => counted.format(count)))} ${noun} ahead, ${each}`;
+}
+
+export function seriesPathBlocks({ period, observed, ahead }: SeriesPath): readonly OverviewBlock[] {
+  return [
+    paragraph(
+      `It answers ${observedWords(period, observed)}${aheadWords(period, ahead)} a likely value, a low and a high.`,
+    ),
+  ];
 }

@@ -231,9 +231,14 @@ export { durationInWords } from './overview/duration-words.ts';
 export { eventFilterPhrases, type EventFilter } from './overview/event-filter-words.ts';
 export { appendedSection, markdownOf, mostOverviewBytes, mostTableRows } from './overview/markdown-writer.ts';
 export { mostFieldDescriptionCharacters, schemaBlocks } from './overview/schema-words.ts';
-export type { OutputShape, OutputShapeName } from './shapes/output-shape.ts';
+export type { OutputShape } from './shapes/output-shape.ts';
+export { OutputShapeNameSchema, type OutputShapeName } from './shapes/shape-names.ts';
 export { outputShapeNamed, outputShapeNames, shapeMismatchOf } from './shapes/output-shapes.ts';
 export { declaredShape, type ShapeRefusal } from './shapes/shape-declarations.ts';
+export { publishedOutputOf } from './shapes/published-output.ts';
+export { seriesBounds, seriesMarksSchema, seriesShape } from './shapes/series-shape.ts';
+export { periodNouns, seriesPathBlocks } from './shapes/shape-words.ts';
+export { rangeHolds } from './shapes/shape-values.ts';
 export {
   inputSection,
   outputSection,

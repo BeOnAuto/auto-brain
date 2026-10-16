@@ -2,8 +2,9 @@ import { issuesDetail } from '@on.auto/json-schema';
 import type { Schema } from 'effect';
 
 import { categoriesShape } from './categories-shape.ts';
-import type { OutputShape, OutputShapeName } from './output-shape.ts';
+import type { OutputShape } from './output-shape.ts';
 import { seriesShape } from './series-shape.ts';
+import type { OutputShapeName } from './shape-names.ts';
 import { recordOf } from './shape-values.ts';
 import { tableShape } from './table-shape.ts';
 import { textShape } from './text-shape.ts';

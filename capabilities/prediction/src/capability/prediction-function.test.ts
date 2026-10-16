@@ -1,3 +1,4 @@
+import { shapeNamed } from '@on.auto/definitions/testing';
 import { Conflict, InvalidInput } from '@on.auto/operations';
 import { Effect, Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -21,6 +22,20 @@ const questionsRefused: readonly (readonly [string, Schema.JsonObject, string])[
   ['a horizon it does not predict', { series: 'north', horizon: 2, given: { promotion: 1 } }, '/horizon'],
   ['a given name it does not list', { series: 'north', horizon: 1, given: { promotion: 1, price: 2 } }, '/given/price'],
   ['no series', { horizon: 1, given: { promotion: 1 } }, '/series'],
+  [
+    'nine marks',
+    {
+      series: 'north',
+      given: { promotion: 1 },
+      marks: Array.from({ length: 9 }, (_, at) => ({ label: `Mark ${at}`, value: at })),
+    },
+    '/marks',
+  ],
+  [
+    'a mark without its value',
+    { series: 'north', given: { promotion: 1 }, marks: [{ label: 'Goal' }] },
+    '/marks/0/value',
+  ],
 ];
 
 function issueAt(pointer: string): unknown {
@@ -83,22 +98,28 @@ describe('a document the prediction capability refuses', () => {
 });
 
 describe('the summary of a prediction function', () => {
-  it('derives the input of a question and of a build, the output of a prediction and of a build, and keeps the data part for its dataset', () => {
-    expect(predictionRuns().prepared(weeklyOrders).summary).toMatchObject({
+  it('derives the input of a question and of a build, answers a series, and keeps the data part for its dataset', () => {
+    const { summary } = predictionRuns().prepared(weeklyOrders);
+
+    expect(summary).toMatchObject({
       description: 'Predicts the orders of each region one and four weeks ahead',
       inputSchema: {
         oneOf: [
           {
             title: 'question',
-            required: ['series', 'horizon', 'given'],
-            properties: { horizon: { type: 'integer', enum: [1, 4] }, given: { required: ['promotion'] } },
+            required: ['series', 'given'],
+            properties: {
+              horizon: { type: 'integer', enum: [1, 4] },
+              given: { required: ['promotion'] },
+              marks: { type: 'array', maxItems: 8 },
+            },
           },
           { title: 'build', required: ['build'] },
         ],
       },
-      outputSchema: { oneOf: [{ title: 'prediction' }, { title: 'build' }] },
-      details: { data_sha256: aDigest, data: { period: 'week', events: [{ type: 'order.placed' }] } },
+      details: { data_sha256: aDigest, data: { period: 'week', events: [{ type: 'order.placed' }] }, shape: 'series' },
     });
+    expect(summary.outputSchema).toBe(shapeNamed('series').schema);
   });
 
   it('keeps in its details the interaction functions it calls: the one that sends a build, then the one that approves', () => {
@@ -151,9 +172,11 @@ describe('the input of a run of a prediction function', () => {
       await Promise.all(questionsRefused.map(async ([, input]) => (await runs.refusing(weeklyOrders, input)).detail)),
     ).toEqual([
       'series, The series, text of 1 to 256 bytes in UTF-8: expected at most 256 bytes in UTF-8, not 400.',
-      'horizon, How many periods ahead of the last observed: expected one of: 1, 4.',
-      'given, The value of each given feature for the periods up to the one predicted, by its name: expected no field price.',
+      'horizon, How many periods ahead of the last observed to predict; every horizon when left out: expected one of: 1, 4.',
+      'given, The value of each given feature for the periods ahead, by its name: expected no field price.',
       'The input: expected the field series, The series, text of 1 to 256 bytes in UTF-8.',
+      'marks, Values the answer carries as its marks, for display alone: expected at most 8 items.',
+      'marks, then item 1: expected the field value.',
     ]);
   });
 

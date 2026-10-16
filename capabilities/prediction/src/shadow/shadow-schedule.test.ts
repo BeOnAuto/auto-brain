@@ -10,6 +10,7 @@ const weeksToAQuarter: Predicts = {
   horizons: [],
   accumulates: 'quarter',
   unit: 'sales',
+  history: 28,
 };
 
 function shown(predicts: Predicts, builtAt: string, closes: number) {
