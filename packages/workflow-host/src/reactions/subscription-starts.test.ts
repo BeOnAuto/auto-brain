@@ -69,7 +69,7 @@ describe('the starts of the workflows whose trigger an event matches', () => {
     await subscribedAt(database, 2, 'broken', failing);
     await delivered(followedRecordOf('text again'));
     const failed =
-      "broken: The filter of the workflow's event trigger failed on an event, so it did not match: $data.a.b: TypeError: cannot read property 'b' of undefined, at /schedule/on/any/0. An expression failed.";
+      "broken: The filter of the workflow's event trigger failed on an event, so it did not match: An expression failed, at /schedule/on/any/0: $data.a.b: TypeError: cannot read property 'b' of undefined.";
 
     expect([starts(), said()]).toEqual([[], [failed, failed]]);
   });

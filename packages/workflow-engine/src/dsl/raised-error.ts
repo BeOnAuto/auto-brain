@@ -4,6 +4,7 @@ import {
   isKindWithType,
   problemTypeOf,
   reasonOfKind,
+  refusalInWords,
   RejectionBecauseSchema,
   UnansweredKindSchema,
   type ConflictKind,
@@ -125,11 +126,8 @@ function withoutFinalPeriod(text: string): string {
 }
 
 export function describeError({ type, title, detail, instance }: DslError): string {
-  const summary = title ?? type;
-  const place = placeOf(instance);
-  return detail === undefined
-    ? `${withoutFinalPeriod(summary)}${place}.`
-    : `${withoutFinalPeriod(detail)}${place}. ${asSentence(summary)}`;
+  const opening = `${withoutFinalPeriod(title ?? type)}${placeOf(instance)}`;
+  return detail === undefined ? `${opening}.` : `${opening}: ${asSentence(detail)}`;
 }
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
@@ -288,7 +286,7 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
     status,
     title:
       result.status === 'rejected'
-        ? `${capitalized(call.label)} rejected the run with ${result.reason}`
+        ? `${capitalized(call.label)} ${refusalInWords(result.reason)}`
         : `${capitalized(call.label)} failed`,
     detail: result.detail,
     instance: call.reference,

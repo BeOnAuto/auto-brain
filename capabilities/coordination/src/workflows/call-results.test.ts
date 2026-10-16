@@ -30,20 +30,20 @@ function unreachable(): Promise<DefinitionCallResult> {
 
 describe('a rejected run', () => {
   it.each([
-    ['invalid_input', 'validation', 400],
-    ['forbidden', 'authorization', 403],
-    ['not_found', 'configuration', 404],
-    ['conflict', 'runtime', 409],
-    ['unavailable', 'communication', 503],
-    ['unheard_of', 'runtime', 500],
-  ])('with %s is a %s error of status %d the document can catch', async (reason, kind, status) => {
+    ['invalid_input', 'validation', 400, 'refused its input'],
+    ['forbidden', 'authorization', 403, 'was not allowed'],
+    ['not_found', 'configuration', 404, 'could not be found'],
+    ['conflict', 'runtime', 409, 'could not go through'],
+    ['unavailable', 'communication', 503, 'was not available'],
+    ['unheard_of', 'runtime', 500, 'did not go through'],
+  ])('with %s is a %s error of status %d the document can catch', async (reason, kind, status, refused) => {
     expect(await caughtFor(() => ({ status: 'rejected', reason, detail: 'The model is busy' }))).toEqual({
       kind: 'completed',
       output: {
         type: `${types}/${kind}`,
         status,
         instance: '/do/0/lookup/try/0/fetch',
-        title: `The reasoning function lookup rejected the run with ${reason}`,
+        title: `The reasoning function lookup ${refused}`,
         detail: 'The model is busy',
       },
     });
@@ -84,7 +84,7 @@ describe('a rejected run that names its kind and because', () => {
         type: 'https://on.auto/problems/tools_unfinished',
         status: 503,
         instance: '/do/0/lookup/try/0/fetch',
-        title: 'The reasoning function lookup rejected the run with unavailable',
+        title: 'The reasoning function lookup was not available',
         detail: rejected.detail,
         kind: 'tools_unfinished',
         because: 'server_failed',
@@ -100,7 +100,7 @@ describe('a rejected run that names its kind and because', () => {
     expect((await interpret(branching, { respond: rejectedAs('tool_server_failed') })).ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'No, at the step fetch. The reasoning function lookup rejected the run with unavailable.',
+      message: 'The reasoning function lookup was not available, at the step fetch: No.',
     });
   });
 });
@@ -131,7 +131,7 @@ describe('a run of a function that called tools and could not finish', () => {
     expect(ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'It stopped, at the step fetch. The reasoning function lookup rejected the run with unavailable.',
+      message: 'The reasoning function lookup was not available, at the step fetch: It stopped.',
     });
     expect(calls).toEqual(['run 1']);
   });
@@ -165,8 +165,7 @@ describe('a step that meets a run whose tools may have been called', () => {
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'conflict',
-      detail:
-        'It may have called tools, at the step fetch. The reasoning function lookup rejected the run with conflict.',
+      detail: 'The reasoning function lookup could not go through, at the step fetch: It may have called tools.',
       kind: 'tools_called',
     });
   });

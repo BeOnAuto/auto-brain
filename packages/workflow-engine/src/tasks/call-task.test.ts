@@ -60,16 +60,19 @@ describe('a call task', () => {
   });
 
   it.each([
-    ['invalid_input', 'validation', 400],
-    ['forbidden', 'authorization', 403],
-    ['not_found', 'configuration', 404],
-    ['conflict', 'runtime', 409],
-    ['unavailable', 'communication', 503],
-  ] as const)('raises a rejection for %s as a %s error, status %d', (reason, kind, status) => {
-    expect(answeredWith({ status: 'rejected', reason, detail: 'no' }).outcome).toEqual(
-      raisedBy(kind, status, `The function notify rejected the run with ${reason}`, 'no'),
-    );
-  });
+    ['invalid_input', 'validation', 400, 'refused its input'],
+    ['forbidden', 'authorization', 403, 'was not allowed'],
+    ['not_found', 'configuration', 404, 'could not be found'],
+    ['conflict', 'runtime', 409, 'could not go through'],
+    ['unavailable', 'communication', 503, 'was not available'],
+  ] as const)(
+    'raises a rejection for %s as a %s error, status %d, titled in plain words',
+    (reason, kind, status, refused) => {
+      expect(answeredWith({ status: 'rejected', reason, detail: 'no' }).outcome).toEqual(
+        raisedBy(kind, status, `The function notify ${refused}`, 'no'),
+      );
+    },
+  );
 
   it('raises a failure as a runtime error, status 500, and an unreachable call as a communication error, status 503', () => {
     expect(answeredWith({ status: 'failed', detail: 'it broke' }).outcome).toEqual(

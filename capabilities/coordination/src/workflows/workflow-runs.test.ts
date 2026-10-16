@@ -102,7 +102,7 @@ do:
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        '/do/0/shell/run: run tasks (shell, script, container, workflow) are not allowed. The workflow document is not allowed by this runtime.',
+        'The workflow document is not allowed by this runtime: /do/0/shell/run: run tasks (shell, script, container, workflow) are not allowed.',
     });
   });
 });

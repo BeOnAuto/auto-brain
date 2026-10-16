@@ -69,7 +69,7 @@ describe('a refused input raised again from the error a workflow caught', () => 
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'seats, how many seats to hold: expected at least 1, at the step report. https://example.com/errors/seats-refused.',
+        'https://example.com/errors/seats-refused, at the step report: seats, how many seats to hold: expected at least 1.',
       issues: refusedSeats,
     });
   });
@@ -111,7 +111,7 @@ describe('an error raised again from the one a workflow caught', () => {
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'A tool server kept failing, at the step report. https://on.auto/problems/tools_unfinished.',
+      detail: 'https://on.auto/problems/tools_unfinished, at the step report: A tool server kept failing.',
       kind: 'tools_unfinished',
       because: 'server_failed',
     });

@@ -21,7 +21,7 @@ do:
     expect((await interpret(document, { input: { total: 120 } })).settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The total 120 is over 100, at /orders. Over the limit.',
+      detail: 'Over the limit, at /orders: The total 120 is over 100.',
     });
   });
 

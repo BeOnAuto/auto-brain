@@ -15,7 +15,7 @@ describe('the words of an error', () => {
     );
 
     expect(describeError(refused)).toBe(
-      'seats, how many seats: expected at least 1, at the step work-out-seats. The computation function book rejected the run with invalid_input.',
+      'The computation function book refused its input, at the step work-out-seats: seats, how many seats: expected at least 1.',
     );
   });
 
@@ -50,7 +50,7 @@ describe('the words of an error', () => {
       }),
       describeError({ type: runtime, status: 500, title: 'It ran too long.', instance: '/' }),
       describeError({ type: runtime, status: 500, instance: '' }),
-    ]).toEqual(['No b, at /schedule/on/any/0. An expression failed.', 'It ran too long.', `${runtime}.`]);
+    ]).toEqual(['An expression failed, at /schedule/on/any/0: No b.', 'It ran too long.', `${runtime}.`]);
   });
 });
 
@@ -70,7 +70,7 @@ describe('the issues of a refused input a step met', () => {
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'seats, how many seats: expected at least 1. day: expected text in the form the schema calls date, at the step ask. The function notify rejected the run with invalid_input.',
+        'The function notify refused its input, at the step ask: seats, how many seats: expected at least 1. day: expected text in the form the schema calls date.',
       issues,
     });
     expect(settlementOf({ kind: 'raised', error: { ...refused, status: 503 } })).not.toHaveProperty('issues');

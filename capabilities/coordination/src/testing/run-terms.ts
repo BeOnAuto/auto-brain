@@ -1,4 +1,4 @@
-import type { CallerIdentity, Settlement } from '@on.auto/operations';
+import type { CallerIdentity, Issue, Settlement } from '@on.auto/operations';
 import type { Json, JsonObject } from '@on.auto/workflow-engine';
 
 export interface DefinitionCall {
@@ -20,6 +20,7 @@ export type DefinitionCallResult =
       readonly detail: string;
       readonly kind?: string;
       readonly because?: string;
+      readonly issues?: readonly Issue[];
     }
   | { readonly status: 'failed'; readonly detail: string };
 
