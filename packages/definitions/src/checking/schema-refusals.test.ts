@@ -1,9 +1,8 @@
 import { compileJsonSchema } from '@on.auto/json-schema';
-import { InvalidInput } from '@on.auto/operations';
-import { Effect, Exit, Result, type Schema } from 'effect';
+import { Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { checkedInput, refusedInput, wordedIssuesOf } from '../index.ts';
+import { refusedInput, wordedIssuesOf } from '../index.ts';
 
 function refusalOf(document: Schema.JsonObject, value: Schema.Json, what = 'input') {
   const issues = wordedIssuesOf(Result.getOrThrow(compileJsonSchema(document, { what, nesting: 64 })), value);
@@ -205,7 +204,7 @@ describe('the refusal of a value no keyword of the schema words', () => {
 });
 
 describe('the refusal of a name a schema bounds', () => {
-  it('names the name and the field that has it, then the rule the name broke', () => {
+  it('names the name and the field that has it, then the rule the name broke, or that the field takes no name', () => {
     expect([
       fieldWords({ type: 'object', propertyNames: { maxLength: 2 } }, { long: 1 }),
       fieldWords({ type: 'object', description: 'By region', propertyNames: { enum: ['eu', 'us'] } }, { asia: 1 }),
@@ -218,12 +217,29 @@ describe('the refusal of a name a schema bounds', () => {
         { totals: { asia: 1 } },
       ),
       wordsOf({ type: 'object', propertyNames: { not: {} } }, { any: 1 }),
+      fieldWords({ type: 'object', propertyNames: { not: {} } }, { any: 1 }),
+      fieldWords({ type: 'object', propertyNames: { oneOf: [{ type: 'string' }, { minLength: 1 }] } }, { a: 1 }),
     ]).toEqual([
       'the name long of field: expected at most 2 characters.',
       'the name asia of field, By region: expected one of: eu, us.',
       'the name asia of totals: expected one of: eu, us.',
-      'the name any of the input: expected never.',
+      'The input: expected no name any.',
+      'field: expected no name any.',
+      'the name a of field: expected exactly one member to match.',
     ]);
+  });
+});
+
+describe('the refusal of a value whose schema is read too deep for its words', () => {
+  it('says the words of the validator, past the references the words follow', () => {
+    const chain = {
+      ...Object.fromEntries(Array.from({ length: 11 }, (_, index) => [`a${index}`, { $ref: `#/$defs/a${index + 1}` }])),
+      a11: { type: 'string' },
+    };
+
+    expect(wordsOf({ type: 'object', $defs: chain, properties: { field: { $ref: '#/$defs/a0' } } }, { field: 5 })).toBe(
+      'field: expected a0.',
+    );
   });
 });
 
@@ -246,37 +262,5 @@ describe('the refusal of a value as a whole', () => {
 
   it('is no refusal at all for a value the schema takes', () => {
     expect(refusalOf({ type: 'object', properties: { month } }, { month: 'April 2026' })).toBeUndefined();
-  });
-});
-
-describe('the check of the input of a run', () => {
-  const seats = Result.getOrThrow(
-    compileJsonSchema(
-      { type: 'object', properties: { seats: { type: 'integer', minimum: 1 } } },
-      { what: 'input', nesting: 512 },
-    ),
-  );
-  const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], 'x');
-
-  it('takes an input its schema takes, and any input of a function without one, as it is', () => {
-    expect([
-      Effect.runSyncExit(checkedInput({ seats: 2 }, seats, 'booking function')),
-      Effect.runSyncExit(checkedInput('anything', undefined, 'booking function')),
-    ]).toEqual([Exit.succeed({ seats: 2 }), Exit.succeed('anything')]);
-  });
-
-  it('refuses an input its schema refuses in the words of its fields, and one nested past a value, naming the noun', () => {
-    expect([
-      Effect.runSyncExit(checkedInput({ seats: 0 }, seats, 'booking function')),
-      Effect.runSyncExit(checkedInput(deep, undefined, 'interaction function')),
-    ]).toEqual([
-      Exit.fail(refusedInput([{ pointer: '/seats', detail: 'seats: expected at least 1.' }])),
-      Exit.fail(
-        new InvalidInput({
-          detail: 'The input nests more than the 512 levels an interaction function takes',
-          issues: [{ pointer: '', detail: 'Expected a value nested at most 512 levels deep' }],
-        }),
-      ),
-    ]);
   });
 });

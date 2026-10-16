@@ -108,8 +108,16 @@ function breachSentence(schema: CompiledSchema, tokens: readonly string[], breac
 
 function nameSentence({ document, what }: CompiledSchema, tokens: readonly string[], { breach, detail }: FoundIssue) {
   const holding = tokens.slice(0, -1);
-  const name = `the name ${tokens.slice(-1).join('')} of ${fieldsOf(placeAt(document, holding), `the ${what}`)}`;
-  return breach?.rule === 'bound'
+  const holder = placeAt(document, holding);
+  const named = tokens.slice(-1).join('');
+  if (breach?.rule === 'unexpected') {
+    return `${subjectOf(holder, what)}: expected no name ${named}`;
+  }
+  const name = `the name ${named} of ${fieldsOf(holder, `the ${what}`)}`;
+  if (breach === undefined) {
+    return `${name}: ${asPhrase(detail)}`;
+  }
+  return breach.rule === 'bound'
     ? `${name}: expected ${trailingWords(breach.keywords, []).join(', ')}`
     : `${name}: ${kindWords(namesAt(document, holding), document, detail)}`;
 }
