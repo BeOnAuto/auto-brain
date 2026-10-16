@@ -233,10 +233,16 @@ describe('the examples of a field', () => {
       wordsOf({ type: 'string', minLength: 6, description: 'The month to report on', examples: ['April 2026', 7] }),
       wordsOf({ type: 'string', description: 'The month, such as April 2026', examples: ['April 2026'] }),
       wordsOf({ type: 'string', examples: [] }),
+      wordsOf({ type: 'string', description: 'The month as in April 2026', examples: ['April 2026', 'May'] }),
+      wordsOf({ type: 'string', description: 'A month after Mayday', examples: ['May'] }),
+      wordsOf({ type: 'string', description: 'A month', examples: [''] }),
     ]).toEqual([
       'The month to report on. Text, at least 6 characters, such as “April 2026” or 7.',
       'The month, such as April 2026. Text.',
       'Text.',
+      'The month as in April 2026. Text.',
+      'A month after Mayday. Text, such as “May”.',
+      'A month. Text, such as “”.',
     ]);
   });
 });

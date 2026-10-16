@@ -99,10 +99,31 @@ function shownInWords(example: Schema.Json): readonly string[] {
   return words === undefined ? [] : [words];
 }
 
+const givesExamples = /\bsuch as\b/iu;
+
+const wordCharacter = /[\p{L}\p{N}]/u;
+
+function isWordCharacterAt(words: string, index: number): boolean {
+  return wordCharacter.test(words.charAt(index));
+}
+
+function holdsAsAWord(words: string, word: string, from = 0): boolean {
+  const at = words.indexOf(word, from);
+  if (word === '' || at < 0) {
+    return false;
+  }
+  const bounded = !isWordCharacterAt(words, at - 1) && !isWordCharacterAt(words, at + word.length);
+  return bounded || holdsAsAWord(words, word, at + 1);
+}
+
+function saysAnExample(description: string, examples: Schema.JsonArray): boolean {
+  return givesExamples.test(description) || examples.some((example) => holdsAsAWord(description, valueText(example)));
+}
+
 export function examplesWordsOf(examples: Schema.JsonArray, description: string | undefined): readonly string[] {
-  const given = examples.some((example) => description?.includes(valueText(example)) === true);
   const shown = examples.flatMap((example) => shownInWords(example));
-  return given || shown.length === 0 ? [] : [`such as ${alternatives(shown)}`];
+  const said = description !== undefined && saysAnExample(description, examples);
+  return said || shown.length === 0 ? [] : [`such as ${alternatives(shown)}`];
 }
 
 function subFieldPhrases(name: string, property: JsonSchema, required: boolean, reading: SchemaReading): Phrases {

@@ -106,12 +106,23 @@ describe('the examples of a refused field', () => {
       fieldWords({ type: 'integer', minimum: 2, description: 'At least 5 of them', examples: [5] }, 1),
       fieldWords({ type: 'string', minLength: 2, examples: ['x'.repeat(400)] }, 'x'),
       fieldWords({ type: 'string', minLength: 2, description: 'ID of the order' }, 'x'),
+      fieldWords({ type: 'string', minLength: 9, description: 'Codes such as these', examples: ['AB-1'] }, 'x'),
+      fieldWords({ type: 'string', minLength: 9, description: 'A code after ACME-0012', examples: ['ACME-001'] }, 'x'),
+      fieldWords({ type: 'integer', minimum: 10, description: 'At most 50 of them', examples: [5] }, 1),
+      fieldWords(
+        { type: 'string', minLength: 9, description: 'A code, “ACME-001” or the like', examples: ['ACME-001'] },
+        'x',
+      ),
     ]).toEqual([
       'field, such as “ACME-001” or “ACME-002”: expected at least 3 characters.',
       'field, The code of the part, such as “ACME-001”: expected at least 3 characters.',
       'field, At least 5 of them: expected at least 2.',
       'field: expected at least 2 characters.',
       'field, ID of the order: expected at least 2 characters.',
+      'field, Codes such as these: expected at least 9 characters.',
+      'field, A code after ACME-0012, such as “ACME-001”: expected at least 9 characters.',
+      'field, At most 50 of them, such as 5: expected at least 10.',
+      'field, A code, “ACME-001” or the like: expected at least 9 characters.',
     ]);
   });
 });
