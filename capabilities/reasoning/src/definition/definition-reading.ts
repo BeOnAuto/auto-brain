@@ -1,4 +1,4 @@
-import type { DefinitionSummary } from '@on.auto/definitions';
+import { publishedOutputOf, type DefinitionSummary } from '@on.auto/definitions';
 import { issueText } from '@on.auto/definitions/document';
 import { InvalidInput } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
@@ -28,8 +28,7 @@ export function summarize({
   return {
     ...(description === undefined ? {} : { description }),
     ...(input.schema === undefined ? {} : { inputSchema: input.schema.document }),
-    ...(output.type === 'json' ? { outputSchema: output.schema.document } : {}),
-    ...(output.type === 'json' && output.shape !== undefined ? { details: { shape: output.shape.name } } : {}),
+    ...(output.type === 'json' ? publishedOutputOf({ schema: output.schema.document, shape: output.shape }) : {}),
     warnings,
   };
 }
