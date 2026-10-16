@@ -3,7 +3,7 @@ import { Effect, type Schema } from 'effect';
 import type { OperationKind, OperationScope } from '../caller/operation-scope.ts';
 import { succeeded, type Answered, type Rejected } from '../outcome/outcome.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
-import { inputDecoder, outputEncoder, plainLanguageFields, typeValidator } from './codecs.ts';
+import { inputDecoder, linkToOpenFields, outputEncoder, plainLanguageFields, typeValidator } from './codecs.ts';
 import type { Definition, InputSchemaFor, ObjectSchema, RelativePath } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { InputEncoding } from './registered-run.ts';
@@ -85,6 +85,7 @@ function defineOperation<
       ...fields,
       output: registeredOutputOf(outputSchema),
       ...plainLanguageFields(definition.plainLanguage, inputSchema, outputSchema),
+      ...linkToOpenFields(definition.linkToOpen, outputSchema),
       run: runnerOf(decodeInput, handle, encodeOutput, fields.reasons),
     },
     call: (input) => validateInput(input).pipe(Effect.flatMap(handle), Effect.tap(validateOutput)),

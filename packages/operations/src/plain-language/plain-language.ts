@@ -15,6 +15,11 @@ export interface PlainLanguage<Input, Output> {
   readonly remedies?: Remedies;
 }
 
+export interface LinkToOpen {
+  readonly message: string;
+  readonly url: string;
+}
+
 export interface RegisteredPlainLanguage {
   readonly attempt: (input: unknown) => string;
   readonly outcome: (output: unknown, input: unknown) => string;

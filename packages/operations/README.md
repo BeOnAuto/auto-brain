@@ -47,7 +47,7 @@ export const getLabel = defineQuery('org', {
 
 The compiler holds a definition to these rules:
 
-- A query's route uses `GET`, or `POST` for an input a query string cannot carry, such as an object, which a transport then takes from the body; a command's uses `POST` or `PUT`. The method decides nothing else: a query by `POST` is a query, permitted by the read permission of its scope and marked read-only over MCP. Only a command may answer `201` instead of `200`.
+- A query's route uses `GET`, or `POST` for an input a query string cannot carry, such as an object, which a transport then takes from the body; a command's uses `POST`, `PUT` or `DELETE`. A `GET` and a `DELETE` take no body, so a transport takes their input from the path and the query string, as `takesNoBody(route)` says. The method decides nothing else: a query by `POST` is a query, permitted by the read permission of its scope and marked read-only over MCP. Only a command may answer `201` instead of `200`.
 - The route path is relative to the scope's prefix. Each `{parameter}` must be a string field of the input.
 - The input may not have an `org` field, nor a `playbook` field at playbook scope.
 - The handler may fail only with the rejections it declares in `reasons`: `NotFound`, `Conflict`, `Unavailable`, `InvalidInput`, `RunCancelled`, the rejection of a run that was cancelled, with the kind `requested`, `deadline`, `overrun` or `parent_ended`, answered with HTTP 409 and no `Retry-After`, `RunUnanswered`, the rejection of a run whose request nobody answered, with the kind `expired` or `undelivered`, answered with HTTP 410 and no `Retry-After`, or `Forbidden`, for an operation that authorizes its caller itself (below).
@@ -67,6 +67,8 @@ When an operation is defined, it checks again what the compiler cannot see, on t
 - a field the handler calls `playbook` also travels as `playbook`.
 
 At run time, when a handler fails with a reason it did not declare, the call fails; it is not rejected.
+
+A definition may give `linkToOpen`, a function of its output that answers `{ message, url }`: a page the person is to open, such as Studio's page that approves a connection, and a sentence of what to do there. The registration carries it as a function of the output as JSON, and an MCP tool asks a client that opens links to open it (`@on.auto/api`); the output holds the address either way.
 
 A definition sets `reachesOutside: true` when its handler calls a system outside the server, such as a model provider, and `mayChangeOutside: true` when that call may change something there, such as a tool that writes; the registration carries both, `false` when left out, and a transport can tell its callers, as the MCP tools do with `openWorldHint` and `destructiveHint`.
 

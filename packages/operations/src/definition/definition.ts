@@ -4,7 +4,7 @@ import type { OperationKind, OperationScope } from '../caller/operation-scope.ts
 import type { Permission } from '../caller/permission.ts';
 import type { StreamedBytes, StreamedContent } from '../content/streamed-content.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
-import type { PlainLanguage } from '../plain-language/plain-language.ts';
+import type { LinkToOpen, PlainLanguage } from '../plain-language/plain-language.ts';
 import type { PathParameters, Route } from './route.ts';
 
 interface ObjectValue {
@@ -56,6 +56,7 @@ export interface Definition<
   readonly reasons: readonly R[];
   readonly handle: (input: In['Type']) => Effect.Effect<Out['Type'], NoInfer<Rejection<R>>, Services>;
   readonly plainLanguage?: PlainLanguage<NoInfer<In['Type']>, NoInfer<Out['Type']>>;
+  readonly linkToOpen?: (output: NoInfer<Out['Type']>) => LinkToOpen;
 }
 
 export type StreamedBodyKind = 'octet-stream' | 'csv';
