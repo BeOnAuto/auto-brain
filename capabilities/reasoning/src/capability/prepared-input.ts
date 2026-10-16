@@ -1,5 +1,6 @@
+import { refusedInput, wordedIssuesOf } from '@on.auto/definitions';
 import { InvalidInput } from '@on.auto/operations';
-import { Effect, Predicate, Result, type Schema } from 'effect';
+import { Effect, Predicate, type Schema } from 'effect';
 
 import type { InputContract } from '../definition/reasoning-function-definition.ts';
 
@@ -20,13 +21,6 @@ export function preparedInput(
     return Effect.fail(notAnObject);
   }
   const merged: Schema.JsonObject = Object.fromEntries([...Object.entries(defaults), ...Object.entries(input)]);
-  return schema === undefined
-    ? Effect.succeed(merged)
-    : Result.match(schema.validate(merged), {
-        onSuccess: () => Effect.succeed(merged),
-        onFailure: (issues) =>
-          Effect.fail(
-            new InvalidInput({ detail: 'The input does not match the reasoning function’s input schema', issues }),
-          ),
-      });
+  const issues = schema === undefined ? [] : wordedIssuesOf(schema, merged);
+  return issues.length === 0 ? Effect.succeed(merged) : Effect.fail(refusedInput(issues));
 }

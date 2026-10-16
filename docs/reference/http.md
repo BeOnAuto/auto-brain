@@ -1091,6 +1091,26 @@ An error is an RFC 9457 problem document, with `Content-Type: application/proble
 - An `unavailable` or `conflict` rejection that has a `because` carries it.
 - A `conflict` may have the kind `oversized`, for a workflow whose output is larger than a run can record.
 
+A refusal of a function's input says each issue in its `detail`, one sentence each, in the words of the input schema. A sentence names the field, then its `description` and `examples`, then the rule it broke. Each entry of `errors` holds one sentence and the field's pointer, so a reader can show it at its field:
+
+```json
+{
+  "type": "https://on.auto/problems/invalid_input",
+  "title": "Invalid input",
+  "status": 422,
+  "detail": "month, The month to report on, such as \"April 2026\" or \"2026-04\": expected at least 6 characters.",
+  "reason": "invalid_input",
+  "errors": [
+    {
+      "detail": "month, The month to report on, such as \"April 2026\" or \"2026-04\": expected at least 6 characters.",
+      "pointer": "/input/month"
+    }
+  ]
+}
+```
+
+A nested field is named by its path, such as `address, then city`, and an item of a list by its place, such as `lines, then item 2`. A missing field is named at the field that holds it, such as `The input: expected the field month`. A workflow whose step refused its input is rejected with that step's `errors`, at the pointers the step saw.
+
 | Status | Common reason                              |
 | ------ | ------------------------------------------ |
 | 400    | `bad_request`                              |

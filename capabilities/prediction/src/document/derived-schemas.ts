@@ -1,9 +1,14 @@
+import { Buffer } from 'node:buffer';
+
 import { seriesMarksSchema } from '@on.auto/definitions';
-import { compileJsonSchema, type CompiledSchema } from '@on.auto/json-schema';
+import { compileJsonSchema, type CompiledSchema, type FurtherCheck } from '@on.auto/json-schema';
 import { Result, type Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
+import { isMapping } from './checked-parts.ts';
 import type { DataPart, DerivedSchemas, Predicts } from './prediction-document.ts';
+
+const { mostSeriesBytes } = predictionBounds;
 
 function givenSchema(given: readonly string[], { accumulates }: Predicts): Schema.JsonObject {
   const periods = accumulates === undefined ? 'the periods ahead' : 'the periods summed';
@@ -45,8 +50,8 @@ function questionSchema(predicts: Predicts, { given }: Pick<DataPart, 'given'>):
       series: {
         type: 'string',
         minLength: 1,
-        maxLength: predictionBounds.mostSeriesBytes,
-        description: `The series, text of 1 to ${predictionBounds.mostSeriesBytes} bytes in UTF-8`,
+        maxLength: mostSeriesBytes,
+        description: `The series, text of 1 to ${mostSeriesBytes} bytes in UTF-8`,
       },
       ...horizonOf(predicts),
       ...(given.length === 0 ? {} : { given: givenSchema(given, predicts) }),
@@ -64,17 +69,27 @@ const buildInputSchema: Schema.JsonObject = {
   properties: { build: { type: 'object', additionalProperties: false, properties: {} } },
 };
 
-function compiled(document: Schema.JsonObject, what: string): CompiledSchema {
-  return Result.getOrThrow(compileJsonSchema(document, { what, nesting: 16 }));
+const seriesBytes: FurtherCheck = (input) => {
+  const series = isMapping(input) ? input['series'] : undefined;
+  const bytes = typeof series === 'string' ? Buffer.byteLength(series, 'utf8') : 0;
+  return bytes > mostSeriesBytes
+    ? [{ pointer: '/series', detail: `Expected at most ${mostSeriesBytes} bytes in UTF-8, not ${bytes}` }]
+    : [];
+};
+
+function compiled(document: Schema.JsonObject, further?: FurtherCheck): CompiledSchema {
+  return Result.getOrThrow(
+    compileJsonSchema(document, { what: 'input', nesting: 16, ...(further === undefined ? {} : { further }) }),
+  );
 }
 
-const buildInput = compiled(buildInputSchema, 'input');
+const buildInput = compiled(buildInputSchema);
 
 export function derivedSchemasOf(predicts: Predicts, data: Pick<DataPart, 'given'>): DerivedSchemas {
   const question = questionSchema(predicts, data);
   return {
     input: { oneOf: [question, buildInputSchema] },
-    question: compiled(question, 'input'),
+    question: compiled(question, seriesBytes),
     build: buildInput,
   };
 }

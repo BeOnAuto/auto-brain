@@ -42,6 +42,14 @@ function flakyTwice(_definition: DefinitionArguments, run: number): CallResult {
     : { status: 'succeeded', output: { calls: run } };
 }
 
+const fewerThanOneSeat = 'seats, How many seats to hold: expected at least 1.';
+
+const refusedSeats = [{ pointer: '/input/seats', detail: fewerThanOneSeat }];
+
+function refusingSeats(): CallResult {
+  return { status: 'rejected', reason: 'invalid_input', detail: fewerThanOneSeat, issues: refusedSeats };
+}
+
 function delivering(...events: readonly { readonly id: string; readonly type: string; readonly data: string }[]) {
   return (driver: MemoryDriver, runId: string): void => {
     for (const event of events) {
@@ -225,6 +233,30 @@ do:
   - last: { set: { step: '\${ $data.step + ", then last" }' } }
 `,
     ends: { kind: 'completed', output: { step: 'first, then last' } },
+  },
+  {
+    name: 'refused-input',
+    source: `
+do:
+  - race:
+      fork:
+        compete: true
+        branches:
+          - first: { call: run_definition, with: { type: computation, name: hold-seats, input: { seats: 0 } } }
+          - later: { do: [{ pause: { wait: { milliseconds: 200 } } }, { again: { call: run_definition, with: { type: computation, name: hold-seats } } }] }
+`,
+    ends: {
+      kind: 'raised',
+      error: {
+        type: 'https://open-workflow-specification.org/spec/1.0.0/errors/validation',
+        status: 400,
+        instance: '/do/0/race/fork/branches/0/first',
+        title: 'The computation function hold-seats refused its input',
+        detail: fewerThanOneSeat,
+        issues: refusedSeats,
+      },
+    },
+    answer: refusingSeats,
   },
 ];
 

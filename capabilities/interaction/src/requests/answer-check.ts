@@ -1,33 +1,31 @@
 import { Buffer } from 'node:buffer';
 
+import { wordedIssuesOf } from '@on.auto/definitions';
 import { compileJsonSchema } from '@on.auto/json-schema';
-import type { Issue } from '@on.auto/operations';
+import { asSentence, type Issue } from '@on.auto/operations';
 import { Result, type Schema } from 'effect';
 
 import { interactionBounds } from '../run/run-bounds.ts';
 
-export function matchedAnswer(
-  answer: Schema.Json,
-  schema: Schema.JsonObject,
-): Result.Result<Schema.Json, readonly Issue[]> {
-  const compiled = compileJsonSchema(schema, { what: 'answer', nesting: interactionBounds.answerDepth });
-  return Result.isFailure(compiled)
-    ? Result.fail([{ pointer: '', detail: 'The answer schema of the request cannot be read' }])
-    : compiled.success.validate(answer);
+function refusalOf(detail: string): readonly Issue[] {
+  return [{ pointer: '', detail: asSentence(detail) }];
 }
 
-export function checkedAnswer(
-  answer: Schema.Json,
-  schema: Schema.JsonObject,
-): Result.Result<Schema.Json, readonly Issue[]> {
+const unreadableSchema = refusalOf('The answer schema of the request cannot be read');
+
+function issuesOfAnswer(answer: Schema.Json, schema: Schema.JsonObject): readonly Issue[] {
   const bytes = Buffer.byteLength(JSON.stringify(answer), 'utf8');
   if (bytes > interactionBounds.answerBytes) {
-    return Result.fail([
-      {
-        pointer: '',
-        detail: `The answer takes ${bytes} bytes as JSON, more than the ${interactionBounds.answerBytes} an answer may`,
-      },
-    ]);
+    return refusalOf(
+      `The answer takes ${bytes} bytes as JSON, more than the ${interactionBounds.answerBytes} an answer may`,
+    );
   }
-  return matchedAnswer(answer, schema);
+  return Result.match(compileJsonSchema(schema, { what: 'answer', nesting: interactionBounds.answerDepth }), {
+    onFailure: () => unreadableSchema,
+    onSuccess: (compiled) => wordedIssuesOf(compiled, answer),
+  });
+}
+
+export function answerIssuesOf(answer: Schema.Json, schema: Schema.JsonObject): readonly Issue[] {
+  return issuesOfAnswer(answer, schema).map(({ pointer, detail }) => ({ pointer: `/answer${pointer}`, detail }));
 }

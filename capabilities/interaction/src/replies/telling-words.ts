@@ -30,9 +30,7 @@ export function howToAnswer(rule: ReplyRule): string {
   return `To answer, ${first}${following}${whole}.`;
 }
 
-function issueWords({ pointer, detail }: Issue): string {
-  return pointer === '' ? detail : `${pointer.replace(/^\/answer/u, '')}: ${detail}`;
-}
+const mostSentencesTold = 5;
 
 export function tellingWords(rule: ReplyRule, because: ReplyRefusal, issues: readonly Issue[]): string {
   if (because === 'too_long') {
@@ -44,8 +42,8 @@ export function tellingWords(rule: ReplyRule, because: ReplyRefusal, issues: rea
   const answer = howToAnswer(rule);
   return because === 'invalid'
     ? `That reply is not an answer this request takes: ${issues
-        .slice(0, 5)
-        .map((issue) => issueWords(issue))
-        .join('; ')}. ${answer}`
+        .slice(0, mostSentencesTold)
+        .map(({ detail }) => detail)
+        .join(' ')} ${answer}`
     : answer;
 }

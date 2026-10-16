@@ -22,7 +22,7 @@ do:
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'The task did not finish within 30000 ms (at /do/0/slow)',
+      detail: 'The task did not finish within 30000 ms, at the step slow.',
     });
     expect(commands).toContainEqual({ kind: 'cancelled', summary: '/do/0/slow' });
   });
@@ -69,7 +69,7 @@ do:
 `);
 
     expect((await interpret(document)).settlement).toMatchObject({
-      detail: 'The task did not finish within 2000 ms (at /do/0/slow)',
+      detail: 'The task did not finish within 2000 ms, at the step slow.',
     });
   });
 
@@ -80,7 +80,7 @@ do:
 `);
 
     expect((await interpret(document, { input: { limit: 'PT3S' } })).settlement).toMatchObject({
-      detail: 'The task did not finish within 3000 ms (at /do/0/slow)',
+      detail: 'The task did not finish within 3000 ms, at the step slow.',
     });
   });
 
@@ -89,10 +89,10 @@ do:
     const missing = workflow('do:\n  - slow: { wait: PT1M, timeout: nowhere }');
 
     expect((await interpret(computed, { input: { limit: 'soon' } })).settlement).toMatchObject({
-      detail: 'A duration of the task is not valid: soon is not an ISO 8601 duration (at /do/0/slow)',
+      detail: 'A duration of the task is not valid: soon is not an ISO 8601 duration, at the step slow.',
     });
     expect((await interpret(missing)).settlement).toMatchObject({
-      detail: 'use.timeouts has no timeout nowhere (at /do/0/slow)',
+      detail: 'use.timeouts has no timeout nowhere, at the step slow.',
     });
   });
 });
@@ -109,13 +109,13 @@ do:
     expect((await interpret(document)).settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'The task did not finish within 10000 ms (at /)',
+      detail: 'The task did not finish within 10000 ms.',
     });
   });
 
   it('raises a configuration error when it has no duration', async () => {
     expect((await interpret(workflow('timeout: {}\ndo: []'))).settlement).toMatchObject({
-      detail: 'A duration of the task is not valid: A duration is an ISO 8601 string or an object of units (at /)',
+      detail: 'A duration of the task is not valid: A duration is an ISO 8601 string or an object of units.',
     });
   });
 });

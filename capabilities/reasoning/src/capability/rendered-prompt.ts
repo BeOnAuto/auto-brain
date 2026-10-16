@@ -24,7 +24,7 @@ function rejection(detail: string, issue: string, pointer = ''): InvalidInput {
 function rejectionOf(failure: RenderFailure): InvalidInput {
   if (failure.reason === 'missing_variable') {
     return rejection(
-      'The template reads a field the input does not have',
+      `The template reads ${failure.variable} on line ${failure.line}, which the input does not have`,
       `Line ${failure.line}: the template reads ${failure.variable}, which this input does not have`,
       pointerOf(failure.variable),
     );

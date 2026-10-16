@@ -30,13 +30,13 @@ describe('the rejection of an uncaught error of a kind with a type of its own', 
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the run with conflict: Called before (at /do/0/ask)',
+        detail: 'The function notify could not go through, at the step ask: Called before.',
         kind: 'tools_called',
       },
       {
         status: 'rejected',
         reason: 'unavailable',
-        detail: 'The function notify rejected the run with unavailable: Stopped (at /do/0/ask)',
+        detail: 'The function notify was not available, at the step ask: Stopped.',
         kind: 'tools_unfinished',
         because: 'run_bound',
       },
@@ -62,14 +62,14 @@ describe('the rejection of an uncaught error whose effect is unknown', () => {
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        detail: 'The function notify could not go through, at the step ask: Called.',
         kind: 'effect_unknown',
         because: 'tool_error',
       },
       {
         status: 'rejected',
         reason: 'conflict',
-        detail: 'The function notify rejected the run with conflict: Called (at /do/0/ask)',
+        detail: 'The function notify could not go through, at the step ask: Called.',
         kind: 'effect_unknown',
       },
     ]);
@@ -83,7 +83,7 @@ describe('the error of a call that did not succeed', () => {
     expect(callErrorOf({ status: 'rejected', reason: 'teapot', detail: 'short and stout' }, site)).toEqual({
       type: errorType('runtime'),
       status: 500,
-      title: 'The function notify rejected the run with teapot',
+      title: 'The function notify did not go through',
       detail: 'short and stout',
       instance: '/do/0/ask',
     });
@@ -101,7 +101,7 @@ describe('the error of a call that did not succeed', () => {
     expect(errorAsJson(callErrorOf(rejected, site))).toEqual({
       type: 'https://on.auto/problems/tools_unfinished',
       status: 503,
-      title: 'The function notify rejected the run with unavailable',
+      title: 'The function notify was not available',
       detail: 'A tool server kept failing',
       instance: '/do/0/ask',
       kind: 'tools_unfinished',
@@ -129,7 +129,7 @@ describe('the type of the error of a call rejected with a kind', () => {
       {
         type: 'https://on.auto/problems/tools_called',
         status: 409,
-        title: 'The function notify rejected the run with conflict',
+        title: 'The function notify could not go through',
         detail: 'No',
         instance: '/do/0/ask',
         kind: 'tools_called',
@@ -147,7 +147,7 @@ describe('the error of a call whose run was cancelled', () => {
     ).toEqual({
       type: 'https://on.auto/problems/cancelled',
       status: 409,
-      title: 'The function notify rejected the run with cancelled',
+      title: 'The function notify was cancelled',
       detail: 'Out of time',
       instance: '/do/0/ask',
       kind: 'deadline',
@@ -160,12 +160,12 @@ describe('the error of a call whose run was cancelled', () => {
     expect(settlementOf({ kind: 'raised', error })).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The function notify rejected the run with cancelled: Out (at /do/0/ask)',
+      detail: 'The function notify was cancelled, at the step ask: Out.',
     });
     expect(settlementOf({ kind: 'raised', error: { ...error, kind: 'overrun' } })).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The function notify rejected the run with cancelled: Out (at /do/0/ask)',
+      detail: 'The function notify was cancelled, at the step ask: Out.',
     });
   });
 });
@@ -181,7 +181,7 @@ describe('the error of a call whose request went unanswered', () => {
     expect(expired).toEqual({
       type: 'https://on.auto/problems/unanswered',
       status: 410,
-      title: 'The function approve rejected the run with unanswered',
+      title: 'The function approve went unanswered',
       detail: 'Nobody answered',
       instance: '/do/0/ask',
       kind: 'expired',
@@ -198,18 +198,18 @@ describe('the error of a call whose request went unanswered', () => {
         status: 'rejected',
         reason: 'unanswered',
         kind: 'expired',
-        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'The function approve went unanswered, at the step ask: Nobody answered.',
       },
       {
         status: 'rejected',
         reason: 'unanswered',
         kind: 'undelivered',
-        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'The function approve went unanswered, at the step ask: Nobody answered.',
       },
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'The function approve rejected the run with unanswered: Nobody answered (at /do/0/ask)',
+        detail: 'The function approve went unanswered, at the step ask: Nobody answered.',
       },
     ]);
   });
@@ -232,12 +232,12 @@ describe('the settlement of a workflow that ended otherwise', () => {
         error: { type: errorType('runtime'), status: 409, instance: '/', kind: 'stalled' },
       }),
     ]).toEqual([
-      { status: 'rejected', reason: 'unavailable', detail: 'No (at /)' },
-      { status: 'rejected', reason: 'unavailable', detail: 'No (at /)' },
+      { status: 'rejected', reason: 'unavailable', detail: 'No.' },
+      { status: 'rejected', reason: 'unavailable', detail: 'No.' },
       {
         status: 'rejected',
         reason: 'invalid_input',
-        detail: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime (at /)',
+        detail: 'https://open-workflow-specification.org/spec/1.0.0/errors/runtime.',
       },
     ]);
   });
@@ -268,7 +268,7 @@ describe('the settlement of a workflow whose output or run broke', () => {
     expect(settlementOf({ kind: 'raised', error: rebuilding })).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'The function notify rejected the run with unavailable: Still building (at /do/0/ask)',
+      detail: 'The function notify was not available, at the step ask: Still building.',
       kind: 'rebuilding',
     });
   });

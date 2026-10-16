@@ -1,3 +1,4 @@
+import { IssueSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 export const DslErrorSchema = Schema.Struct({
@@ -8,6 +9,7 @@ export const DslErrorSchema = Schema.Struct({
   detail: Schema.optionalKey(Schema.String),
   kind: Schema.optionalKey(Schema.String),
   because: Schema.optionalKey(Schema.String),
+  issues: Schema.optionalKey(Schema.Array(IssueSchema)),
 });
 
 export type DslError = typeof DslErrorSchema.Type;

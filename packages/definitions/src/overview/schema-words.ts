@@ -1,6 +1,7 @@
-import { asSentence } from '@on.auto/operations';
+import { alternatives, asSentence } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
+import { inWords } from '../plain-language/in-words.ts';
 import { named, paragraph, type OverviewBlock, type Phrase, type Phrases } from './overview.ts';
 import { amountOf, countedIn, entry, entryBound, item, itemBound, trailingWords, type Bound } from './schema-bounds.ts';
 import {
@@ -82,7 +83,7 @@ function alternativeWords(schema: JsonSchema, reading: SchemaReading, count: Cou
   return joined([first, ...rest], ' or ');
 }
 
-function descriptionOf(schema: JsonSchema): string | undefined {
+export function descriptionOf(schema: JsonSchema): string | undefined {
   const description = textOf(schema, 'description')?.trim();
   if (description === undefined || description === '') {
     return undefined;
@@ -91,6 +92,38 @@ function descriptionOf(schema: JsonSchema): string | undefined {
   return characters.length <= mostFieldDescriptionCharacters
     ? description
     : `${characters.slice(0, mostFieldDescriptionCharacters).join('')}…`;
+}
+
+function shownInWords(example: Schema.Json): readonly string[] {
+  const words = inWords(example);
+  return words === undefined ? [] : [words];
+}
+
+const givesExamples = /\bsuch as\b/iu;
+
+const wordCharacter = /[\p{L}\p{N}]/u;
+
+function isWordCharacterAt(words: string, index: number): boolean {
+  return wordCharacter.test(words.charAt(index));
+}
+
+function holdsAsAWord(words: string, word: string, from = 0): boolean {
+  const at = words.indexOf(word, from);
+  if (word === '' || at < 0) {
+    return false;
+  }
+  const bounded = !isWordCharacterAt(words, at - 1) && !isWordCharacterAt(words, at + word.length);
+  return bounded || holdsAsAWord(words, word, at + 1);
+}
+
+function saysAnExample(description: string, examples: Schema.JsonArray): boolean {
+  return givesExamples.test(description) || examples.some((example) => holdsAsAWord(description, valueText(example)));
+}
+
+export function examplesWordsOf(examples: Schema.JsonArray, description: string | undefined): readonly string[] {
+  const shown = examples.flatMap((example) => shownInWords(example));
+  const said = description !== undefined && saysAnExample(description, examples);
+  return said || shown.length === 0 ? [] : [`such as ${alternatives(shown)}`];
 }
 
 function subFieldPhrases(name: string, property: JsonSchema, required: boolean, reading: SchemaReading): Phrases {
@@ -150,6 +183,13 @@ function listWords(schema: JsonSchema, reading: SchemaReading, count: Count): Wo
   return [`${list[count]} of ${bounded}${first}`, ...rest];
 }
 
+function textWords(format: string | undefined, count: Count): string {
+  if (format === 'date-time') {
+    return dateAndTime[count];
+  }
+  return format === undefined ? text[count] : `${text[count]} in the form the schema calls ${format}`;
+}
+
 function kindWords(kind: string, schema: JsonSchema, reading: SchemaReading, count: Count): Words {
   switch (kind) {
     case 'array': {
@@ -159,7 +199,7 @@ function kindWords(kind: string, schema: JsonSchema, reading: SchemaReading, cou
       return recordWords(schema, reading, count);
     }
     case 'string': {
-      return [(textOf(schema, 'format') === 'date-time' ? dateAndTime : text)[count]];
+      return [textWords(textOf(schema, 'format'), count)];
     }
     default: {
       return [(nouns[kind] ?? anyValue)[count]];
@@ -219,12 +259,18 @@ function capitalized([first, ...rest]: Words): Words {
 }
 
 function fieldWords(property: JsonSchema, reading: SchemaReading): Phrases {
-  const description = descriptionOf(resolvedSchema(property, reading).schema);
+  const read = resolvedSchema(property, reading).schema;
+  const description = descriptionOf(read);
   return [
     ...(description === undefined ? [] : [`${asSentence(description)} `]),
     ...capitalized(wordsOf(property, reading, 'one')),
+    ...examplesWordsOf(listOf(read, 'examples'), description).map((words) => `, ${words}`),
     '.',
   ];
+}
+
+export function expectedWordsOf(schema: JsonSchema, root: JsonSchema): Phrases {
+  return wordsOf(schema, { root, depth: 0, expanded: false }, 'one');
 }
 
 export function schemaBlocks(schema: JsonSchema | undefined, unknown: string): readonly OverviewBlock[] {

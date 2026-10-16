@@ -1,10 +1,14 @@
 import {
+  asSentence,
+  IssueSchema,
   isKindWithType,
   problemTypeOf,
   reasonOfKind,
+  refusalInWords,
   RejectionBecauseSchema,
   UnansweredKindSchema,
   type ConflictKind,
+  type Issue,
   type KindWithType,
   type Settlement,
 } from '@on.auto/operations';
@@ -14,6 +18,7 @@ import type { DslError } from '../machine/dsl-error.ts';
 import { mostOutputBytes } from '../machine/limits.ts';
 import type { CancelOrder } from '../machine/run-input.ts';
 import { field, jsonBytesOf, textField, type Json, type JsonObject } from './json.ts';
+import { stepNamedAt } from './tasks.ts';
 
 export type ErrorKind =
   | 'configuration'
@@ -64,7 +69,7 @@ export function raised(kind: ErrorKind, status: number, title: string, instance:
   return new RaisedError({ type: errorType(kind), status, title, instance });
 }
 
-export function errorAsJson({ type, status, instance, title, detail, kind, because }: DslError): JsonObject {
+export function errorAsJson({ type, status, instance, title, detail, kind, because, issues }: DslError): JsonObject {
   return {
     type,
     status,
@@ -73,7 +78,15 @@ export function errorAsJson({ type, status, instance, title, detail, kind, becau
     ...(detail === undefined ? {} : { detail }),
     ...(kind === undefined ? {} : { kind }),
     ...(because === undefined ? {} : { because }),
+    ...(issues === undefined ? {} : { issues }),
   };
+}
+
+const isIssueList = Schema.is(Schema.Array(IssueSchema));
+
+function issuesIn(definition: JsonObject): Pick<DslError, 'issues'> {
+  const issues = field(definition, 'issues');
+  return isIssueList(issues) ? { issues } : {};
 }
 
 export function errorFromJson(definition: JsonObject, instance: string): DslError | undefined {
@@ -94,11 +107,27 @@ export function errorFromJson(definition: JsonObject, instance: string): DslErro
     ...(detail === undefined ? {} : { detail }),
     ...(kind === undefined ? {} : { kind }),
     ...(because === undefined ? {} : { because }),
+    ...issuesIn(definition),
   };
 }
 
+const theWholeWorkflow: ReadonlySet<string> = new Set(['', '/']);
+
+function placeOf(instance: string): string {
+  const step = stepNamedAt(instance);
+  if (step !== undefined) {
+    return `, at the step ${step}`;
+  }
+  return theWholeWorkflow.has(instance) ? '' : `, at ${instance}`;
+}
+
+function withoutFinalPeriod(text: string): string {
+  return text.replace(/\.$/u, '');
+}
+
 export function describeError({ type, title, detail, instance }: DslError): string {
-  return `${title ?? type}${detail === undefined ? '' : `: ${detail}`} (at ${instance})`;
+  const opening = `${withoutFinalPeriod(title ?? type)}${placeOf(instance)}`;
+  return detail === undefined ? `${opening}.` : `${opening}: ${asSentence(detail)}`;
 }
 
 const retryableStatuses: ReadonlySet<number> = new Set([408, 429]);
@@ -150,7 +179,10 @@ function settledRejectionOf(error: DslError): Settlement {
   if (isKindWithType(kind) && type === problemTypeOf(kind)) {
     return ownTypeRejectionOf(kind, detail, because);
   }
-  return { status: 'rejected', reason: reasonOfStatus(error.status), detail };
+  const reason = reasonOfStatus(error.status);
+  return reason === 'invalid_input' && error.issues !== undefined
+    ? { status: 'rejected', reason, detail, issues: error.issues }
+    : { status: 'rejected', reason, detail };
 }
 
 export type OutputOutcome =
@@ -191,6 +223,7 @@ interface RejectedCall {
   readonly detail: string;
   readonly kind?: string;
   readonly because?: string;
+  readonly issues?: readonly Issue[];
 }
 
 export type FailedCall =
@@ -202,6 +235,7 @@ export interface CallSite {
   readonly function: string;
   readonly label: string;
   readonly reference: string;
+  readonly refused?: string;
 }
 
 type Classification = readonly [ErrorKind, number];
@@ -216,8 +250,12 @@ const rejections: Readonly<Record<string, Classification>> = {
   unanswered: ['runtime', 410],
 };
 
-function kindAndBecauseOf({ kind, because }: RejectedCall): Pick<DslError, 'kind' | 'because'> {
-  return { ...(kind === undefined ? {} : { kind }), ...(because === undefined ? {} : { because }) };
+function namedBy({ kind, because, issues }: RejectedCall): Pick<DslError, 'kind' | 'because' | 'issues'> {
+  return {
+    ...(kind === undefined ? {} : { kind }),
+    ...(because === undefined ? {} : { because }),
+    ...(issues === undefined ? {} : { issues }),
+  };
 }
 
 function typeOfRejection(result: FailedCall, kind: string | undefined): string | undefined {
@@ -249,10 +287,10 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
     status,
     title:
       result.status === 'rejected'
-        ? `${capitalized(call.label)} rejected the run with ${result.reason}`
+        ? `${capitalized(call.label)} ${call.refused ?? refusalInWords(result.reason)}`
         : `${capitalized(call.label)} failed`,
     detail: result.detail,
     instance: call.reference,
-    ...(result.status === 'rejected' ? kindAndBecauseOf(result) : {}),
+    ...(result.status === 'rejected' ? namedBy(result) : {}),
   };
 }

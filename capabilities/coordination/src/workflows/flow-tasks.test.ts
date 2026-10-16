@@ -80,7 +80,7 @@ do:
     expect((await interpret(document)).ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'then: nowhere names no task in the same list (at /do/0/lost)',
+      message: 'then: nowhere names no task in the same list, at the step lost.',
     });
   });
 });

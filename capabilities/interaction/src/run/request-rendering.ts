@@ -41,7 +41,7 @@ export function unrenderableFor(
 ): InvalidInput {
   if (failure.reason === 'missing_variable') {
     return invalidWith(
-      'The definition reads a field the input does not have',
+      `The definition reads ${failure.variable} on line ${failure.line}, which the input does not have`,
       `Line ${failure.line}: it reads ${failure.variable}, which this input does not have`,
       inputPointerOf(failure.variable),
     );

@@ -86,12 +86,12 @@ do:
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'The input names no one (at /do/0/reject)',
+      detail: 'The input names no one, at the step reject.',
     });
     expect(ending).toEqual({
       kind: 'failed',
       type: 'UncaughtError',
-      message: 'The input names no one (at /do/0/reject)',
+      message: 'The input names no one, at the step reject.',
     });
   });
 
@@ -102,7 +102,7 @@ do:
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'The workflow document is not allowed by this runtime: /do/0/shell/run: run tasks (shell, script, container, workflow) are not allowed (at /)',
+        'The workflow document is not allowed by this runtime: /do/0/shell/run: run tasks (shell, script, container, workflow) are not allowed.',
     });
   });
 });

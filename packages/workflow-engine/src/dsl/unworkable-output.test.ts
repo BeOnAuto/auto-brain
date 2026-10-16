@@ -10,7 +10,7 @@ describe('the rejection of an output that cannot work as its workflow is written
       status: 'rejected',
       reason: 'conflict',
       kind: 'unworkable',
-      detail: 'The output does not match its shape (at /)',
+      detail: 'The output does not match its shape.',
     });
   });
 

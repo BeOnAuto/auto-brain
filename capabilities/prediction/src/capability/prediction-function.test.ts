@@ -165,11 +165,26 @@ describe('the input of a run of a prediction function', () => {
     expect(failure).toMatchObject({ issues: [issueAt(pointer)] });
   });
 
+  it('is refused in the words of the fields of its question', async () => {
+    const runs = predictionRuns();
+
+    expect(
+      await Promise.all(questionsRefused.map(async ([, input]) => (await runs.refusing(weeklyOrders, input)).detail)),
+    ).toEqual([
+      'series, The series, text of 1 to 256 bytes in UTF-8: expected at most 256 bytes in UTF-8, not 400.',
+      'horizon, How many periods ahead of the last observed to predict; every horizon when left out: expected one of: 1, 4.',
+      'given, The value of each given feature for the periods ahead, by its name: expected no field price.',
+      'The input: expected the field series, The series, text of 1 to 256 bytes in UTF-8.',
+      'marks, Values the answer carries as its marks, for display alone: expected at most 8 items.',
+      'marks, then item 1: expected the field value.',
+    ]);
+  });
+
   it('is refused for a build that carries anything, and for an input nested past 512 levels', async () => {
     const runs = predictionRuns();
 
     expect(await runs.refusing(weeklyOrders, { build: { now: true } })).toMatchObject({
-      detail: 'The input is not a build, which is { build: {} }',
+      detail: 'build: expected no field now.',
     });
     expect(await runs.refusing(weeklyOrders, { series: 'north', horizon: 1, deep })).toMatchObject({
       detail: 'The input nests more than the 512 levels a prediction function takes',

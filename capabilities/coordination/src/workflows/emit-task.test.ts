@@ -41,7 +41,7 @@ describe('a workflow that emits an event', () => {
       kind: 'failed',
       type: 'UncaughtError',
       message:
-        'The event to emit is not one the playbook takes: Expected a source of your own, not one under /runs/, /definitions/ or /callers/, which the playbook records itself (at source) (at /do/0/announce)',
+        'The event to emit is not one the playbook takes: Expected a source of your own, not one under /runs/, /definitions/ or /callers/, which the playbook records itself (at source), at the step announce.',
     });
   });
 });

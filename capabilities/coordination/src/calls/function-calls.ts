@@ -16,24 +16,16 @@ const noCaller: CallAnswer = {
   detail: 'The run names no playbook and no caller to run a definition for',
 };
 
-function rejectionDetail(
-  detail: string,
-  issues: readonly { readonly pointer: string; readonly detail: string }[],
-): string {
-  return issues.length === 0
-    ? detail
-    : `${detail} (${issues.map((issue) => `${issue.pointer}: ${issue.detail}`).join('; ')})`;
-}
-
 function callResultOf(result: EndedRunResult): CallResult {
   if (result.status === 'rejected') {
-    const { reason, detail, issues = [], kind, because } = result;
+    const { reason, detail, kind, because, issues } = result;
     return {
       status: 'rejected',
       reason,
-      detail: rejectionDetail(detail, issues),
+      detail,
       ...(kind === undefined ? {} : { kind }),
       ...(because === undefined ? {} : { because }),
+      ...(issues === undefined ? {} : { issues }),
     };
   }
   if (result.status === 'failed') {

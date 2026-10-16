@@ -68,7 +68,7 @@ Check that the run shows `status: succeeded`, and work out one or two figures by
 
 The run's record shows `language: typescript` and the sizes of the input and output. It also shows `work`, how much computing the program used in the engine's checkpoints, and `duration_ms`, how long it ran in milliseconds.
 
-Then run it once with an input the schema should refuse, such as an amount with a fraction. The run is refused with `invalid_input` and a pointer to the value at fault (its path in the input, such as `/input/costs/0/cost_cents`), and the program never runs.
+Then run it once with an input the schema should refuse, such as an amount with a fraction. The run is refused with `invalid_input`, and the program never runs. Its detail names the field and the rule it broke, and a pointer marks the value at fault (its path in the input, such as `/input/costs/0/cost_cents`).
 
 ## 4. Use it from a workflow
 
@@ -198,7 +198,7 @@ The run succeeds with this output. The program does not read the clock, so it is
 
 To check it by hand: ten days cost 262,020 cents, which is USD 2,620.20. Over 31 days at that pace, 262,020 × 31 ÷ 10 is 812,262 cents. That is 1,015 thousandths of the 800,000-cent budget, so the campaign is on course to overspend by USD 122.62. The record shows `work: 0` for this input.
 
-With the first cost written in dollars, as `"cost_cents": 243.5`, the run is refused with `invalid_input`, `Expected an integer` at `/input/costs/0/cost_cents`.
+With the first cost written in dollars, as `"cost_cents": 243.5`, the run is refused with `invalid_input`: `costs, then item 1, then cost_cents: expected a whole number, from 0 to 10,000,000.` Its `errors` point at `/input/costs/0/cost_cents`.
 
 ## Example: write a note about the figures
 
@@ -276,7 +276,7 @@ do:
                   type: https://example.com/errors/figures-unavailable
                   status: 503
                   title: The campaign's figures could not be computed
-                  detail: the computation function was still unavailable after two retries
+                  detail: The computation function was still unavailable after two retries
   - write:
       call: run_definition
       with:
@@ -315,10 +315,10 @@ With the input above, the workflow ends `succeeded`. Its output holds the figure
 ## If something goes wrong
 
 - **Saving is refused.** Each problem names its line and what the compiler said. A program may not import a module or use `fetch`, `Math.random` or the local time zone; [Checked when it is saved](../reference/computation-format.md#checked-when-it-is-saved) lists everything that is refused.
-- **A run is refused with `invalid_input`.** The input does not match `input.schema`. Each problem has a pointer to the value at fault, such as `/input/costs/0/cost_cents`.
+- **A run is refused with `invalid_input`.** The input does not match `input.schema`. The detail says each problem in a sentence that names the field and the rule it broke, and each has a pointer to the value at fault, such as `/input/costs/0/cost_cents`. Give each field a `description` and `examples`, so the sentence says what to give.
 - **A run ends `conflict` with the kind `unworkable`.** The program raised an error, did more work than a run may, or returned what the output schema refuses. The rejection names the line or the bound. Running it again with the same input does not help, so fix the document or the input.
 - **A run ends `unavailable`.** It found no turn to run within its 10 seconds, usually because Auto was busy, or its program ran longer than that. Run it again, or let a workflow retry on status 503.
-- **The workflow ends `rejected` with the reason `unavailable`.** The computation step was still unavailable after its last retry, so `give-up` stopped the run before any note was written. Its detail says so: `The campaign's figures could not be computed: the computation function was still unavailable after two retries (at /do/0/compute/catch/do/0/give-up)`. Run the workflow again when Auto is less busy. If it happens often, Auto may need room for more runs at once: whoever runs it can raise `COMPUTATION_WORKERS`, as [Computation and recall functions](../self-host/configuration.md#computation-and-recall-functions) describes.
+- **The workflow ends `rejected` with the reason `unavailable`.** The computation step was still unavailable after its last retry, so `give-up` stopped the run before any note was written. Its detail says so: `The campaign's figures could not be computed, at the step give-up: The computation function was still unavailable after two retries.` Run the workflow again when Auto is less busy. If it happens often, Auto may need room for more runs at once: whoever runs it can raise `COMPUTATION_WORKERS`, as [Computation and recall functions](../self-host/configuration.md#computation-and-recall-functions) describes.
 - **A figure is a little off for large amounts.** A number the program formed went past 2^53 and was rounded. Lower the `maximum` on the amounts and counts in `input.schema`, or split the calculation, so every number stays under the bound.
 - **The output changes between runs with the same input.** The program reads the clock. Pass the date it needs in the input instead.
 - **The note gets a figure wrong.** The model wrote the note, and the program wrote the figures. Tighten the reasoning function's prompt, and keep the figures beside the note so a reader can compare them.

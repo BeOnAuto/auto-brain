@@ -219,7 +219,7 @@ const FormatSevenSchema = Schema.Struct({
 
 type FormatSeven = typeof FormatSevenSchema.Type;
 
-const readFormatSeven = Schema.decodeUnknownSync(FormatSevenSchema, { onExcessProperty: 'error' });
+export const readFormatSeven = Schema.decodeUnknownSync(FormatSevenSchema, { onExcessProperty: 'error' });
 
 const isError = Schema.is(DslErrorSchema);
 
@@ -253,7 +253,7 @@ function upcastFormatSeven({ machine, outcome, ...state }: FormatSeven): unknown
   };
 }
 
-const initialOfFormatSeven = {
+export const initialOfFormatSeven = {
   runId: '',
   status: 'new',
   workflow: null,

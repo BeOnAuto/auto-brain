@@ -1,17 +1,10 @@
-import { InvalidInput } from '@on.auto/operations';
-import { Effect, Result, type Schema } from 'effect';
+import { refusedInput } from '@on.auto/definitions';
+import type { InvalidInput } from '@on.auto/operations';
+import { Effect, type Schema } from 'effect';
 
-import { checkedAnswer } from './answer-check.ts';
+import { answerIssuesOf } from './answer-check.ts';
 
 export function answerFor(answer: Schema.Json, schema: Schema.JsonObject): Effect.Effect<Schema.Json, InvalidInput> {
-  return Result.match(checkedAnswer(answer, schema), {
-    onSuccess: Effect.succeed,
-    onFailure: (issues) =>
-      Effect.fail(
-        new InvalidInput({
-          detail: 'The answer does not match the answer schema of the request',
-          issues: issues.map(({ pointer, detail }) => ({ pointer: `/answer${pointer}`, detail })),
-        }),
-      ),
-  });
+  const issues = answerIssuesOf(answer, schema);
+  return issues.length === 0 ? Effect.succeed(answer) : Effect.fail(refusedInput(issues));
 }

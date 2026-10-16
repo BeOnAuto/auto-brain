@@ -134,7 +134,7 @@
   "events": [
     {
       "type": "input_applied",
-      "format": 8,
+      "format": 9,
       "receipt": {
         "kind": "started",
         "key": "0199a3c4-7d2e-7c1a-9b3f-000000000307",
@@ -488,7 +488,7 @@
     },
     {
       "type": "input_applied",
-      "format": 8,
+      "format": 9,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",1]",
@@ -510,7 +510,7 @@
           },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
-            "title": "The reasoning function flaky rejected the run with unavailable"
+            "title": "The reasoning function flaky was not available"
           }
         }
       ],
@@ -586,7 +586,7 @@
           "value": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "status": 503,
-            "title": "The reasoning function flaky rejected the run with unavailable",
+            "title": "The reasoning function flaky was not available",
             "detail": "busy on call 1",
             "instance": "/do/0/guarded/try/0/fetch"
           }
@@ -604,7 +604,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 6732
+          "value": 6700
         }
       ],
       "outputs": [
@@ -625,7 +625,7 @@
     },
     {
       "type": "input_applied",
-      "format": 8,
+      "format": 9,
       "receipt": {
         "kind": "timer_fired",
         "key": "3",
@@ -782,7 +782,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 9550
+          "value": 9518
         }
       ],
       "outputs": [
@@ -815,7 +815,7 @@
     },
     {
       "type": "input_applied",
-      "format": 8,
+      "format": 9,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",2]",
@@ -837,7 +837,7 @@
           },
           "error": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
-            "title": "The reasoning function flaky rejected the run with unavailable"
+            "title": "The reasoning function flaky was not available"
           }
         }
       ],
@@ -913,7 +913,7 @@
           "value": {
             "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
             "status": 503,
-            "title": "The reasoning function flaky rejected the run with unavailable",
+            "title": "The reasoning function flaky was not available",
             "detail": "busy on call 2",
             "instance": "/do/0/guarded/try/0/fetch"
           }
@@ -931,7 +931,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 11875
+          "value": 11811
         }
       ],
       "outputs": [
@@ -952,7 +952,7 @@
     },
     {
       "type": "input_applied",
-      "format": 8,
+      "format": 9,
       "receipt": {
         "kind": "timer_fired",
         "key": "5",
@@ -1109,7 +1109,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 14694
+          "value": 14630
         }
       ],
       "outputs": [
@@ -1142,7 +1142,7 @@
     },
     {
       "type": "input_applied",
-      "format": 8,
+      "format": 9,
       "receipt": {
         "kind": "call_answered",
         "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000307\",\"/do/0/guarded/try/0/fetch\",3]",
@@ -1242,7 +1242,7 @@
         {
           "op": "replace",
           "path": "/historyBytes",
-          "value": 16326
+          "value": 16262
         }
       ],
       "outputs": [

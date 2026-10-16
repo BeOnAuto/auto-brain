@@ -13,8 +13,8 @@ describe('the words that tell a party how to answer', () => {
   });
 
   it('say what is wrong with the whole answer before how to answer', () => {
-    expect(tellingWords(reason, 'invalid', [{ pointer: '', detail: 'Expected an object' }])).toBe(
-      'That reply is not an answer this request takes: Expected an object. To answer, reply with your answer in words; the whole reply is kept as the reason.',
+    expect(tellingWords(reason, 'invalid', [{ pointer: '/answer', detail: 'The answer: expected a record.' }])).toBe(
+      'That reply is not an answer this request takes: The answer: expected a record. To answer, reply with your answer in words; the whole reply is kept as the reason.',
     );
   });
 });

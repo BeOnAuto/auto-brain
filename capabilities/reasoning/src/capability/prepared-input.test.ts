@@ -57,11 +57,12 @@ describe('the input of a run', () => {
     expect(await running(withSchema, { words: 0, colour: 'red' })).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The input does not match the reasoning function’s input schema',
+          detail:
+            'The input: expected no field colour. The input: expected the field text. words: expected at least 1.',
           issues: [
-            { pointer: '/colour', detail: 'Expected no excess property' },
-            { pointer: '/text', detail: 'Missing key' },
-            { pointer: '/words', detail: 'Expected a value greater than or equal to 1' },
+            { pointer: '/colour', detail: 'The input: expected no field colour.' },
+            { pointer: '/text', detail: 'The input: expected the field text.' },
+            { pointer: '/words', detail: 'words: expected at least 1.' },
           ],
         }),
       ),

@@ -48,6 +48,8 @@ function answering(result: DefinitionRunResult) {
   return { perform, asked: (): readonly DefinitionRunRequest[] => asked };
 }
 
+const refusedTicket = [{ pointer: '/input/ticket', detail: 'ticket: expected text.' }];
+
 describe('a workflow call of a workflow', () => {
   it('starts the workflow one call deeper, naming the call it answers, and waits for its run', async () => {
     const { perform, asked } = answering({ status: 'waiting' });
@@ -81,7 +83,7 @@ describe('the ending of a run a step waits for', () => {
     ]);
   });
 
-  it('answers the step with the rejection of a run, its kind kept and its issues folded into its detail', () => {
+  it('answers the step with the rejection of a run, its kind and its issues kept', () => {
     expect([
       callResultOfEnding({
         type: 'run_rejected',
@@ -93,15 +95,15 @@ describe('the ending of a run a step waits for', () => {
         data: {
           rejection: {
             reason: 'invalid_input',
-            detail: 'Wrong',
-            issues: [{ pointer: '/input/ticket', detail: 'Expected a string' }],
+            detail: 'ticket: expected text.',
+            issues: refusedTicket,
           },
         },
         context: ofTheChild,
       }),
     ]).toEqual([
       { status: 'rejected', reason: 'cancelled', kind: 'deadline', detail: 'Out of time' },
-      { status: 'rejected', reason: 'invalid_input', detail: 'Wrong (/input/ticket: Expected a string)' },
+      { status: 'rejected', reason: 'invalid_input', detail: 'ticket: expected text.', issues: refusedTicket },
     ]);
   });
 

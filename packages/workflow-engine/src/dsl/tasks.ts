@@ -77,6 +77,13 @@ export function allTaskEntries(list: Json | undefined, pointer: string): readonl
   );
 }
 
+const stepReference = /^(?:\/(?:do|try|catch\/do|fork\/branches)\/\d+\/[^/]+)+/u;
+
+export function stepNamedAt(pointer: string): string | undefined {
+  const reference = stepReference.exec(pointer)?.[0];
+  return reference === undefined ? undefined : taskNameOf(reference);
+}
+
 export function taskNameOf(reference: string): string {
   return reference
     .slice(reference.lastIndexOf('/') + 1)

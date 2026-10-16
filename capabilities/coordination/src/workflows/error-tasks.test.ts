@@ -21,7 +21,7 @@ do:
     expect((await interpret(document, { input: { total: 120 } })).settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'Over the limit: The total 120 is over 100 (at /orders)',
+      detail: 'Over the limit, at /orders: The total 120 is over 100.',
     });
   });
 
@@ -38,7 +38,7 @@ do:
     expect((await interpret(document)).settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'https://example.com/errors/busy (at /do/0/reject)',
+      detail: 'https://example.com/errors/busy, at the step reject.',
     });
   });
 
@@ -47,10 +47,10 @@ do:
     const shapeless = workflow('do:\n  - reject: { raise: { error: { type: x, status: "${ \\"500\\" }" } } }');
 
     expect((await interpret(missing)).settlement).toMatchObject({
-      detail: 'raise names no error with a type and a status (at /do/0/reject)',
+      detail: 'raise names no error with a type and a status, at the step reject.',
     });
     expect((await interpret(shapeless)).settlement).toMatchObject({
-      detail: 'raise names no error with a type and a status (at /do/0/reject)',
+      detail: 'raise names no error with a type and a status, at the step reject.',
     });
   });
 });

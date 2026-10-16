@@ -1,8 +1,8 @@
-import type { Schema } from 'effect';
+import { Result, type Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
-import { askedRunOf, issuesOfInput } from './prediction-run.ts';
+import { askedRunOf } from './prediction-run.ts';
 
 const { candidatesInABuild, scoringACandidateMs, buildStartMs, questionMs } = predictionBounds;
 
@@ -12,7 +12,7 @@ function knownOf(document: PredictionFunctionDefinitionDocument, input: Schema.J
   if (askedRunOf(input) === 'build') {
     return 'build';
   }
-  return issuesOfInput(document, input, 'question').length === 0 ? 'question' : 'unknown';
+  return Result.isSuccess(document.schemas.question.validate(input)) ? 'question' : 'unknown';
 }
 
 export function finishesLater(): boolean {

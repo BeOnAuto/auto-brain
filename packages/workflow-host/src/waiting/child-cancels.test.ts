@@ -52,7 +52,7 @@ describe('the deadline of a call that waits for a run', () => {
     expect(settlement).toEqual({
       status: 'rejected',
       reason: 'unavailable',
-      detail: 'The function notify did not finish within 600000 ms, the most it may take (at /do/0/ask)',
+      detail: 'The function notify did not finish within 600000 ms, the most it may take, at the step ask.',
     });
     expect(waiting.cancels().map(({ run, request }) => [run, request.kind])).toEqual([
       [{ org: 'acme', playbook: 'alpha', id: child.runId }, 'deadline'],

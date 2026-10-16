@@ -1,3 +1,4 @@
+import { formatEight } from './formats/format-eight.ts';
 import { formatFive } from './formats/format-five.ts';
 import { formatFour } from './formats/format-four.ts';
 import { formatOne } from './formats/format-one.ts';
@@ -9,5 +10,5 @@ import { stateFormat, type StateFormats } from './state-format.ts';
 
 export const stateFormats: StateFormats = {
   current: stateFormat,
-  older: [formatOne, formatTwo, formatThree, formatFour, formatFive, formatSix, formatSeven],
+  older: [formatOne, formatTwo, formatThree, formatFour, formatFive, formatSix, formatSeven, formatEight],
 };

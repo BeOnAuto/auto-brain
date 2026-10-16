@@ -386,15 +386,15 @@ While its view is stalled, a run is refused `conflict` with the kind `stalled`. 
 
 A run checks the input against `input.schema`, reads the view, and calls `answer` when the module exports it. It then checks that the answer is JSON and matches `output.schema`. It ends in one of these ways:
 
-| Ending                           | When                                                                                                       |
-| -------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `succeeded`                      | The answer, or the view, is JSON that matches the output schema                                            |
-| `invalid_input`                  | The input does not match the input schema, with a pointer to each problem, or nests deeper than 512 levels |
-| `unavailable`, kind `rebuilding` | The view of the latest version is not built yet, or waits to be built; try again later                     |
-| `conflict`, kind `stalled`       | The view stopped at an event its fold could not take; save a corrected version                             |
-| `conflict`, kind `unworkable`    | The answer could not give an output, as listed below                                                       |
-| `unavailable`                    | The answer took longer than a run may, or found no turn to run within its time                             |
-| `failed`                         | The runtime itself broke down                                                                              |
+| Ending                           | When                                                                                                                       |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `succeeded`                      | The answer, or the view, is JSON that matches the output schema                                                            |
+| `invalid_input`                  | The input does not match the input schema, with a sentence and a pointer for each problem, or nests deeper than 512 levels |
+| `unavailable`, kind `rebuilding` | The view of the latest version is not built yet, or waits to be built; try again later                                     |
+| `conflict`, kind `stalled`       | The view stopped at an event its fold could not take; save a corrected version                                             |
+| `conflict`, kind `unworkable`    | The answer could not give an output, as listed below                                                                       |
+| `unavailable`                    | The answer took longer than a run may, or found no turn to run within its time                                             |
+| `failed`                         | The runtime itself broke down                                                                                              |
 
 A `conflict` of the kind `unworkable` means that the answer:
 
@@ -527,7 +527,7 @@ do:
                   type: https://example.com/errors/reviews-unavailable
                   status: 503
                   title: The campaign's reviews could not be recalled
-                  detail: the recall function was still unavailable after three retries
+                  detail: The recall function was still unavailable after three retries
       export:
         as: '${ ({ reviews: $data }) }'
   - advise:

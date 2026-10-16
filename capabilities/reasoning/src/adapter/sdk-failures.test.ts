@@ -118,6 +118,13 @@ describe('an SDK failure', () => {
   });
 });
 
+const unreadableSchema = {
+  document: { type: 'banana' },
+  what: 'answer',
+  validate: () => Result.succeed(null),
+  issuesOf: () => [],
+};
+
 describe('a request that is not valid', () => {
   it('fails as definition_invalid with every issue, before any model is called', async () => {
     const model = new MockLanguageModelV4();
@@ -145,10 +152,9 @@ describe('a request that is not valid', () => {
 
   it('fails as definition_invalid when its output schema is not one this package reads', async () => {
     const model = new MockLanguageModelV4();
-    const schema = { document: { type: 'banana' }, validate: () => Result.succeed(null) };
 
     const failure = await mockGeneration(() => model).failed(
-      jsonRequest('mock/model', { output: { type: 'json', schema } }),
+      jsonRequest('mock/model', { output: { type: 'json', schema: unreadableSchema } }),
     );
 
     expect(failure).toMatchObject({

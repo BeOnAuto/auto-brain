@@ -122,7 +122,7 @@ describe('a message the request cannot carry', () => {
       await askedWith(approvalDocument(), { campaign: 'Spring' }),
       await Effect.runPromise(Effect.flip(prepared.run({ campaign: deep, owner: 'ada' }, aRun))),
     ]).toMatchObject([
-      { reason: 'invalid_input', detail: 'The input does not match the interaction function’s input schema' },
+      { reason: 'invalid_input', detail: 'The input: expected the field owner.' },
       { detail: 'The input nests more than the 512 levels an interaction function takes' },
     ]);
   });

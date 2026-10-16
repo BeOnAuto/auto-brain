@@ -106,13 +106,13 @@ do:
     expect((await interpret(document)).settlement).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'for.in must give an array to iterate over (at /do/0/loop)',
+      detail: 'for.in must give an array to iterate over, at the step loop.',
     });
   });
 
   it('raises a validation error when it says nothing to iterate over', async () => {
     expect((await interpret(workflow('do:\n  - loop: { for: {}, do: [] }'))).settlement).toMatchObject({
-      detail: 'for.in must give an array to iterate over (at /do/0/loop)',
+      detail: 'for.in must give an array to iterate over, at the step loop.',
     });
   });
 });

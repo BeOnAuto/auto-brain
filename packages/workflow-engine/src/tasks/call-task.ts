@@ -3,7 +3,7 @@ import { invalidArguments, type CallResult } from '@on.auto/operations';
 import type { CancelReason } from '../dispatch/run-output.ts';
 import { evaluateTemplate } from '../dsl/evaluation.ts';
 import { field, jsonBytesOf } from '../dsl/json.ts';
-import { callErrorOf, capitalized, errorType, raised } from '../dsl/raised-error.ts';
+import { callErrorOf, capitalized, errorType, raised, type CallSite } from '../dsl/raised-error.ts';
 import { callKeyText } from '../executor/call-key.ts';
 import type { DslError } from '../machine/dsl-error.ts';
 import { mostCallArgumentsBytes } from '../machine/limits.ts';
@@ -59,16 +59,32 @@ export function startCall(invocation: Invocation): BodyAdvance {
   return waitingOn({ kind: 'call', key, function: name, arguments: session.hold(given), label, deadline });
 }
 
-function errorOf(result: Exclude<CallResult, { readonly status: 'succeeded' }>, body: CallBody): DslError {
+type FailedResult = Exclude<CallResult, { readonly status: 'succeeded' }>;
+
+function refusedBy(machine: Machine, body: CallBody, result: FailedResult): Pick<CallSite, 'refused'> {
+  const words = machine.session.options.functions.refusal;
+  return result.status !== 'rejected' || words === undefined
+    ? {}
+    : { refused: words(body.function, machine.session.valueOf(body.arguments), result.reason) };
+}
+
+function errorOf(machine: Machine, result: FailedResult, body: CallBody): DslError {
   if (result.status === 'rejected' && result.reason === invalidArguments) {
     return { type: errorType('validation'), status: 400, title: result.detail, instance: body.key.reference };
   }
-  return callErrorOf(result, { function: body.function, label: body.label, reference: body.key.reference });
+  return callErrorOf(result, {
+    function: body.function,
+    label: body.label,
+    reference: body.key.reference,
+    ...refusedBy(machine, body, result),
+  });
 }
 
 function answered({ machine }: Invocation, body: CallBody, result: CallResult): BodyAdvance {
   machine.session.calls.answerCall(body);
-  return result.status === 'succeeded' ? doneOf(machine.session.hold(result.output)) : raisedOf(errorOf(result, body));
+  return result.status === 'succeeded'
+    ? doneOf(machine.session.hold(result.output))
+    : raisedOf(errorOf(machine, result, body));
 }
 
 function timedOutCall({ machine }: Invocation, body: CallBody, milliseconds: number): BodyAdvance {

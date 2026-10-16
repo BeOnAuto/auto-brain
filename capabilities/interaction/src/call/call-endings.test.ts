@@ -77,7 +77,10 @@ describe('a run that asks a system with arguments it cannot render', () => {
       await run(filtered),
     ]).toEqual([
       rejectedWith({ _tag: 'invalid_input' }),
-      rejectedWith({ _tag: 'invalid_input', detail: 'The definition reads a field the input does not have' }),
+      rejectedWith({
+        _tag: 'invalid_input',
+        detail: 'The definition reads input.thread on line 1, which the input does not have',
+      }),
       rejectedWith({
         _tag: 'invalid_input',
         detail: 'The argument channel of the call cannot be rendered with this input',
