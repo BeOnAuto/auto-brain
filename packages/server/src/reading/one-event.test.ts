@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { askingASystem, calling, systemRunId, type SystemServer } from '../testing/servers/system-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const kibibytes = 5120;
 
@@ -45,7 +44,7 @@ function readOverMcp(server: SystemServer, eventId: string): Promise<ToolResult>
   );
 }
 
-describe('one event read whole by its id', { timeout: workflowTestTimeoutMs }, () => {
+describe('one event read whole by its id', () => {
   it('joins in a 5 MiB answer of a tool and the document read from it over HTTP, and gives the sizes of both past 64 KiB over MCP', async () => {
     const { server, answered } = await answeredInFull();
 

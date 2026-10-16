@@ -10,8 +10,13 @@ import { savedDefinitions } from './saved-definitions.ts';
 
 export const byName = Order.mapInput(Order.String, ({ name }: StoredDefinition) => name);
 
+function publishedDetails({ details }: StoredDefinition): Pick<Definition, 'details'> {
+  const shape = details?.['shape'];
+  return typeof shape === 'string' ? { details: { shape } } : {};
+}
+
 export function definitionOf({ type, mediaType }: Capability, stored: StoredDefinition): Definition {
-  return { type, media_type: mediaType, ...Struct.omit(stored, ['details', 'stripped']) };
+  return { type, media_type: mediaType, ...Struct.omit(stored, ['details', 'stripped']), ...publishedDetails(stored) };
 }
 
 export function listedDefinitionOf(capability: Capability, stored: StoredDefinition): ListedDefinition {

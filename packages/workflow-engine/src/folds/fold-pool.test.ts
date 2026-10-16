@@ -79,7 +79,7 @@ afterEach(async () => {
   await Promise.all(pools.splice(0).map((pool) => pool.close()));
 });
 
-describe('a page of folds in a worker of the pool', { timeout: poolTestTimeoutMs }, () => {
+describe('a page of folds in a worker of the pool', () => {
   it('answers each view after the page, what it folded and the work it did', async () => {
     const outcome = await poolOf().fold(request([viewOf(adding), viewOf(listing, { view: [], events: [1] })]));
 
@@ -109,7 +109,7 @@ describe('a page of folds in a worker of the pool', { timeout: poolTestTimeoutMs
   });
 });
 
-describe('a page of folds the pool stops', { timeout: poolTestTimeoutMs }, () => {
+describe('a page of folds the pool stops', () => {
   it('names the event and the view whose fold was going when it reached its deadline', async () => {
     const outcome = await poolOf({ foldWorker: markingThenBlocking }).fold(
       request([viewOf(keeping)], { deadlineMs: 500 }),
@@ -132,7 +132,7 @@ describe('a page of folds the pool stops', { timeout: poolTestTimeoutMs }, () =>
   });
 });
 
-describe('a page of folds that waits for a worker', { timeout: poolTestTimeoutMs }, () => {
+describe('a page of folds that waits for a worker', () => {
   it('counts its deadline from when a worker takes it, after it waited for one longer than that deadline', async () => {
     const pool = poolOf({ workers: 1, foldWorker: foldingAtOnce });
     const busy = pool.run({
@@ -168,7 +168,7 @@ describe('a page of folds that waits for a worker', { timeout: poolTestTimeoutMs
   });
 });
 
-describe('a page of folds that does not end', { timeout: poolTestTimeoutMs }, () => {
+describe('a page of folds that does not end', () => {
   it('is answered as crashed when its worker answers with something else', async () => {
     const nonsense = workerOf(
       'import { parentPort } from "node:worker_threads"; parentPort.postMessage({ ran: "folded" });',

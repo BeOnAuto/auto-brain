@@ -8,7 +8,6 @@ import { alpha } from '../testing/servers/reasoning-server.ts';
 import {
   playbookWithReviews,
   inState,
-  recallTestTimeoutMs,
   recalled,
   servingRecall,
   standingUntil,
@@ -55,45 +54,41 @@ function recordingModules(pool: ProgramPool, modules: Set<string | undefined>): 
   };
 }
 
-describe(
-  'values their schemas refuse, through the one checked worker, over HTTP',
-  { timeout: recallTestTimeoutMs },
-  () => {
-    it('refuse a computation output and a recall answer, and stall a view, in the one wording of the issues', async () => {
-      const modules = new Set<string | undefined>();
-      const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }), {}, (settings) =>
-        recordingModules(workerPool(settings), modules),
-      );
-      closing.push(server.stop);
-      await playbookWithReviews(server, 1);
-      await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'strings', source: strings } });
-      await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'wrong', source: answeredWrong } });
-      await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'outgrowing', source: outgrowing } });
+describe('values their schemas refuse, through the one checked worker, over HTTP', () => {
+  it('refuse a computation output and a recall answer, and stall a view, in the one wording of the issues', async () => {
+    const modules = new Set<string | undefined>();
+    const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }), {}, (settings) =>
+      recordingModules(workerPool(settings), modules),
+    );
+    closing.push(server.stop);
+    await playbookWithReviews(server, 1);
+    await server.call('POST', `${alpha}/definitions/computation`, { body: { name: 'strings', source: strings } });
+    await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'wrong', source: answeredWrong } });
+    await server.call('POST', `${alpha}/definitions/recall`, { body: { name: 'outgrowing', source: outgrowing } });
 
-      const computed = await server.call('POST', `${alpha}/definitions/computation/strings/run`, {
-        body: { input: {} },
-      });
-      await standingUntil(server, 'wrong', inState('live'));
-      const answered = await recalled(server, 'wrong', {});
-      const stalled = decodeStall(await standingUntil(server, 'outgrowing', inState('stalled'))).standing.stalled;
-
-      expect(computed).toMatchObject({
-        status: 409,
-        body: {
-          kind: 'unworkable',
-          detail:
-            "The program's output does not match the output schema: /0: Expected string; /1: Expected string; /2: Expected string",
-        },
-      });
-      expect(answered).toMatchObject({
-        status: 409,
-        body: {
-          kind: 'unworkable',
-          detail: 'The answer does not match the output schema: the output: Expected string',
-        },
-      });
-      expect(stalled).toEqual({ kind: 'schema', error: 'the view: Expected a value with a length of at most 0' });
-      expect([...modules].filter((module) => module !== undefined)).toEqual(['checked-worker.ts']);
+    const computed = await server.call('POST', `${alpha}/definitions/computation/strings/run`, {
+      body: { input: {} },
     });
-  },
-);
+    await standingUntil(server, 'wrong', inState('live'));
+    const answered = await recalled(server, 'wrong', {});
+    const stalled = decodeStall(await standingUntil(server, 'outgrowing', inState('stalled'))).standing.stalled;
+
+    expect(computed).toMatchObject({
+      status: 409,
+      body: {
+        kind: 'unworkable',
+        detail:
+          "The program's output does not match the output schema: /0: Expected string; /1: Expected string; /2: Expected string",
+      },
+    });
+    expect(answered).toMatchObject({
+      status: 409,
+      body: {
+        kind: 'unworkable',
+        detail: 'The answer does not match the output schema: the output: Expected string',
+      },
+    });
+    expect(stalled).toEqual({ kind: 'schema', error: 'the view: Expected a value with a length of at most 0' });
+    expect([...modules].filter((module) => module !== undefined)).toEqual(['checked-worker.ts']);
+  });
+});

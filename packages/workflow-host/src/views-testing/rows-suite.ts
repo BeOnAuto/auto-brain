@@ -6,16 +6,7 @@ import type { SettingsOf } from '../testing/host-files.ts';
 import { viewRowOf, ViewRowSchema, type ViewRow } from '../views/view-rows.ts';
 import { foldedWritten, viewDropped, viewNamed, type FoldedRow } from '../views/view-statements.ts';
 import { racingOnce } from './pool-faults.ts';
-import {
-  alphaKey,
-  counting,
-  detailsOf,
-  foldOf,
-  liveAt,
-  succeeded,
-  viewsFolderOver,
-  viewTestTimeoutMs,
-} from './view-documents.ts';
+import { alphaKey, counting, detailsOf, foldOf, liveAt, succeeded, viewsFolderOver } from './view-documents.ts';
 import { viewHarness, type ViewHarness } from './view-harness.ts';
 import { viewsReconciled } from './view-reading.ts';
 
@@ -248,7 +239,7 @@ function racingTests(settingsOf: SettingsOf): void {
 }
 
 export function rowsSuite(settingsOf: SettingsOf): void {
-  describe('the rows of the views', { timeout: viewTestTimeoutMs }, () => {
+  describe('the rows of the views', () => {
     slotTests(settingsOf);
     loneViewTests(settingsOf);
     handOverTests(settingsOf);

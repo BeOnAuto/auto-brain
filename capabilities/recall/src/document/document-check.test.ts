@@ -4,7 +4,7 @@ import { Effect, Exit, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
-import { poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { poolOf, recallWith } from '../testing/recall-runs.ts';
 import { parseRecallDocument } from './document-parsing.ts';
 
 const filtered = [
@@ -37,7 +37,7 @@ describe('the filter expressions of a recall function', () => {
   });
 });
 
-describe('the check of a recall function when it is saved', { timeout: workerTestTimeoutMs }, () => {
+describe('the check of a recall function when it is saved', () => {
   it('accepts the example of the reference, answering its module stripped of its types', async () => {
     const strippedFold: unknown = expect.stringContaining('export function fold(view      , event       )       {');
 

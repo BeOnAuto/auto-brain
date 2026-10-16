@@ -4,12 +4,17 @@ import type { Environment } from '@on.auto/config';
 import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import type { LedgerSettings } from './ledger-settings.ts';
-import { readSettings } from './settings.ts';
+import { readSettings, type Settings } from './settings.ts';
+
+function settingsOf(environment: Environment): Settings {
+  return readSettings({ SECRETS_KEY: secretsKey, ...environment });
+}
 
 function errorFrom(environment: Environment): unknown {
   try {
-    readSettings(environment);
+    settingsOf(environment);
   } catch (error) {
     return error;
   }
@@ -26,7 +31,7 @@ const databaseUrl = `postgresql://playbooks:${password}@db.example.com:5432/play
 
 describe('the ledger settings', () => {
   it('keep the ledger in PostgreSQL when DATABASE_URL is set, naming its host and database', () => {
-    expect(revealed(readSettings({ DATABASE_URL: databaseUrl }).ledger)).toEqual({
+    expect(revealed(settingsOf({ DATABASE_URL: databaseUrl }).ledger)).toEqual({
       store: 'postgresql',
       url: databaseUrl,
       host: 'db.example.com:5432',
@@ -36,7 +41,7 @@ describe('the ledger settings', () => {
   });
 
   it('accept a URL that starts postgres: as well as postgresql:', () => {
-    expect(readSettings({ DATABASE_URL: 'postgres://playbooks@10.0.0.7/ledger' }).ledger).toMatchObject({
+    expect(settingsOf({ DATABASE_URL: 'postgres://playbooks@10.0.0.7/ledger' }).ledger).toMatchObject({
       store: 'postgresql',
       host: '10.0.0.7',
       database: 'ledger',
@@ -44,7 +49,7 @@ describe('the ledger settings', () => {
   });
 
   it('hold DATABASE_URL redacted, so the settings never print it', () => {
-    const settings = readSettings({ DATABASE_URL: databaseUrl });
+    const settings = settingsOf({ DATABASE_URL: databaseUrl });
 
     expect(JSON.stringify(settings.ledger)).toBe(
       '{"store":"postgresql","url":"<redacted>","host":"db.example.com:5432","database":"playbooks","credentials":{"kind":"url"}}',
@@ -53,7 +58,7 @@ describe('the ledger settings', () => {
   });
 
   it('keep the ledger in the SQLite file of LEDGER_FILE when DATABASE_URL is empty', () => {
-    expect(readSettings({ DATABASE_URL: '', LEDGER_FILE: '/data/playbooks.db' }).ledger).toEqual({
+    expect(settingsOf({ DATABASE_URL: '', LEDGER_FILE: '/data/playbooks.db' }).ledger).toEqual({
       store: 'sqlite',
       file: '/data/playbooks.db',
     });
@@ -62,11 +67,11 @@ describe('the ledger settings', () => {
 
 describe('DATABASE_URL as it is written', () => {
   it('is read without the spaces and line breaks around it, which the driver would take as part of it', () => {
-    expect(revealed(readSettings({ DATABASE_URL: ` ${databaseUrl}\n` }).ledger)).toMatchObject({ url: databaseUrl });
+    expect(revealed(settingsOf({ DATABASE_URL: ` ${databaseUrl}\n` }).ledger)).toMatchObject({ url: databaseUrl });
   });
 
   it('names its database decoded, as the driver reads it', () => {
-    expect(readSettings({ DATABASE_URL: 'postgresql://playbooks@db.example.com/post%67res' }).ledger).toMatchObject({
+    expect(settingsOf({ DATABASE_URL: 'postgresql://playbooks@db.example.com/post%67res' }).ledger).toMatchObject({
       database: 'postgres',
     });
   });

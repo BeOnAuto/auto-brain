@@ -94,7 +94,7 @@ async function waitingBuild(): Promise<string> {
   return Schema.decodeUnknownSync(Schema.fromJsonString(StartedSchema))(asked.text).run_id;
 }
 
-describe('the routes a trainer calls under API keys', { timeout: 60_000 }, () => {
+describe('the routes a trainer calls under API keys', () => {
   it('read a build for a key that may read the playbook, and take a candidate from a key that may write it alone', async () => {
     const build = await waitingBuild();
     const candidate = candidateFile('visits-mean');

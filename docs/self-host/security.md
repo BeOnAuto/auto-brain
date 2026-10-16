@@ -184,6 +184,10 @@ A web page may call the API from Auto Studio, `https://studio.on.auto`, or from 
 
 [Calls from a browser](../reference/authentication.md#calls-from-a-browser) in the reference sets out when a session is accepted and how the server responds to CORS requests.
 
+## Secrets at rest
+
+The runtime has a store for the secrets it must hold, such as the credentials of a connection, in the ledger's database, apart from the ledger's records and never in the clear. Each secret is sealed on its own as a JWE: a key made for that secret alone encrypts it with AES-GCM (`A256GCM`), and the secrets key wraps that key with AES key wrap (`A256KW`), so neither the database nor a backup of it holds a secret anyone can read without the secrets key, and the store hands a secret back only as a redacted value, which prints as `<redacted>`, so none reaches a log by accident. The secrets key is `SECRETS_KEY`, the base64 of 32 random bytes. With a ledger in SQLite and no `SECRETS_KEY`, the server makes a key at its first start, in `secrets.key` beside the ledger file with the mode `0600`, and reads it at every later start; a file that holds anything but such a key, or that others than its owner may read, stops the start, naming the file. That file keeps a copy of the database unreadable, but not a copy of the folder that holds both, so a container [sets `SECRETS_KEY`](production.md#keep-the-secrets-key) from its platform's secret store. A ledger in PostgreSQL, which several runtimes may share, needs `SECRETS_KEY`, and the server stops at start without it. At start the server logs the id of the key the secrets are sealed under, the first 16 hex characters of the key's SHA-256, and never the key. A secret sealed under a lost key cannot be read again by anyone, the runtime included, so keep a copy of the key with your other secrets, apart from the backups of the ledger; [Rotate the secrets key](production.md#rotate-the-secrets-key) replaces it.
+
 ## The page at the root
 
 A browser that opens the server's address gets a page saying the server is running, with a button that opens Studio on it.

@@ -50,26 +50,22 @@ function sweptAtOnceAndRegistryFailing(database: HostDatabase, playbookKey: stri
 }
 
 describe('a playbook another process creates, swept before its registry could be read', () => {
-  it(
-    'is passed from its first record, so its first event starts a workflow without another append',
-    { timeout: 30_000 },
-    async () => {
-      const database = await openedOn(await onSQLite());
-      const held = sweptAtOnceAndRegistryFailing(database, beta);
-      const reactions = followerOver(held.database, 20);
-      const trigger = eventTrigger({ type: 'com.acme.closed' });
+  it('is passed from its first record, so its first event starts a workflow without another append', async () => {
+    const database = await openedOn(await onSQLite());
+    const held = sweptAtOnceAndRegistryFailing(database, beta);
+    const reactions = followerOver(held.database, 20);
+    const trigger = eventTrigger({ type: 'com.acme.closed' });
 
-      await playbookCreated(database.store, 'beta');
-      await definitionRecorded(database.store, { name: 'close', version: 1, triggers: [trigger] }, beta);
-      await published(database.store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
-      held.release();
-      const starts = await until(
-        () => Promise.resolve(reactions.starts()),
-        (found) => found.length > 0,
-        1000,
-      );
+    await playbookCreated(database.store, 'beta');
+    await definitionRecorded(database.store, { name: 'close', version: 1, triggers: [trigger] }, beta);
+    await published(database.store, { id: 'first', type: 'com.acme.closed' }, byAdmin, beta);
+    held.release();
+    const starts = await until(
+      () => Promise.resolve(reactions.starts()),
+      (found) => found.length > 0,
+      1000,
+    );
 
-      expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['beta', 'close']]);
-    },
-  );
+    expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['beta', 'close']]);
+  });
 });

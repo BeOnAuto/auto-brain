@@ -4,7 +4,7 @@ import { Exit, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
-import { liveView, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { liveView, recallWith } from '../testing/recall-runs.ts';
 
 const reviews = {
   spring: [
@@ -23,7 +23,7 @@ const stall: ViewStall = {
   line: 31,
 };
 
-describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
+describe('a run of a recall function', () => {
   it('applies its answer to the view as it stands with the input, and records the checkpoint it answered at', async () => {
     const run = recallWith();
     run.keep(liveView(reviews));
@@ -62,7 +62,7 @@ describe('a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
   });
 });
 
-describe('the input of a run of a recall function', { timeout: workerTestTimeoutMs }, () => {
+describe('the input of a run of a recall function', () => {
   it('refuses an input its schema refuses, or one nested deeper than a value may, with a pointer', async () => {
     const run = recallWith();
     run.keep(liveView(reviews));
@@ -82,7 +82,7 @@ describe('the input of a run of a recall function', { timeout: workerTestTimeout
   });
 });
 
-describe('a run of a recall function whose view is not ready', { timeout: workerTestTimeoutMs }, () => {
+describe('a run of a recall function whose view is not ready', () => {
   it('is unavailable, rebuilding, while its view is missing, of an older version, waiting or being built', async () => {
     const run = recallWith();
     const notBegun = await run.running(campaignReviews, { campaign: 'spring' });

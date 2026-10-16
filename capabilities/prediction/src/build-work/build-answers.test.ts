@@ -15,8 +15,6 @@ import { candidateSha256 } from '../build-testing/due-driving.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { dailyRows, steadyVisits } from '../testing/daily-rows.ts';
 
-const testTimeoutMs = 60_000;
-
 const someText: unknown = expect.any(String);
 
 const someBytes: unknown = expect.any(Number);
@@ -52,7 +50,7 @@ async function builtVersionWithFeatures(playbook: BuildPlaybook): Promise<void> 
   await builtFrom(playbook, ['visits-many-features']);
 }
 
-describe('the answer to a build', { timeout: testTimeoutMs }, () => {
+describe('the answer to a build', () => {
   it('is refused naming a candidate that was not uploaded, and a recipe past 8 KiB', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -87,7 +85,7 @@ describe('the answer to a build', { timeout: testTimeoutMs }, () => {
   });
 });
 
-describe('the card of a version', { timeout: testTimeoutMs }, () => {
+describe('the card of a version', () => {
   it('keeps its features as content when they would take it past 4 KiB', async () => {
     const playbook = buildPlaybook();
     await builtVersionWithFeatures(playbook);

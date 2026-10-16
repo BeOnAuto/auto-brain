@@ -1,4 +1,5 @@
 import { issueText } from '@on.auto/definitions/document';
+import { shapeNamed } from '@on.auto/definitions/testing';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -46,6 +47,28 @@ describe('a computation function definition', () => {
   });
 });
 
+describe('the output of a computation function that names a shape', () => {
+  it('is the shape, with its schema as the output schema', () => {
+    const shape = shapeNamed('series');
+    const { output } = parsed(
+      programDocument(functionOf('return input;'), 'language: typescript\noutput: {shape: series}'),
+    );
+
+    expect(output).toMatchObject({ schema: { document: shape.schema }, shape });
+  });
+
+  it('is refused beside a schema of its own, or for a name no shape has', () => {
+    expect(
+      ['output:\n  shape: series\n  schema: {type: object}', 'output:\n  shape: chart'].map((output) =>
+        issuesIn(programDocument(functionOf('return input;'), `language: typescript\n${output}`)),
+      ),
+    ).toEqual([
+      ["Line 5, /output/schema: An output that names a shape takes no schema: the shape's schema is its schema"],
+      ['Line 4, /output/shape: Expected the name of a shape: series, categories, table, or text'],
+    ]);
+  });
+});
+
 describe('the front matter of a computation function definition', () => {
   it('names at least the language, and opens the document', () => {
     expect(issuesIn(programDocument(functionOf('return input;'), '# nothing'))).toEqual([
@@ -72,7 +95,7 @@ describe('the front matter of a computation function definition', () => {
       'Line 4, /config: config is not a key of the front matter; it takes description, language, input, output',
       'Line 5, /tools: tools is not a key of the front matter; it takes description, language, input, output',
       'Line 6, /input/default: default is not a key of input; it takes schema',
-      'Line 7, /output/format: format is not a key of output; it takes schema',
+      'Line 7, /output/format: format is not a key of output; it takes schema, shape',
     ]);
   });
 });

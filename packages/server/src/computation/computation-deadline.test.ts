@@ -41,7 +41,7 @@ async function ranOn(rows: number) {
   return decodeRan((await ran(rows)).body).output;
 }
 
-describe('a run of a computation function that does not end by itself, over HTTP', { timeout: 60_000 }, () => {
+describe('a run of a computation function that does not end by itself, over HTTP', () => {
   it('is unavailable once its warm worker is terminated at the deadline, while another worker answers and the server answers other requests', async () => {
     server = await servingReasoning([], {}, undefined, {
       programPoolOf: ({ workers }) =>

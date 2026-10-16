@@ -677,6 +677,9 @@ importers:
       effect:
         specifier: 'catalog:'
         version: 4.0.0
+      jose:
+        specifier: 'catalog:'
+        version: 6.2.12
       pg:
         specifier: 8.23.1
         version: 8.23.1
@@ -790,6 +793,12 @@ importers:
       '@hono/otel':
         specifier: 1.2.0
         version: 1.2.0(hono@4.13.13)
+      '@modelcontextprotocol/client':
+        specifier: 2.3.1
+        version: 2.3.1
+      '@modelcontextprotocol/server':
+        specifier: 2.3.1
+        version: 2.3.1
       '@on.auto/api':
         specifier: workspace:*
         version: link:../api

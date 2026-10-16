@@ -4,7 +4,7 @@ import type { ApiEnv } from '../api-env.ts';
 import type { ApiOptions } from '../api-options.ts';
 import { authenticate } from '../authentication/authentication.ts';
 import { isMetadataPath } from '../authentication/protected-resource.ts';
-import { landingPage } from '../landing/landing-page.ts';
+import { landingPageFor } from '../landing/landing-page.ts';
 import { corsFor } from './cors.ts';
 import { requestIdAndSecurityHeaders } from './response-headers.ts';
 import { validateHost } from './validate-host.ts';
@@ -21,14 +21,14 @@ function exceptOn(isPublic: IsPublic, middleware: MiddlewareHandler<ApiEnv>): Mi
 }
 
 export function middlewareFor(
-  { allowedOrigins, authenticator, requests }: ApiOptions,
+  { allowedOrigins, authenticator, requests, runtimeControl }: ApiOptions,
   publicPaths: ReadonlySet<string>,
 ): readonly MiddlewareHandler<ApiEnv>[] {
   const isPublic = publicPathsOf(authenticator, publicPaths);
   const hostValidation = authenticator.mode === 'local' ? [validateHost] : [];
   return [
     ...(requests === undefined ? [] : [requests]),
-    landingPage,
+    landingPageFor(runtimeControl),
     ...requestIdAndSecurityHeaders,
     ...[validateOrigin(allowedOrigins), ...hostValidation].map((middleware) => exceptOn(isPublic, middleware)),
     ...corsFor(allowedOrigins),

@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
-import { runIdIn, settledRun, settledOverMcp, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun, settledOverMcp } from '../testing/servers/workflow-server.ts';
 
 let server: ReasoningServer;
 
@@ -25,7 +25,7 @@ async function waitingRunOf(name: string): Promise<string> {
   return runIdIn(started.body);
 }
 
-describe('a cancel of a workflow run, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a cancel of a workflow run, over HTTP', () => {
   it('ends it as cancelled, with who asked and why, and cancels the run it waits for as its parent ended', async () => {
     server = await servingCalls([]);
     const runId = await waitingRunOf('waiting');
@@ -70,7 +70,7 @@ describe('a cancel of a workflow run, over HTTP', { timeout: workflowTestTimeout
   });
 });
 
-describe('a cancel of a run that cannot be cancelled, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a cancel of a run that cannot be cancelled, over HTTP', () => {
   it('is a conflict for a run that ran within its call, and not found for a run the playbook does not have', async () => {
     server = await servingCalls([answers(textResult('Short.'))]);
     const ran = await server.call('POST', `${alpha}/definitions/reasoning/summary/run`, {
@@ -84,7 +84,7 @@ describe('a cancel of a run that cannot be cancelled, over HTTP', { timeout: wor
   });
 });
 
-describe('a cancel of a workflow run, over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a cancel of a workflow run, over MCP', () => {
   it('is the tool cancel_run, whose run then ends as cancelled', async () => {
     server = await servingCalls([]);
     const runId = await waitingRunOf('waiting');

@@ -1,14 +1,21 @@
+import type { StartedBy } from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
 import { runKeyCommand, type KeyCommandConsole } from '@on.auto/identity';
 
 import { release } from '../composition/release.ts';
+import { backgroundArguments } from '../local-runtime/background-process.ts';
+import { isRuntimeCommand, runRuntimeCommand } from '../local-runtime/runtime-commands.ts';
+import { runtimePortOf } from '../local-runtime/runtime-port.ts';
+import type { Waiting } from '../local-runtime/runtime-probe.ts';
 import { localSettings, type LocalPlace } from './local-settings.ts';
 
 export interface CommandLineHost {
   readonly environment: Environment;
   readonly place: LocalPlace;
   readonly console: KeyCommandConsole;
-  readonly startServer: (settings: Readonly<Record<string, string>>) => Promise<unknown>;
+  readonly waiting: Waiting;
+  readonly startServer: (settings: Readonly<Record<string, string>>, startedBy: StartedBy) => Promise<unknown>;
+  readonly relay: (port: number) => Promise<unknown>;
 }
 
 const usage = [
@@ -16,6 +23,10 @@ const usage = [
   '',
   'Commands:',
   '  start                  Start Auto Runtime on this computer at http://localhost:5555 (the default)',
+  '  mcp                    Connect an agent over standard input and output, starting Auto Runtime in the background when it is not running',
+  '  status                 Show the Auto Runtime running on this computer: its version, process, start and directory',
+  '  stop                   Stop the Auto Runtime running on this computer',
+  '  restart                Restart the Auto Runtime running on this computer',
   '  key --org <org id>     Issue an API key for a machine or a pipeline; --help after it lists its options',
   '  --version              Print the version',
   '  --help                 Print this help',
@@ -25,6 +36,7 @@ const usage = [
   'Settings are environment variables, read from the shell and from .env in the current directory.',
   'auto-runtime.yaml in the current directory is the configuration file.',
   'The ledger is kept in ~/.auto-runtime/ledger.db unless LEDGER_FILE or DATABASE_URL says otherwise.',
+  'Started by mcp, Auto Runtime reads its settings from ~/.auto-runtime and writes its log to ~/.auto-runtime/runtime.log.',
 ].join('\n');
 
 type Answer = (rest: readonly string[], host: CommandLineHost) => number;
@@ -52,14 +64,37 @@ function answered(args: readonly string[], host: CommandLineHost): number {
   return answer(rest, host);
 }
 
-function startsTheServer(args: readonly string[]): boolean {
-  return args.length === 0 || (args.length === 1 && args[0] === 'start');
+function startedByOf(args: readonly string[]): StartedBy | undefined {
+  const given = args.join(' ');
+  if (given === '' || given === 'start') {
+    return 'terminal';
+  }
+  return given === backgroundArguments.join(' ') ? 'agent' : undefined;
 }
 
-async function startedServer(host: CommandLineHost): Promise<undefined> {
-  await host.startServer(localSettings(host.environment, host.place));
+async function startedServer(host: CommandLineHost, startedBy: StartedBy): Promise<undefined> {
+  await host.startServer(localSettings(host.environment, host.place), startedBy);
+}
+
+async function relayed(host: CommandLineHost): Promise<number> {
+  await host.relay(runtimePortOf(host.environment, host.place.home));
+  return 0;
 }
 
 export function runCommandLine(args: readonly string[], host: CommandLineHost): Promise<number | undefined> {
-  return startsTheServer(args) ? startedServer(host) : Promise.resolve(answered(args, host));
+  const startedBy = startedByOf(args);
+  if (startedBy !== undefined) {
+    return startedServer(host, startedBy);
+  }
+  const [name = ''] = args;
+  if (args.length === 1 && name === 'mcp') {
+    return relayed(host);
+  }
+  if (args.length === 1 && isRuntimeCommand(name)) {
+    return runRuntimeCommand(name, runtimePortOf(host.environment, host.place.home), {
+      ...host.waiting,
+      console: host.console,
+    });
+  }
+  return Promise.resolve(answered(args, host));
 }

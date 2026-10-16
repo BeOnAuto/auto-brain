@@ -3,16 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
 import { campaignReviews } from './campaign-reviews.ts';
-import {
-  collecting,
-  counting,
-  detailsOf,
-  foldOf,
-  foldedAll,
-  foldingOf,
-  liveFromSomewhere,
-  viewTestTimeoutMs,
-} from './view-documents.ts';
+import { collecting, counting, detailsOf, foldOf, foldedAll, foldingOf, liveFromSomewhere } from './view-documents.ts';
 import { viewHarness } from './view-harness.ts';
 
 const reviewBrief = 'reasoning/review-brief';
@@ -205,7 +196,7 @@ function passedOverTests(settingsOf: SettingsOf): void {
 }
 
 export function foldingSuite(settingsOf: SettingsOf): void {
-  describe('a view the projector keeps', { timeout: viewTestTimeoutMs }, () => {
+  describe('a view the projector keeps', () => {
     reviewsTests(settingsOf);
     checkpointTests(settingsOf);
     sourceTests(settingsOf);

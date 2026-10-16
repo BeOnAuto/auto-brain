@@ -19,6 +19,7 @@ export interface CallFunctions {
   readonly childOf?: (call: ChildCall) => string | undefined;
   readonly emitRejections?: (attributes: JsonObject, pointer: string) => readonly Rejection[];
   readonly emitRefusal?: (event: JsonObject) => string | undefined;
+  readonly outputRefusal?: (document: JsonObject, output: Json) => string | undefined;
   readonly scheduleRejections?: (schedule: Json, pointer: string) => readonly Rejection[];
   readonly howAWorkflowReachesTheWorld: string;
   readonly howAWorkflowStarts: string;

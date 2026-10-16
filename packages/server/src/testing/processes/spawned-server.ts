@@ -6,8 +6,6 @@ import { join } from 'node:path';
 
 import { onTestFinished } from 'vitest';
 
-export const spawnedServerTestTimeoutMs = 60_000;
-
 export interface SpawnedServer {
   readonly port: Promise<number>;
   readonly exited: Promise<unknown>;

@@ -1,3 +1,4 @@
+import type { OutputShape } from '@on.auto/definitions';
 import {
   boundedJsonSchema,
   compileJsonSchema,
@@ -24,6 +25,10 @@ export interface SchemaReport {
 
 export function compileAnswerSchema(document: unknown): Result.Result<AnswerSchema, readonly Issue[]> {
   return compileJsonSchema(document, { what: 'answer', nesting: schemaLimits.answerNesting });
+}
+
+export function shapedAnswerSchema({ schema, further }: OutputShape): AnswerSchema {
+  return Result.getOrThrow(compileJsonSchema(schema, { what: 'answer', nesting: schemaLimits.answerNesting, further }));
 }
 
 export function notPortableAsToolInput(document: unknown): readonly PortabilityIssue[] {

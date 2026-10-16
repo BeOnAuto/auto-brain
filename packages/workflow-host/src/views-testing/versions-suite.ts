@@ -1,17 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../testing/host-files.ts';
-import {
-  alpha,
-  counting,
-  detailsOf,
-  foldOf,
-  foldedAll,
-  isStalled,
-  liveAt,
-  succeeded,
-  viewTestTimeoutMs,
-} from './view-documents.ts';
+import { alpha, counting, detailsOf, foldOf, foldedAll, isStalled, liveAt, succeeded } from './view-documents.ts';
 import { viewHarness } from './view-harness.ts';
 
 function rebuildTests(settingsOf: SettingsOf): void {
@@ -65,7 +55,7 @@ function discoveryTests(settingsOf: SettingsOf): void {
 }
 
 export function versionsSuite(settingsOf: SettingsOf): void {
-  describe('the versions of a recall function', { timeout: viewTestTimeoutMs }, () => {
+  describe('the versions of a recall function', () => {
     rebuildTests(settingsOf);
     discoveryTests(settingsOf);
   });

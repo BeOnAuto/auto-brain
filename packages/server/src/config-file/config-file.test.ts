@@ -2,7 +2,6 @@ import { createApiKey } from '@on.auto/identity';
 import { describe, expect, it } from 'vitest';
 
 import { configuredServer, rejectedRun, settingLines, stoppedOutput } from '../testing/processes/configured-server.ts';
-import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 import { request } from '../testing/servers/http-client.ts';
 
 const gatewayKey = 'gateway-key-SECRET-7f3a';
@@ -32,34 +31,30 @@ function fromOrigin(port: number, origin: string): Promise<number> {
   }).then(({ status }) => status);
 }
 
-describe(
-  'a server with a configuration file and no variable for its settings',
-  { timeout: spawnedServerTestTimeoutMs },
-  () => {
-    it('takes its gateways, aliases, API keys and origins from the file, and says so once', async () => {
-      const { child, configFile } = configuredServer(fileText, { GATEWAY_API_KEY: gatewayKey });
-      const port = await child.port;
+describe('a server with a configuration file and no variable for its settings', () => {
+  it('takes its gateways, aliases, API keys and origins from the file, and says so once', async () => {
+    const { child, configFile } = configuredServer(fileText, { GATEWAY_API_KEY: gatewayKey });
+    const port = await child.port;
 
-      const unauthenticated = await rejectedRun(port);
-      const rejected = await rejectedRun(port, created.key);
-      const origins = {
-        listed: await fromOrigin(port, 'https://app.example.com'),
-        other: await fromOrigin(port, 'https://other.example'),
-      };
-      const stderr = await stoppedOutput(child);
+    const unauthenticated = await rejectedRun(port);
+    const rejected = await rejectedRun(port, created.key);
+    const origins = {
+      listed: await fromOrigin(port, 'https://app.example.com'),
+      other: await fromOrigin(port, 'https://other.example'),
+    };
+    const stderr = await stoppedOutput(child);
 
-      expect({ unauthenticated: unauthenticated.status, rejected: rejected.body, origins }).toMatchObject({
-        unauthenticated: 401,
-        rejected: { detail: 'openai is not configured. Configured providers: gateway. Aliases: anthropic/*' },
-        origins: { listed: 200, other: 403 },
-      });
-      expect(settingLines(stderr)).toEqual([
-        `Settings read from the configuration file ${configFile}: MODEL_GATEWAYS, MODEL_ALIASES, API_KEYS, ALLOWED_ORIGINS`,
-      ]);
-      expect(stderr).not.toContain(gatewayKey);
+    expect({ unauthenticated: unauthenticated.status, rejected: rejected.body, origins }).toMatchObject({
+      unauthenticated: 401,
+      rejected: { detail: 'openai is not configured. Configured providers: gateway. Aliases: anthropic/*' },
+      origins: { listed: 200, other: 403 },
     });
-  },
-);
+    expect(settingLines(stderr)).toEqual([
+      `Settings read from the configuration file ${configFile}: MODEL_GATEWAYS, MODEL_ALIASES, API_KEYS, ALLOWED_ORIGINS`,
+    ]);
+    expect(stderr).not.toContain(gatewayKey);
+  });
+});
 
 const modelsText = `declared_models:
   bedrock:
@@ -68,45 +63,41 @@ allowed_models:
   - bedrock/*
 `;
 
-describe(
-  'a server whose configuration file declares and allows models',
-  { timeout: spawnedServerTestTimeoutMs },
-  () => {
-    it('lists the declared models, and refuses a definition that names a model it does not allow', async () => {
-      const { child, configFile } = configuredServer(modelsText, { AWS_REGION: 'eu-central-1' });
-      const port = await child.port;
+describe('a server whose configuration file declares and allows models', () => {
+  it('lists the declared models, and refuses a definition that names a model it does not allow', async () => {
+    const { child, configFile } = configuredServer(modelsText, { AWS_REGION: 'eu-central-1' });
+    const port = await child.port;
 
-      const listed = await request(port, 'GET', '/v1/orgs/acme/models?provider=bedrock');
-      const rejected = await rejectedRun(port);
-      const stderr = await stoppedOutput(child);
+    const listed = await request(port, 'GET', '/v1/orgs/acme/models?provider=bedrock');
+    const rejected = await rejectedRun(port);
+    const stderr = await stoppedOutput(child);
 
-      expect(listed.body).toMatchObject({
-        object: 'list',
-        data: [
-          {
-            id: 'bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0',
-            object: 'model',
-            created: 0,
-            owned_by: 'bedrock',
-          },
-        ],
-        catalog_status: 'complete',
-      });
-      expect(rejected).toMatchObject({
-        status: 503,
-        body: {
-          reason: 'unavailable',
-          detail: 'openai/gpt-5 is not one of the models this server offers',
+    expect(listed.body).toMatchObject({
+      object: 'list',
+      data: [
+        {
+          id: 'bedrock/eu.anthropic.claude-sonnet-4-5-20250929-v1:0',
+          object: 'model',
+          created: 0,
+          owned_by: 'bedrock',
         },
-      });
-      expect(settingLines(stderr)).toEqual([
-        `Settings read from the configuration file ${configFile}: DECLARED_MODELS, ALLOWED_MODELS`,
-      ]);
+      ],
+      catalog_status: 'complete',
     });
-  },
-);
+    expect(rejected).toMatchObject({
+      status: 503,
+      body: {
+        reason: 'unavailable',
+        detail: 'openai/gpt-5 is not one of the models this server offers',
+      },
+    });
+    expect(settingLines(stderr)).toEqual([
+      `Settings read from the configuration file ${configFile}: DECLARED_MODELS, ALLOWED_MODELS`,
+    ]);
+  });
+});
 
-describe('a server with settings in the environment', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a server with settings in the environment', () => {
   it('reads them as before, and says nothing of a configuration file, when CONFIG_FILE is not set', async () => {
     const { child } = configuredServer(undefined, {
       MODEL_GATEWAYS: JSON.stringify([{ name: 'relay', base_url: 'https://relay.example.com/v1' }]),

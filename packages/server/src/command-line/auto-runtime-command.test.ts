@@ -8,8 +8,6 @@ import { fileURLToPath } from 'node:url';
 import { createApiKey } from '@on.auto/identity';
 import { afterAll, describe, expect, it, onTestFinished } from 'vitest';
 
-import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
-
 const command = fileURLToPath(new URL('../../auto-runtime.ts', import.meta.url));
 
 const home = mkdtempSync(join(tmpdir(), 'auto-runtime-command-'));
@@ -65,7 +63,7 @@ async function started(settings: Readonly<Record<string, string>> = {}): Promise
   };
 }
 
-describe('the auto-runtime command', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the auto-runtime command', () => {
   it('starts the server in local mode with no setting, and shows where it answers and how to sign people in', async () => {
     const runtime = await started();
 

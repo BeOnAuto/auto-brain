@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { ledgerDatabaseOf } from './ledger-database.ts';
 
 const somePools: unknown = expect.any(Function);
@@ -15,7 +16,12 @@ describe('the database of the ledger and the workflow host', () => {
 
   it('is reached through the pools the server composes when the ledger is kept in PostgreSQL', () => {
     expect(
-      ledgerDatabaseOf(readSettings({ DATABASE_URL: 'postgresql://playbooks:secret@db.example.com/playbooks' })),
+      ledgerDatabaseOf(
+        readSettings({
+          DATABASE_URL: 'postgresql://playbooks:secret@db.example.com/playbooks',
+          SECRETS_KEY: secretsKey,
+        }),
+      ),
     ).toEqual({ store: 'postgresql', pools: somePools });
   });
 });

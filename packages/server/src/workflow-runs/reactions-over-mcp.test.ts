@@ -5,7 +5,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const closing = workflowSource(
   'close-the-month',
@@ -51,7 +51,7 @@ async function endedRuns(session: McpSession, attempts = 300): Promise<typeof Li
   return endedRuns(session, attempts - 1);
 }
 
-describe('a workflow whose trigger is an event, over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow whose trigger is an event, over MCP', () => {
   it('runs as the playbook for an event published to the playbook, and the feed shows the event and the run', async () => {
     const seen = await onAlpha(async (session) => {
       await session.callTool('create_definition', { type: 'workflow', name: 'close-the-month', source: closing });

@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import type { CallResult } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -12,21 +10,20 @@ const notifying = workflow('do:\n  - notify: { call: notify, with: { to: ada } }
 
 describe('the host told to stop just after it admitted a start', () => {
   it('lets the start finish, then stops the call it began, so nothing outlives the stop', async () => {
-    const answers = { begun: 0, finished: 0 };
-    const answeredLater: Effect.Effect<CallResult> = Effect.sync(() => {
+    const answers = { begun: 0, stopped: 0 };
+    const answeredOnlyWhenStopped: Effect.Effect<CallResult> = Effect.sync(() => {
       answers.begun += 1;
     }).pipe(
-      Effect.andThen(Effect.sleep(200)),
-      Effect.andThen(
-        Effect.sync((): CallResult => {
-          answers.finished += 1;
-          return { status: 'succeeded', output: 'sent' };
+      Effect.andThen(Effect.never),
+      Effect.onInterrupt(() =>
+        Effect.sync(() => {
+          answers.stopped += 1;
         }),
       ),
     );
     const hosted = await hostedOn(
       { store: 'sqlite', file: aSQLiteFile() },
-      { answer: () => answeredLater, sweepEveryMs: 3_600_000 },
+      { answer: () => answeredOnlyWhenStopped, sweepEveryMs: 3_600_000 },
     );
 
     const starting = Effect.runPromise(
@@ -35,10 +32,9 @@ describe('the host told to stop just after it admitted a start', () => {
     const stopping = hosted.host.stop();
     const started = await starting;
     await stopping;
-    await setTimeout(300);
 
     expect(started).toBe('started');
-    expect(answers).toEqual({ begun: 1, finished: 0 });
+    expect(answers).toEqual({ begun: 1, stopped: 1 });
     expect(hosted.troubles()).toEqual([]);
-  }, 30_000);
+  });
 });

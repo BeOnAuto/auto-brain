@@ -3,13 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { eventually } from '../testing/eventually.ts';
 import { onSQLite } from '../testing/host-files.ts';
 import { failingOnce } from '../views-testing/pool-faults.ts';
-import { counting, foldedAll, liveWith, viewTestTimeoutMs } from '../views-testing/view-documents.ts';
+import { counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { firstSeenOf } from './projector.ts';
 
 const anyText: unknown = expect.any(String);
 
-describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () => {
+describe('the records a projector reports', () => {
   it('are told once each, remembering only the newest as many as it may', () => {
     const firstSeen = firstSeenOf(2);
 
@@ -40,7 +40,7 @@ describe('the records a projector reports', { timeout: viewTestTimeoutMs }, () =
   });
 });
 
-describe('a projector that fails', { timeout: viewTestTimeoutMs }, () => {
+describe('a projector that fails', () => {
   it('reports a sweep that failed, and sweeps again', async () => {
     const views = await viewHarness(await onSQLite());
     await views.saved('runs', counting);

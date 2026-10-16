@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
-import { runIdIn, settledRun, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
 
 let server: ReasoningServer;
 
@@ -16,7 +16,7 @@ async function settledRunOf(name: string) {
   return settledRun(server, `${alpha}/runs/${runIdIn(started.body)}`);
 }
 
-describe('a workflow that calls a workflow, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that calls a workflow, over HTTP', () => {
   it('waits for the run of the workflow it called, which answers the call with its output', async () => {
     server = await servingCalls([answers(textResult('Short.'))]);
 
@@ -53,7 +53,7 @@ describe('a workflow that calls a workflow, over HTTP', { timeout: workflowTestT
   });
 });
 
-describe('workflows that call workflows, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('workflows that call workflows, over HTTP', () => {
   it('reach eight calls deep: the ninth start is refused, and the run that asked for it fails', async () => {
     server = await servingCalls([]);
 

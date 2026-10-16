@@ -5,6 +5,7 @@ import { Effect, Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -30,7 +31,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
-  return { LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href, SECRETS_KEY: secretsKey };
 }
 
 interface Store {
@@ -137,7 +138,6 @@ function overMcp(): Promise<readonly RunsPage[]> {
 describe.each(stores)('the runs of one capability, a page at a time, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)(
     'fill each page with as many of its runs as the limit asks, behind newer runs of another, over HTTP and MCP',
-    { timeout: 60_000 },
     async () => {
       await threeReasoningRunsBehindFiveComputationRuns(await environment());
 

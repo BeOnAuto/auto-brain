@@ -4,6 +4,7 @@ import { Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import { logLedger } from './logging.ts';
 
@@ -53,6 +54,7 @@ describe('logLedger on PostgreSQL', () => {
     const { ledger } = readSettings({
       DATABASE_URL: 'postgresql://auto_runtime@ledger.c9akciq32.eu-west-1.rds.amazonaws.com/playbooks',
       DATABASE_CREDENTIALS: 'aws-iam',
+      SECRETS_KEY: secretsKey,
     });
 
     const lines = await linesLoggedBy(logLedger(ledger));

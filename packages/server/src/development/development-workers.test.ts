@@ -42,7 +42,7 @@ const saidSoFar = [
   '}',
 ].join('\n');
 
-describe('the functions pnpm dev serves in worker threads', { timeout: developmentTestTimeoutMs }, () => {
+describe('the functions pnpm dev serves in worker threads', () => {
   it('runs a computation function, folds its runs into the view of a recall function and answers from the view', async () => {
     const development = startDevelopment(developmentFiles());
     const port = await untilListening(development);

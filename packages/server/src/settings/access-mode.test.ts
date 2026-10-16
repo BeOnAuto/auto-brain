@@ -7,7 +7,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { compositionRoot } from '../composition/composition-root.ts';
 import { startServer } from '../lifecycle/lifecycle.ts';
 import { accessTokenOf, issuerOverHttps } from '../sign-in/issuer-over-https.ts';
-import { spawnServer, spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
+import { spawnServer } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const mainModule = fileURLToPath(new URL('../main.ts', import.meta.url));
@@ -58,7 +58,7 @@ async function statusesOn(
   return responses.map(({ status }) => status);
 }
 
-describe('the access mode of a server on loopback', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the access mode of a server on loopback', () => {
   it('is local with neither PUBLIC_URL nor API_KEYS, trusts a request without a credential and warns that it does', async () => {
     const served = await servedBy({});
 
@@ -89,7 +89,7 @@ describe('the access mode of a server on loopback', { timeout: spawnedServerTest
   });
 });
 
-describe('the access mode of a server with PUBLIC_URL', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('the access mode of a server with PUBLIC_URL', () => {
   it('signs people in, and refuses a request without a credential', async () => {
     const issuer = await issuerOverHttps();
     const token = await accessTokenOf(issuer, publicUrl, signInScopes.join(' '));
@@ -113,19 +113,15 @@ describe('the access mode of a server with PUBLIC_URL', { timeout: spawnedServer
   });
 });
 
-describe(
-  'a server beyond loopback with neither PUBLIC_URL nor API_KEYS',
-  { timeout: spawnedServerTestTimeoutMs },
-  () => {
-    it('stops start-up with a named error before the server listens, naming the HOST it would listen on', async () => {
-      const child = spawnServer(mainModule, { HOST: '0.0.0.0', PORT: '0', LEDGER_FILE: ledger.fileName });
+describe('a server beyond loopback with neither PUBLIC_URL nor API_KEYS', () => {
+  it('stops start-up with a named error before the server listens, naming the HOST it would listen on', async () => {
+    const child = spawnServer(mainModule, { HOST: '0.0.0.0', PORT: '0', LEDGER_FILE: ledger.fileName });
 
-      expect(await child.exited).toBe(1);
-      expect(child.output()).toEqual({
-        stdout: '',
-        stderr:
-          'Auto Runtime could not start: ReachableWithoutCredentialsError: A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST 0.0.0.0\n',
-      });
+    expect(await child.exited).toBe(1);
+    expect(child.output()).toEqual({
+      stdout: '',
+      stderr:
+        'Auto Runtime could not start: ReachableWithoutCredentialsError: A server reachable beyond this computer needs PUBLIC_URL, to sign people in, or API_KEYS, and this one listens on HOST 0.0.0.0\n',
     });
-  },
-);
+  });
+});

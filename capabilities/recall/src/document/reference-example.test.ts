@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 
 import { recallFolding } from '../run/recall-bounds.ts';
 import { campaignReviews } from '../testing/campaign-reviews.ts';
-import { liveView, poolOf, recallWith, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { liveView, poolOf, recallWith } from '../testing/recall-runs.ts';
 import { runnableDetailsOf } from '../testing/runnable-details.ts';
 import { parseRecallDocument } from './document-parsing.ts';
 
@@ -101,7 +101,7 @@ async function foldedEntries(foldedEvents: readonly Schema.JsonObject[]) {
 
 const largestKept = 'x'.repeat(8190);
 
-describe('the example on the reference page of recall functions', { timeout: workerTestTimeoutMs }, () => {
+describe('the example on the reference page of recall functions', () => {
   it('is, byte for byte, the document the tests run', () => {
     const [example] = fencedBlocks;
 
@@ -131,7 +131,7 @@ describe('the example on the reference page of recall functions', { timeout: wor
   });
 });
 
-describe('the fold of the example on the reference page', { timeout: workerTestTimeoutMs }, () => {
+describe('the fold of the example on the reference page', () => {
   it('keeps a campaign named like a property every object inherits as an entry of its own', async () => {
     expect(await foldedEntries(reviewEvents(rounds.flat()))).toEqual([
       { folded: 6, entries: inheritedNames.map((campaign, index) => [campaign, keptInEachRound(index)]) },
@@ -149,7 +149,7 @@ describe('the fold of the example on the reference page', { timeout: workerTestT
   });
 });
 
-describe('the example of the common case on the reference page', { timeout: workerTestTimeoutMs }, () => {
+describe('the example of the common case on the reference page', () => {
   const [, , , , document] = fencedBlocks;
   const source = document?.body ?? '';
 

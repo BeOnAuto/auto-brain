@@ -4,7 +4,7 @@ import { withMcpSession } from '@on.auto/api/testing';
 import { createApiKey } from '@on.auto/identity';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { spawnServer, spawnedServerTestTimeoutMs } from './testing/processes/spawned-server.ts';
+import { spawnServer } from './testing/processes/spawned-server.ts';
 import { messagesOf, modelLinesOf } from './testing/processes/stderr-lines.ts';
 import { temporaryLedger } from './testing/records/temporary-ledger.ts';
 
@@ -65,13 +65,19 @@ const functionsRun: readonly unknown[] = [
 ];
 
 const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
-const keptIn: readonly string[] = [ledgerKept, "Content is kept in the ledger's database"];
+const keptIn: readonly unknown[] = [
+  ledgerKept,
+  "Content is kept in the ledger's database",
+  expect.stringMatching(
+    /^Secrets are kept sealed under the key [\da-f]{16}, and 0 sealed under the previous key were sealed again under it$/u,
+  ),
+];
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
   return [expect.stringMatching(/^Local mode is on: /u), ...keptIn, noModelProvider, ...functionsRun, ...after];
 }
 
-describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('main', () => {
   it('serves health checks when launched with node and exits cleanly on SIGTERM', async () => {
     const child = spawnServer(mainModule, loopback);
     const port = await child.port;
@@ -97,7 +103,7 @@ describe('main', { timeout: spawnedServerTestTimeoutMs }, () => {
   });
 });
 
-describe('main at start', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('main at start', () => {
   it('names the configured model providers in one line, keeping every provider in its annotations', async () => {
     const child = spawnServer(mainModule, { ...loopback, OPENAI_API_KEY: 'sk-test' });
     await child.port;
@@ -146,7 +152,7 @@ describe('main at start', { timeout: spawnedServerTestTimeoutMs }, () => {
   });
 });
 
-describe('main when it is told to stop', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('main when it is told to stop', () => {
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
     'exits 0 on %s without waiting for the shutdown timeout',
     async (signal) => {
@@ -163,7 +169,7 @@ describe('main when it is told to stop', { timeout: spawnedServerTestTimeoutMs }
   );
 });
 
-describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('main with settings', () => {
   it('requires an API key on protected paths once keys are configured, and says nothing about access', async () => {
     const { key, entry } = createApiKey({ id: 'ci-1', org: 'demo', permissions: ['org:read'], playbooks: '*' });
     const child = spawnServer(mainModule, { ...loopback, API_KEYS: JSON.stringify([entry]) });
@@ -197,7 +203,7 @@ describe('main with settings', { timeout: spawnedServerTestTimeoutMs }, () => {
   );
 });
 
-describe('main with secrets in settings it cannot read', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('main with secrets in settings it cannot read', () => {
   it('does not echo a secret of the model settings', async () => {
     const secret = 'sk-gateway-secret-123';
     const child = spawnServer(mainModule, {
@@ -228,7 +234,7 @@ describe('main with secrets in settings it cannot read', { timeout: spawnedServe
   });
 });
 
-describe('main over MCP', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('main over MCP', () => {
   it('serves the playbook tools without a key in local mode, writing only the listening line to stdout', async () => {
     const child = spawnServer(mainModule, loopback);
     const port = await child.port;

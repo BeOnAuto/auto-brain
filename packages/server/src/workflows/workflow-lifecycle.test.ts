@@ -5,7 +5,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 
 import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
 
@@ -34,7 +34,7 @@ const inputsOf = Schema.decodeUnknownSync(
   }),
 );
 
-describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
+describe('main with workflows', () => {
   it('says how it runs workflows, and exits 0 at once on SIGTERM', async () => {
     const child = workflowProcess(ledger.fileName, { PREDICTION_CACHE_DIR: ledger.cacheDirectory });
     const port = await child.port;
@@ -52,6 +52,9 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,
       "INFO Content is kept in the ledger's database",
+      expect.stringMatching(
+        /^INFO Secrets are kept sealed under the key [\da-f]{16}, and 0 sealed under the previous key were sealed again under it$/u,
+      ),
       "INFO Reasoning functions run in this server: the model calls of a run add up to at most 2,000,000 input tokens, and each answer of a tool is read whole where it fits the model's context window",
       `INFO Prediction functions run in this server: a playbook keeps at most 32 active, each builds at most 4 times a day, and model processes may run at most 4 at once, at most 2 of them for the builds being scored, with 1,280 MiB of data each, which nothing bounds, since prlimit is not on the path, reading the files of their models from ${ledger.cacheDirectory}`,
       'INFO Workflows run in this server: a run lasts at most 30 days, at most 32 of their calls run at once, and the runs are swept every 1000 ms',
@@ -60,7 +63,7 @@ describe('main with workflows', { timeout: workflowTestTimeoutMs }, () => {
   });
 });
 
-describe('a server started again on the ledger of its workflows', { timeout: workflowTestTimeoutMs }, () => {
+describe('a server started again on the ledger of its workflows', () => {
   it('goes on with a run that waits for an event, and with ones whose timers went off while it was stopped, the fire of each caused by the record that armed it', async () => {
     const first = workflowProcess(ledger.fileName);
     const firstPort = await first.port;

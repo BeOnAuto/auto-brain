@@ -1,13 +1,11 @@
-import { setTimeout } from 'node:timers/promises';
-
+import { streamAppends, type StreamSignal } from '@on.auto/ledger';
 import { Effect, Exit } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
 import { heldStart, type HeldStart } from '../reaction-testing/held-start.ts';
 import { eventTrigger, published, definitionRecorded } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
 
@@ -15,8 +13,27 @@ const anHourMs = 3_600_000;
 
 const sweepEveryMs = 20;
 
-async function startingAReaction(held: HeldStart, settings: DatabaseSettings): Promise<ReactingHost> {
-  const reacting = await reactingHost({ settings, start: held.start, sweepEveryMs });
+const awaitedAtMostMs = 30_000;
+
+function toldWhenTheFollowerStops(stopped: () => void): StreamSignal {
+  return {
+    raise: streamAppends.raise,
+    listen: (listener) => {
+      const stopListening = streamAppends.listen(listener);
+      return () => {
+        stopListening();
+        stopped();
+      };
+    },
+  };
+}
+
+async function startingAReaction(
+  held: HeldStart,
+  settings: DatabaseSettings,
+  appended: StreamSignal = streamAppends,
+): Promise<ReactingHost> {
+  const reacting = await reactingHost({ settings, start: held.start, sweepEveryMs, appended });
   const trigger = eventTrigger({ type: 'com.acme.closed' });
   await definitionRecorded(reacting.database.store, { name: 'close', version: 1, triggers: [trigger] });
   await published(reacting.database.store, { id: 'e1', type: 'com.acme.closed' });
@@ -34,22 +51,27 @@ describe('a reaction starting a run while its host stops serving', () => {
     await stopping;
 
     expect(held.exits()).toEqual([Exit.succeed('started')]);
-  }, 30_000);
+  });
 
   it('starts the run before the host stands by, when another host takes the workflows over', async () => {
     const held = heldStart();
     const settings: DatabaseSettings = { store: 'sqlite', file: aSQLiteFile() };
-    const reacting = await startingAReaction(held, settings);
+    const standingBy = Promise.withResolvers<void>();
+    const reacting = await startingAReaction(held, settings, toldWhenTheFollowerStops(standingBy.resolve));
 
     await hostedOn(settings, { holder: 'ahead', clock: { now: () => Date.now() + anHourMs, sleep: Effect.sleep } });
-    await setTimeout(10 * sweepEveryMs);
+    await standingBy.promise;
     held.release(reacting.host);
-    const notes = await until(
-      () => Promise.resolve(reacting.notes()),
-      (noted) => noted.length > 0,
+    const notes = await vi.waitFor(
+      () => {
+        const noted = reacting.notes();
+        expect(noted).not.toHaveLength(0);
+        return noted;
+      },
+      { timeout: awaitedAtMostMs, interval: 10 },
     );
 
     expect(held.exits()).toEqual([Exit.succeed('started')]);
     expect(notes).toMatchObject([{ kind: 'standing_by', holder: 'ahead' }]);
-  }, 30_000);
+  });
 });

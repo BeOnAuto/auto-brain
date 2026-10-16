@@ -5,12 +5,12 @@ import { Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import {
   playbookWithReviews,
   inState,
   liveWith,
-  recallTestTimeoutMs,
   recalled,
   servingRecall,
   standingUntil,
@@ -39,7 +39,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
-  return { LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href, SECRETS_KEY: secretsKey };
 }
 
 function secondEnvironment(): Promise<Readonly<Record<string, string>>> {
@@ -133,23 +133,19 @@ async function viewsOn(server: ReasoningServer) {
   return { campaigns, depths: stalled, answers };
 }
 
-describe(
-  `a recall function on a server on SQLite and on one on ${secondStore}`,
-  { timeout: recallTestTimeoutMs },
-  () => {
-    it('folds the same view from the same history, stops at the same event where its fold recurses past its fixed depth, and answers after the same work in a cold worker and a warm one', async () => {
-      const second = await secondEnvironment();
+describe(`a recall function on a server on SQLite and on one on ${secondStore}`, () => {
+  it('folds the same view from the same history, stops at the same event where its fold recurses past its fixed depth, and answers after the same work in a cold worker and a warm one', async () => {
+    const second = await secondEnvironment();
 
-      const onSQLite = await viewsOn(await servingRecall(verdicts(...outputs)));
-      const onTheOther = await viewsOn(await servingRecall(verdicts(...outputs), second));
+    const onSQLite = await viewsOn(await servingRecall(verdicts(...outputs)));
+    const onTheOther = await viewsOn(await servingRecall(verdicts(...outputs), second));
 
-      expect(onTheOther).toEqual(onSQLite);
-      expect(onSQLite.answers.warm).toEqual(onSQLite.answers.cold);
-      expect(onSQLite.answers.cold.output).toBe(outputs.length);
-      expect(onSQLite).toMatchObject({
-        campaigns: { spring: ['approve', 'xxxxxxxxxxxxxxxxxxxx', 'reject'], unknown: ['none', 'none', '3'] },
-        depths: { folded: 4, stalled: { kind: 'raised', line: 11 } },
-      });
+    expect(onTheOther).toEqual(onSQLite);
+    expect(onSQLite.answers.warm).toEqual(onSQLite.answers.cold);
+    expect(onSQLite.answers.cold.output).toBe(outputs.length);
+    expect(onSQLite).toMatchObject({
+      campaigns: { spring: ['approve', 'xxxxxxxxxxxxxxxxxxxx', 'reject'], unknown: ['none', 'none', '3'] },
+      depths: { folded: 4, stalled: { kind: 'raised', line: 11 } },
     });
-  },
-);
+  });
+});

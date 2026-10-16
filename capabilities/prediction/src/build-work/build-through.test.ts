@@ -19,8 +19,6 @@ import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { readBuildBrief } from '../trainer/build-reads.ts';
 import { childIdOf } from './child-runs.ts';
 
-const testTimeoutMs = 60_000;
-
 const alpha = { org: 'acme', playbook: 'alpha' };
 
 const endedUnanswered: unknown = expect.stringMatching(
@@ -49,7 +47,7 @@ function dueAgain(playbook: BuildPlaybook, build: string): Promise<void> {
   );
 }
 
-describe('a build sent through an interaction function', { timeout: testTimeoutMs }, () => {
+describe('a build sent through an interaction function', () => {
   it('waits for its child, which the due work starts once under the id derived from the build, carrying the build', async () => {
     const playbook = buildPlaybook();
     const build = await sentThrough(playbook);
@@ -94,7 +92,7 @@ describe('a build sent through an interaction function', { timeout: testTimeoutM
   });
 });
 
-describe('a build sent through an interaction function that does not answer', { timeout: testTimeoutMs }, () => {
+describe('a build sent through an interaction function that does not answer', () => {
   it('ends unanswered as its child expires', async () => {
     const playbook = buildPlaybook();
     const build = await sentThrough(playbook, 'PT1M');
@@ -114,7 +112,7 @@ describe('a build sent through an interaction function that does not answer', { 
   });
 });
 
-describe('a build sent through an interaction function that cannot carry it', { timeout: testTimeoutMs }, () => {
+describe('a build sent through an interaction function that cannot carry it', () => {
   it('ends undelivered when its child cannot be started', async () => {
     const playbook = buildPlaybook();
     const build = await sentThrough(playbook);
@@ -146,51 +144,47 @@ describe('a build sent through an interaction function that cannot carry it', { 
   });
 });
 
-describe(
-  'a build sent through an interaction function, read and answered around its child',
-  { timeout: testTimeoutMs },
-  () => {
-    it('serves its brief before its child starts, and leaves alone a run of the function that no build asked', async () => {
-      const playbook = buildPlaybook();
-      const build = await sentThrough(playbook);
-      const brief = await readOf(playbook, readBuildBrief, build);
-      await playbook.call(playbook.operations.run, {
-        type: 'interaction',
-        name: 'send-build',
-        input: { build: { run_id: 'asked-by-hand', function: 'daily-visits' } },
-      });
-
-      expect(brief).toBe('Fit a model of the daily visits of each of 2 stores.');
-      expect(await standingOf(playbook)).toMatchObject({ output: { standing: { build: { run_id: build } } } });
+describe('a build sent through an interaction function, read and answered around its child', () => {
+  it('serves its brief before its child starts, and leaves alone a run of the function that no build asked', async () => {
+    const playbook = buildPlaybook();
+    const build = await sentThrough(playbook);
+    const brief = await readOf(playbook, readBuildBrief, build);
+    await playbook.call(playbook.operations.run, {
+      type: 'interaction',
+      name: 'send-build',
+      input: { build: { run_id: 'asked-by-hand', function: 'daily-visits' } },
     });
 
-    it('ends refused when its child answers a candidate that was never uploaded, as an inbox build refuses the answer', async () => {
-      const playbook = buildPlaybook();
-      const build = await sentThrough(playbook);
-      await performedOnce(playbook.due, Date.now());
-      await playbook.call(playbook.operations.answer, {
-        run_id: childIdOf(build, '/request'),
-        answer: { candidates: ['e'.repeat(64)] },
-      });
-      await performedUntilQuiet(playbook.due);
+    expect(brief).toBe('Fit a model of the daily visits of each of 2 stores.');
+    expect(await standingOf(playbook)).toMatchObject({ output: { standing: { build: { run_id: build } } } });
+  });
 
-      expect(await workOf(playbook, build)).toMatchObject([{ type: 'dataset_assembled' }]);
-      expect(await runOf(playbook, build)).toMatchObject({
-        output: {
-          status: 'rejected',
-          rejection: {
-            reason: 'invalid_input',
-            issues: [
-              { pointer: '/answer/candidates/0', detail: 'Candidate eeeeeeeeeeee… was not uploaded to this build' },
-            ],
-          },
+  it('ends refused when its child answers a candidate that was never uploaded, as an inbox build refuses the answer', async () => {
+    const playbook = buildPlaybook();
+    const build = await sentThrough(playbook);
+    await performedOnce(playbook.due, Date.now());
+    await playbook.call(playbook.operations.answer, {
+      run_id: childIdOf(build, '/request'),
+      answer: { candidates: ['e'.repeat(64)] },
+    });
+    await performedUntilQuiet(playbook.due);
+
+    expect(await workOf(playbook, build)).toMatchObject([{ type: 'dataset_assembled' }]);
+    expect(await runOf(playbook, build)).toMatchObject({
+      output: {
+        status: 'rejected',
+        rejection: {
+          reason: 'invalid_input',
+          issues: [
+            { pointer: '/answer/candidates/0', detail: 'Candidate eeeeeeeeeeee… was not uploaded to this build' },
+          ],
         },
-      });
+      },
     });
-  },
-);
+  });
+});
 
-describe('a build sent through an interaction function whose child is cancelled', { timeout: testTimeoutMs }, () => {
+describe('a build sent through an interaction function whose child is cancelled', () => {
   it('ends undelivered when its child is cancelled on its own', async () => {
     const playbook = buildPlaybook();
     const build = await sentThrough(playbook);

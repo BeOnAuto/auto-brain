@@ -10,7 +10,7 @@ import { preparedOn, sqliteProjectionsOf } from './projections/sqlite-projection
 import { sqliteSchemaCreated } from './recorded/sqlite-indexes.ts';
 import { sqliteRecordedStoreOn } from './recorded/sqlite-recorded.ts';
 
-type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
+export type AnyDriver = Parameters<typeof getSQLiteEventStore>[0]['driver'];
 
 const eventsWithinAHundredParameters = 8;
 

@@ -19,7 +19,10 @@ function keeper(mostActive: number): Capability {
     describeOutput: () => 'It kept.',
     mediaType: 'text/plain',
     parse: (source: string) => Effect.succeed({ kept: source }),
-    summarize: ({ kept }) => ({ description: 'Keeps a text', details: { kept, line: 4 } }),
+    summarize: ({ kept }) => ({
+      description: 'Keeps a text',
+      details: { kept, line: 4, ...(kept === 'shaped' ? { shape: 'series' } : {}) },
+    }),
     run: () => Effect.succeed({ output: null, record: {} }),
     mostActive,
     standing: ({ org, playbook, name, version, status }: StandingRequest) =>
@@ -58,6 +61,23 @@ describe('what a definition keeps for its runtime adapter', () => {
       expect(outcome).not.toHaveProperty('output.details');
     }
     expect(listed).not.toHaveProperty('output.definitions.0.details');
+  });
+});
+
+describe('the shape of what a definition produces', () => {
+  it('is answered from what it keeps as details.shape, and nothing else of what it keeps', async () => {
+    const { definitions, create, getDefinition, listDefinitions } = keepersOf(keeper(32));
+
+    const created = await create('shaped');
+    const read = await definitions.call(getDefinition, toAlpha(acmeAdmin, { type: 'keeper', name: 'shaped' }));
+    const listed = await definitions.call(listDefinitions, toAlpha(acmeAdmin, { type: 'keeper' }));
+
+    for (const outcome of [created, read]) {
+      expect(outcome).toMatchObject({ status: 'succeeded', output: { name: 'shaped', details: { shape: 'series' } } });
+      expect(outcome).not.toHaveProperty('output.details.kept');
+    }
+    expect(listed).toMatchObject({ output: { definitions: [{ name: 'shaped', details: { shape: 'series' } }] } });
+    expect(listed).not.toHaveProperty('output.definitions.0.details.line');
   });
 });
 

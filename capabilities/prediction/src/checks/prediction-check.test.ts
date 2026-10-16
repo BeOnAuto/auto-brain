@@ -3,7 +3,7 @@ import { nothingSaved } from '@on.auto/definitions/testing';
 import { Cause, Effect, Exit, Struct, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { poolOf, predictionRuns, savedInPlaybook, workerTestTimeoutMs } from '../testing/prediction-runs.ts';
+import { poolOf, predictionRuns, savedInPlaybook } from '../testing/prediction-runs.ts';
 import { weeklyOrders, weeklyOrdersWith } from '../testing/weekly-orders.ts';
 
 const approving = weeklyOrdersWith(['  activate: automatic', '  activate: { approved: approve-version }']);
@@ -138,26 +138,20 @@ describe('the check of a function to send builds through when a prediction funct
 });
 
 describe('the check of a data test when a prediction function is saved', () => {
-  it(
-    'keeps what it stripped of a test that names $data alone, and refuses one that names more at its line',
-    async () => {
-      const pool = poolOf();
-      const stripped = await Effect.runPromise(
-        predictionRuns(pool).prepared(tested('($data as { region: string }).region !== "test"')).check(nothingSaved),
-      );
-      const refused = await Effect.runPromise(
-        Effect.flip(
-          predictionRuns(pool).prepared(tested('$workflow.input.region === $data.region')).check(nothingSaved),
-        ),
-      );
+  it('keeps what it stripped of a test that names $data alone, and refuses one that names more at its line', async () => {
+    const pool = poolOf();
+    const stripped = await Effect.runPromise(
+      predictionRuns(pool).prepared(tested('($data as { region: string }).region !== "test"')).check(nothingSaved),
+    );
+    const refused = await Effect.runPromise(
+      Effect.flip(predictionRuns(pool).prepared(tested('$workflow.input.region === $data.region')).check(nothingSaved)),
+    );
 
-      expect(stripped).toEqual({
-        expressions: {
-          ' ($data as { region: string }).region !== "test" ': ' ($data                      ).region !== "test" ',
-        },
-      });
-      expect(refused).toMatchObject({ issues: [{ pointer: '', detail: atTheDataTest }] });
-    },
-    workerTestTimeoutMs,
-  );
+    expect(stripped).toEqual({
+      expressions: {
+        ' ($data as { region: string }).region !== "test" ': ' ($data                      ).region !== "test" ',
+      },
+    });
+    expect(refused).toMatchObject({ issues: [{ pointer: '', detail: atTheDataTest }] });
+  });
 });

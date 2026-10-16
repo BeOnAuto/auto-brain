@@ -45,8 +45,8 @@ The recall sentence says that a recall function reads run results, definitions a
 
 An MCP client sends the same credentials as any HTTP caller, and has the same permissions; see [Requests and access](http.md#requests-and-access). A client connects in one of three ways:
 
-- With no credential, when the server runs in [local mode](../self-host/security.md#local-mode): it listens only on a loopback address, and neither `PUBLIC_URL` nor `API_KEYS` is set. The quick start's endpoint, `http://localhost:5555/mcp`, runs this way. It trusts every request on your computer, so never expose it through a tunnel or public proxy.
-- Signed in, where the operator sets `PUBLIC_URL`. Your agent signs you in through the Auto identity service when it connects. On your own computer, `PUBLIC_URL=http://localhost:5555` turns this on for the quick start's endpoint.
+- With no credential, when the server runs in [local mode](../self-host/security.md#local-mode): it listens only on a loopback address, and neither `PUBLIC_URL` nor `API_KEYS` is set. The quick start's MCP entry starts Auto Runtime this way, and relays the agent to its endpoint, `http://localhost:5555/mcp`. It trusts every request on your computer, so never expose it through a tunnel or public proxy.
+- Signed in, where the operator sets `PUBLIC_URL`. Your agent signs you in through the Auto identity service when it connects. On your own computer, `PUBLIC_URL=http://localhost:5555` turns this on for a server started in a terminal, and the agent then connects to `http://localhost:5555/mcp` over HTTP, as the [quick start](../get-started/local.md#other-ways-to-run-auto) describes, rather than through the MCP entry.
 - With an [API key](../self-host/security.md#api-keys), sent as `Authorization: Bearer <key>`. Keep it in the connection configuration, outside prompts and function documents.
 
 [Authentication and security](../self-host/security.md) says how an operator sets each of these up. The [Sign-in and token reference](authentication.md) gives the rules the server applies.

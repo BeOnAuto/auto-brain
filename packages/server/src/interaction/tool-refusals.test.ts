@@ -6,7 +6,6 @@ import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/serve
 import { brief, servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const decodeHistory = Schema.decodeUnknownSync(
   Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
@@ -25,7 +24,7 @@ async function refusedThrough(environment: Readonly<Record<string, string>>) {
   return { refusal: refusal.body, types: decodeHistory(history.body).events.map(({ type }) => type) };
 }
 
-describe('a delivery through a tool this playbook may not use, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('a delivery through a tool this playbook may not use, over HTTP', () => {
   it('ends its run unavailable at the start, before anything is asked, in the words of the tool servers', async () => {
     const chat = await chatServer();
 

@@ -7,7 +7,7 @@ import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { requestTo, settledOver, workflowProcess, type Answer } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { until, workflows } from '../testing/servers/workflow-calls.ts';
-import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const Listed = Schema.Struct({ runs: Schema.Array(Schema.Struct({ run_id: Schema.String })) });
 
@@ -61,33 +61,29 @@ function stopped(server: SpawnedServer, signal: NodeJS.Signals): Promise<unknown
   return server.exited;
 }
 
-describe(
-  'a server that restarts while a run waits for the workflow it called',
-  { timeout: workflowTestTimeoutMs },
-  () => {
-    it('keeps the call waiting, and the ending of the workflow it called answers it', async () => {
-      const file = ledgerFile();
-      const first = workflowProcess(file);
-      const { parent, child } = await waitingOn(await first.port, file);
-      await stopped(first, 'SIGKILL');
+describe('a server that restarts while a run waits for the workflow it called', () => {
+  it('keeps the call waiting, and the ending of the workflow it called answers it', async () => {
+    const file = ledgerFile();
+    const first = workflowProcess(file);
+    const { parent, child } = await waitingOn(await first.port, file);
+    await stopped(first, 'SIGKILL');
 
-      const second = workflowProcess(file);
-      const port = await second.port;
-      const afterRestart = await callStatesIn(file)();
-      await until(
-        () => requestTo(port, 'POST', `/beta/runs/${child}/events`, { event: { type: 'com.acme.go', data: 1 } }),
-        accepted,
-      );
-      const settled = await settledOver(port, `/beta/runs/${parent}`);
+    const second = workflowProcess(file);
+    const port = await second.port;
+    const afterRestart = await callStatesIn(file)();
+    await until(
+      () => requestTo(port, 'POST', `/beta/runs/${child}/events`, { event: { type: 'com.acme.go', data: 1 } }),
+      accepted,
+    );
+    const settled = await settledOver(port, `/beta/runs/${parent}`);
 
-      expect(afterRestart).toEqual([{ state: 'waiting' }]);
-      expect(settled).toMatchObject({ status: 'succeeded', output: [1] });
-      expect(await stopped(second, 'SIGTERM')).toBe(0);
-    });
-  },
-);
+    expect(afterRestart).toEqual([{ state: 'waiting' }]);
+    expect(settled).toMatchObject({ status: 'succeeded', output: [1] });
+    expect(await stopped(second, 'SIGTERM')).toBe(0);
+  });
+});
 
-describe('a cancel that lands on a server that does not hold the lease', { timeout: workflowTestTimeoutMs }, () => {
+describe('a cancel that lands on a server that does not hold the lease', () => {
   it('is accepted, and the server that holds it ends the run and answers the run that waited for it, which fails by the status of the error', async () => {
     const file = ledgerFile();
     const holder = workflowProcess(file);

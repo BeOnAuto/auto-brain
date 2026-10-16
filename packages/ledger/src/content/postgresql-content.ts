@@ -22,7 +22,7 @@ export interface ContentConnections extends Querying {
   connect(): Promise<ContentConnection>;
 }
 
-function executorOn(querying: Querying): StatementExecutor {
+export function executorOn(querying: Querying): StatementExecutor {
   const formatted = formattedFor(async (text, values) => (await querying.query(text, values)).rows);
   return { query: async (sql) => ({ rows: await formatted(sql) }), command: formatted };
 }

@@ -62,7 +62,7 @@ describe('the events a run receives over its life', () => {
     expect(pastIt.outcome).toMatchObject({ kind: 'raised', error: { title: receivedTitle } });
     expect(pastIt.inbox).toMatchObject({ received: mostReceivedEvents, waiting: [] });
     expect(pastIt.inbox.receivedIds).toHaveLength(mostReceivedEvents);
-  }, 30_000);
+  });
 
   it(`may take ${mostReceivedEventBytes} bytes, consumed or not`, () => {
     const run = drivenRun(consumingForever, { meanwhile: flooding(22, 'tick', 'x'.repeat(200_000)) });

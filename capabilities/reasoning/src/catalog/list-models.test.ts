@@ -37,6 +37,31 @@ async function listModels(input: unknown, caller: CallerIdentity = reader) {
   return { registration, outcome };
 }
 
+const setup = 'To add one, the person puts a key in the settings of the server.';
+
+async function listedWithSetup(listingEnvironment: Readonly<Record<string, string>>, input: unknown): Promise<unknown> {
+  const catalog = await catalogFor(listingEnvironment, () => jsonResponse(anthropicModels));
+  const { registration } = defineListModels(catalog.access.catalog, setup);
+  return outputOf(
+    await Effect.runPromise(
+      makeDispatcher([])
+        .dispatchToOrg(registration, { caller: reader, org: 'acme', input, encoding: 'strings' })
+        .pipe(Effect.provide(services)),
+    ),
+  );
+}
+
+describe('list_models on a server that says how a person adds a model provider', () => {
+  it('says it when the server has no model at all', async () => {
+    expect(await listedWithSetup({}, {})).toMatchObject({ data: [], provider_setup: setup });
+  });
+
+  it('says nothing of it for the models of one provider, or when the server has models', async () => {
+    expect(await listedWithSetup({}, { provider: 'mistral' })).not.toHaveProperty('provider_setup');
+    expect(await listedWithSetup({ ANTHROPIC_API_KEY: 'sk-ant-key' }, {})).not.toHaveProperty('provider_setup');
+  });
+});
+
 describe('list_models', () => {
   it('is a query of the org at GET /models that anyone who may read the org can call', async () => {
     const { registration, outcome } = await listModels({});

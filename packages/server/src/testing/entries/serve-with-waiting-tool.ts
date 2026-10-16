@@ -1,4 +1,3 @@
-import { waitForever } from '@on.auto/api/testing';
 import type { DispatcherServices } from '@on.auto/operations';
 import { playbookOperations } from '@on.auto/playbooks';
 
@@ -8,6 +7,7 @@ import { servedBy } from '../../lifecycle/lifecycle.ts';
 import { exitOnStartupFailure, runServer } from '../../lifecycle/run-server.ts';
 import { stopRequestedBy } from '../../lifecycle/stop-request.ts';
 import { shortShutdownTimeoutMs } from '../processes/short-shutdown-timeout.ts';
+import { waitForeverAnnouncedIn } from './announced-waiting.ts';
 
 await runServer<DispatcherServices>(
   process,
@@ -16,7 +16,9 @@ await runServer<DispatcherServices>(
     composed: (settings, telemetry) => ({
       ...compositionRoot.composed(settings, telemetry),
       serve: (runtime) =>
-        servedBy(routesServing([...playbookOperations, waitForever], settings.identityIssuer)(runtime)),
+        servedBy(
+          routesServing([...playbookOperations, waitForeverAnnouncedIn(process.env)], settings.identityIssuer)(runtime),
+        ),
     }),
     shutdownTimeoutMs: shortShutdownTimeoutMs,
   },

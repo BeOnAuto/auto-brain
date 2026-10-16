@@ -127,6 +127,17 @@ export function logContentStore(content: ContentSettings): Effect.Effect<void> {
     : objectStorageLine(content.location.bucket, content.location.prefix, content.endpoint);
 }
 
+export interface SecretStoreReport {
+  readonly kid: string;
+  readonly resealed: number;
+}
+
+export function logSecretStore({ kid, resealed }: SecretStoreReport): Effect.Effect<void> {
+  return Effect.logInfo(
+    `Secrets are kept sealed under the key ${kid}, and ${resealed} sealed under the previous key were sealed again under it`,
+  ).pipe(Effect.annotateLogs({ secrets_kid: kid, secrets_resealed: resealed }));
+}
+
 const causeNotFormattable = Effect.logError('Unexpected error whose cause could not be formatted');
 
 function withoutRequestContent(error: Readonly<Error>): string {

@@ -34,22 +34,23 @@ A function document contains instructions, never model credentials. Each change 
 
 ## Fields
 
-| Field                      | Required    | Value                                                                                                              |
-| -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------ |
-| `description`              | No          | Text of 1 to 1,000 characters. `list_definitions`, `get_definition` and the [overview](#the-overview) show it      |
-| `model`                    | Yes         | A model reference in `provider/model` form, such as `anthropic/claude-sonnet-4-5`                                  |
-| `config.max_output_tokens` | No          | A whole number from 1 to 64,000; 1,024 when left out. The most tokens the answer may use                           |
-| `config.temperature`       | No          | A finite number: the sampling temperature. Each provider accepts its own range                                     |
-| `config.top_p`             | No          | A finite number: nucleus sampling                                                                                  |
-| `config.seed`              | No          | A whole number of 0 or more, for providers that accept a seed                                                      |
-| `config.stop_sequences`    | No          | A list of strings. The answer stops where the model writes one                                                     |
-| `config.reasoning`         | No          | The reasoning effort, for models that reason: `none`, `minimal`, `low`, `medium`, `high` or `xhigh`                |
-| `input.schema`             | No          | A JSON Schema whose root is `"type": "object"`. Without it, any JSON object is accepted                            |
-| `input.default`            | No          | Defaults for top-level input fields, as a JSON object. The supplied input's fields override them before validation |
-| `output.format`            | No          | `text`, the default, or `json`                                                                                     |
-| `output.schema`            | With `json` | A JSON Schema the answer must match; see [Answers that are JSON](#answers-that-are-json). Not allowed with `text`  |
-| `provider_options`         | No          | Options for one provider, under its namespace; see [Provider options](#provider-options)                           |
-| `tools`                    | No          | The tools a run may call, each `server/tool` or `server/*`; see [Tools](#tools)                                    |
+| Field                      | Required    | Value                                                                                                                                                                           |
+| -------------------------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`              | No          | Text of 1 to 1,000 characters. `list_definitions`, `get_definition` and the [overview](#the-overview) show it                                                                   |
+| `model`                    | Yes         | A model reference in `provider/model` form, such as `anthropic/claude-sonnet-4-5`                                                                                               |
+| `config.max_output_tokens` | No          | A whole number from 1 to 64,000; 1,024 when left out. The most tokens the answer may use                                                                                        |
+| `config.temperature`       | No          | A finite number: the sampling temperature. Each provider accepts its own range                                                                                                  |
+| `config.top_p`             | No          | A finite number: nucleus sampling                                                                                                                                               |
+| `config.seed`              | No          | A whole number of 0 or more, for providers that accept a seed                                                                                                                   |
+| `config.stop_sequences`    | No          | A list of strings. The answer stops where the model writes one                                                                                                                  |
+| `config.reasoning`         | No          | The reasoning effort, for models that reason: `none`, `minimal`, `low`, `medium`, `high` or `xhigh`                                                                             |
+| `input.schema`             | No          | A JSON Schema whose root is `"type": "object"`. Without it, any JSON object is accepted                                                                                         |
+| `input.default`            | No          | Defaults for top-level input fields, as a JSON object. The supplied input's fields override them before validation                                                              |
+| `output.format`            | No          | `text`, the default, or `json`                                                                                                                                                  |
+| `output.schema`            | With `json` | A JSON Schema the answer must match; see [Answers that are JSON](#answers-that-are-json). Not allowed with `text`                                                               |
+| `output.shape`             | No          | The name of an [output shape](output-shapes.md), `series`, `categories`, `table` or `text`: the answer is JSON of that shape. Not allowed beside `output.schema` or with `text` |
+| `provider_options`         | No          | Options for one provider, under its namespace; see [Provider options](#provider-options)                                                                                        |
+| `tools`                    | No          | The tools a run may call, each `server/tool` or `server/*`; see [Tools](#tools)                                                                                                 |
 
 Any other key, at any level, is rejected.
 
@@ -71,7 +72,7 @@ A run takes these steps:
 1. It applies `input.default`: each top-level field the supplied input leaves out takes its default. It checks the result against `input.schema`. The input may be at most 256 KiB as JSON and 512 levels deep. A run without input gets `{}`.
 2. It renders the [template](#the-template). The system block becomes the system instructions, and everything else becomes one user message.
 3. It calls the model. A function with `tools` lets the model call them before it answers; see [Tools](#tools).
-4. It checks a JSON answer against `output.schema`.
+4. It checks a JSON answer against `output.schema`, or against the shape `output.shape` names.
 5. It records the output and a [record](#what-a-run-records) of the call.
 
 An external agent can pass evidence it collected through its own connections as input. The function itself cannot reach that agent's tools.
@@ -150,7 +151,7 @@ Names are counted in the text inside `{{ }}` and `{% %}`: every variable, proper
 
 ## Answers that are JSON
 
-With `output.format: json`, the answer must match `output.schema`. The runtime validates the answer against the schema as written, whatever the provider enforced. A schema is a JSON Schema document in draft 2020-12. It is read as draft-07 when `$schema` says so, or when the document uses `definitions` without `$defs`.
+With `output.format: json`, the answer must match `output.schema`. With `output.shape`, it must match the shape's schema and the rules the shape adds, such as the order of a series' points; [Output shapes](output-shapes.md) gives them, and the shape's schema is sent to the provider as `output.schema` would be. The runtime validates the answer against the schema as written, whatever the provider enforced. A schema is a JSON Schema document in draft 2020-12. It is read as draft-07 when `$schema` says so, or when the document uses `definitions` without `$defs`.
 
 These rules apply to `output.schema` and `input.schema` alike, and a schema that breaks one is refused when saved:
 
@@ -357,7 +358,7 @@ More rules:
 
 1. The `description`, or that the function has none yet.
 2. What the function needs: each field of `input.schema`, with its type, its bounds and the value `input.default` gives it.
-3. What it produces: text, or each field of `output.schema`.
+3. What it produces: text, each field of `output.schema`, or the shape `output.shape` names, in a sentence.
 4. The model, and each tool it may call. When the function names any tools, a diagram draws the function, its model and those tools.
 5. What the model is told: the instructions and the message, as a person reads them.
 6. **Used by**: the active definitions of the playbook that use this function, read each time it is returned, and left out when there are none.

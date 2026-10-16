@@ -33,6 +33,10 @@ function toolsOf(toolsConfigured: boolean): string {
     : 'no tool server is configured, so it may name no tools';
 }
 
-export function onThisServer(offered: OfferedModels, toolsConfigured: boolean): string {
-  return `On this server, ${modelsOf(offered)}; ${toolsOf(toolsConfigured)}.`;
+function setupOf({ providers, aliases }: OfferedModels, providerSetup: string | undefined): string {
+  return providers.length === 0 && aliases.length === 0 && providerSetup !== undefined ? ` ${providerSetup}` : '';
+}
+
+export function onThisServer(offered: OfferedModels, toolsConfigured: boolean, providerSetup?: string): string {
+  return `On this server, ${modelsOf(offered)}; ${toolsOf(toolsConfigured)}.${setupOf(offered, providerSetup)}`;
 }
