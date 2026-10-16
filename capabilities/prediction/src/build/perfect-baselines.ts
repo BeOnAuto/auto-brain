@@ -14,7 +14,8 @@ function perfectAs(baseline: string, metric: string): Conflict {
 }
 
 const busy = new Unavailable({
-  detail: 'Every model process a build may hold is busy checking or scoring; ask for the build again shortly',
+  detail:
+    'Every model process a build may hold stayed busy checking or scoring while the build waited for one; ask for the build again shortly',
   kind: 'model_process_busy',
 });
 

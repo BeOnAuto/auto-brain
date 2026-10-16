@@ -1,10 +1,11 @@
 import type { RecordedContent } from '@on.auto/operations';
-import { Effect } from 'effect';
-import { describe, expect, it } from 'vitest';
+import { Effect, Fiber } from 'effect';
+import { describe, expect, it, vi } from 'vitest';
 
-import { buildPlaybook } from '../build-testing/build-playbook.ts';
+import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
 import { asked, askedBuild, buildAsked, runOf, savedFunction, workOf } from '../build-testing/built-versions.ts';
 import { scriptedModels } from '../build-testing/scripted-models.ts';
+import type { ModelProcesses } from '../model-processes/model-processes.ts';
 import { dailyRows, steadyVisits } from '../testing/daily-rows.ts';
 
 const runIds = ['0199a3c4-7d2e-7c1a-9b3f-555555555561', '0199a3c4-7d2e-7c1a-9b3f-555555555562'];
@@ -56,6 +57,38 @@ function keptTypes(): KeptTypes {
 }
 
 const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
+
+function heldBy(playbook: BuildPlaybook, model: string) {
+  return Effect.runFork(playbook.test.ports.models.walk({ sha256: model, path: `/${model}.onnx` }, heldWalk));
+}
+
+interface CheckedBaselines {
+  readonly models: (processes: ModelProcesses) => ModelProcesses;
+  readonly untilChecking: () => Promise<void>;
+}
+
+function checkedBaselines(): CheckedBaselines {
+  const checks: string[] = [];
+  return {
+    models: (processes) => ({
+      ...processes,
+      baselines: (rows, job) =>
+        Effect.andThen(
+          Effect.sync(() => {
+            checks.push(rows.sha256);
+          }),
+          processes.baselines(rows, job),
+        ),
+    }),
+    untilChecking: () =>
+      vi.waitFor(
+        () => {
+          expect(checks).toHaveLength(1);
+        },
+        { timeout: 25_000, interval: 20 },
+      ),
+  };
+}
 
 describe('a build whose baseline already predicts every period held back exactly', () => {
   it('is refused once its rows are written, before its brief is kept or its trainer asked, and takes none of the builds of the day', async () => {
@@ -113,13 +146,18 @@ describe('a build whose baselines cannot be checked', () => {
     const playbook = buildPlaybook({ module: scripted.module, deadlines, processes: 3, longJobs: 2 });
     await savedFunction(playbook, { rows: still });
     scripted.next('sleeps');
-    for (const held of ['first', 'second']) {
-      void Effect.runPromise(playbook.test.ports.models.walk({ sha256: held, path: `/${held}.onnx` }, heldWalk));
-    }
+    heldBy(playbook, 'first');
+    heldBy(playbook, 'second');
     await scripted.untilSleeping(['walk', 'walk']);
     const whileBusy = await buildAsked(playbook);
 
-    expect(whileBusy).toMatchObject({ status: 'rejected', reason: 'unavailable', kind: 'model_process_busy' });
+    expect(whileBusy).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      kind: 'model_process_busy',
+      detail:
+        'Every model process a build may hold stayed busy checking or scoring while the build waited for one; ask for the build again shortly',
+    });
   });
 
   it('is refused as unavailable when the process that checks them ends before it answers', async () => {
@@ -134,5 +172,24 @@ describe('a build whose baselines cannot be checked', () => {
       kind: 'model_process_failed',
       detail: 'The model process that checks the baselines ended before it answered; ask for the build again',
     });
+  });
+});
+
+describe('a build whose baselines wait for a model process', () => {
+  it('waits within the 30 seconds of its check for a process a build may hold, and checks them once one is free', async () => {
+    const scripted = scriptedModels();
+    const checked = checkedBaselines();
+    const playbook = buildPlaybook({ module: scripted.module, processes: 3, longJobs: 2, models: checked.models });
+    await savedFunction(playbook, { rows: still });
+    scripted.next('sleeps');
+    const first = heldBy(playbook, 'first');
+    heldBy(playbook, 'second');
+    await scripted.untilSleeping(['walk', 'walk']);
+    scripted.next('real');
+    const asking = buildAsked(playbook);
+    await checked.untilChecking();
+    await Effect.runPromise(Fiber.interrupt(first));
+
+    expect(await asking).toMatchObject({ status: 'rejected', reason: 'conflict', kind: 'baseline_perfect' });
   });
 });

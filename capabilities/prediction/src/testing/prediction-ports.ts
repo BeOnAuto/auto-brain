@@ -6,6 +6,7 @@ import { Effect } from 'effect';
 import { predictionBuilds } from '../builds/builds-projection.ts';
 import type { BuildBounds, PredictionPorts } from '../capability/prediction-ports.ts';
 import { modelPorts, type ModelPortSettings } from '../model-processes/model-ports.ts';
+import type { ModelProcesses } from '../model-processes/model-processes.ts';
 import { predictionModels } from '../models/models-projection.ts';
 import { closedAfterTheTest, scratchDirectory } from './scratch.ts';
 
@@ -17,6 +18,7 @@ export interface PortOptions extends Pick<ModelPortSettings, 'module' | 'deadlin
   readonly openRequests?: number;
   readonly projections?: readonly KeyedProjection[];
   readonly content?: (kept: RecordedContent) => RecordedContent;
+  readonly models?: (processes: ModelProcesses) => ModelProcesses;
 }
 
 export interface TestPorts {
@@ -33,18 +35,20 @@ export function testPorts(options: PortOptions = {}): TestPorts {
   const directory = scratchDirectory();
   const ledger = memoryLedger(runOutcomeMapping, [predictionBuilds, predictionModels, ...(options.projections ?? [])]);
   const processes = options.processes ?? 4;
+  const modelled = modelPorts({
+    ...options,
+    pool: closedAfterTheTest(processes, options.longJobs),
+    scoringAtOnce: Math.max(1, processes - 2),
+    directory,
+  });
   const ports: PredictionPorts = {
     ledger:
       options.content === undefined
         ? ledger.service
         : { ...ledger.service, content: options.content(ledger.service.content) },
     database: options.database ?? emptyHostDatabase,
-    ...modelPorts({
-      ...options,
-      pool: closedAfterTheTest(processes, options.longJobs),
-      scoringAtOnce: Math.max(1, processes - 2),
-      directory,
-    }),
+    ...modelled,
+    models: options.models === undefined ? modelled.models : options.models(modelled.models),
     bounds: { buildsPerDay: 4, buildsAtOnce: 2, mostOpenRequests: 64, ...options.bounds },
     openRequests: () => Effect.succeed(options.openRequests ?? 0),
   };
