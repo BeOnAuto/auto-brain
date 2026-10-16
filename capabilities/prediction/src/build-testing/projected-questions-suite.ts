@@ -4,12 +4,12 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { SettingsOf } from '../dataset-testing/dataset-stores.ts';
-import { periodForm } from '../periods/grains.ts';
-import { periodOfMoment } from '../periods/moments.ts';
+import { periodForm, periodOfDay } from '../periods/grains.ts';
 import { asked, buildAsked, builtFrom, modelFactsOf } from './built-versions.ts';
 import { performedUntilQuiet } from './due-driving.ts';
 import { orders, totals, visits } from './projected-fixtures.ts';
 import { day, projectedSales } from './projected-visits.ts';
+import { today } from './suite-clock.ts';
 
 const testTimeoutMs = 120_000;
 
@@ -21,7 +21,6 @@ function questions(settingsOf: SettingsOf): void {
   it('reads the last window of its series at the checkpoint of the dataset', async () => {
     const { playbook } = await projectedSales(settingsOf, visits);
     await builtFrom(playbook, ['visits-mean']);
-    const today = periodOfMoment('day', Date.now());
 
     expect(await asked(playbook, { series: 'north', horizon: 1 })).toMatchObject({
       output: {
@@ -76,7 +75,7 @@ function featured(settingsOf: SettingsOf): void {
   it('feeds the features of each period and the given ones ahead, a period without a feature as NaN', async () => {
     const { playbook } = await projectedSales(settingsOf, orders);
     await builtFrom(playbook, ['orders-last'], 'weekly-orders');
-    const week = periodOfMoment('week', Date.now());
+    const week = periodOfDay('week', today);
 
     expect(
       await asked(playbook, { series: 'north', horizon: 4, given: { promotion: 1 } }, { name: 'weekly-orders' }),
@@ -100,7 +99,7 @@ function totalsAndBounds(settingsOf: SettingsOf): void {
     const projected = await projectedSales(settingsOf, totals);
     await builtFrom(projected.playbook, ['totals-run-rate'], 'weekly-sales');
     await builtFrom(projected.playbook, ['totals-run-rate'], 'weekly-sales');
-    await performedUntilQuiet(projected.playbook.due, 16 * day);
+    await performedUntilQuiet(projected.playbook, 16 * day);
     const facts = await modelFactsOf(projected.playbook, 'weekly-sales');
 
     expect(facts.filter(({ type }) => type === 'shadow_graded')).toMatchObject([

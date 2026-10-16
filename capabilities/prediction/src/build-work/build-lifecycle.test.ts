@@ -33,7 +33,7 @@ describe('a build of a prediction function over an uploaded dataset, answered th
       recipe: 'The mean of the window',
       limitations: 'It sees no trend',
     });
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(waiting).toMatchObject({
       output: {

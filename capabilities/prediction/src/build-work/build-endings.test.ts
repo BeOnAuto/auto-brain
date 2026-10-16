@@ -26,7 +26,7 @@ describe('a build that its trainer does not answer', () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
     const build = await askedBuild(playbook);
-    await performedUntilQuiet(playbook.due, twoDays);
+    await performedUntilQuiet(playbook, twoDays);
 
     expect(await runOf(playbook, build)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unanswered', kind: 'expired' } },
@@ -42,7 +42,7 @@ describe('a build that is cancelled', () => {
     const build = await askedBuild(playbook);
     await uploaded(playbook, build, ['visits-mean']);
     await playbook.cancelled(build);
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
     const staged = await Effect.runPromise(
       playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
     );
@@ -90,7 +90,7 @@ describe('a build that was scored and has ended', () => {
     const build = await askedBuild(playbook);
     await uploaded(playbook, build, ['visits-mean']);
     await answered(playbook, build, { candidates: [candidateSha256('visits-mean')] });
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
     const [assembled] = await workOf(playbook, build);
     const parses = { count: 0 };
     await Effect.runPromise(
@@ -138,7 +138,7 @@ describe('a build after its server restarts', () => {
     await performedOnce(playbook.due, Date.now());
     const before = (await workOf(playbook, build)).length;
     const restarted = buildsDue({ ports: playbook.test.ports, runs: playbook.startChild });
-    await performedUntilQuiet([restarted]);
+    await performedUntilQuiet({ ...playbook, due: [restarted] });
 
     expect(before).toBe(4);
     expect(await runOf(playbook, build)).toMatchObject({ output: { status: 'succeeded', output: { version: 1 } } });

@@ -7,9 +7,9 @@ import { expect } from 'vitest';
 import { isLive } from '../dataset-testing/dataset-predicates.ts';
 import type { SettingsOf } from '../dataset-testing/dataset-stores.ts';
 import { projectedDatasets } from '../dataset-testing/projected-datasets.ts';
-import { periodOfMoment } from '../periods/moments.ts';
 import { buildPlaybook, type BuildPlaybook } from './build-playbook.ts';
 import { scriptedModels, type ScriptedModels } from './scripted-models.ts';
+import { clockRunningFrom, startedAt, today } from './suite-clock.ts';
 
 export const day = 86_400_000;
 
@@ -32,7 +32,7 @@ export interface Sales {
   readonly deadlines?: { readonly check: number; readonly run: number; readonly walk: number };
   readonly processes?: number;
   readonly longJobs?: number;
-  readonly events?: (today: number) => readonly Schema.JsonObject[];
+  readonly events?: readonly Schema.JsonObject[];
 }
 
 function eventOf(type: string, store: string, at: number, value: number | null): Schema.JsonObject {
@@ -46,7 +46,7 @@ function eventOf(type: string, store: string, at: number, value: number | null):
   };
 }
 
-function eventsAround(today: number, sales: Sales): readonly Schema.JsonObject[] {
+function eventsAround(sales: Sales): readonly Schema.JsonObject[] {
   const days = Array.from({ length: sales.before + sales.after }, (_, at) => today - sales.before + at);
   return Object.keys(sales.base).flatMap((store) =>
     days.flatMap((each) => {
@@ -73,13 +73,13 @@ function databaseReading(database: Consistent, reading: () => Reading): Consiste
 export async function projectedSales(settingsOf: SettingsOf, sales: Sales): Promise<Projected> {
   const datasets = await projectedDatasets(await settingsOf());
   const document = await datasets.saved(sales.name, sales.source);
-  const today = periodOfMoment('day', Date.now());
-  await datasets.published(sales.events === undefined ? eventsAround(today, sales) : sales.events(today));
+  await datasets.published(sales.events ?? eventsAround(sales));
   datasets.start();
   await datasets.until(document.dataSha256, isLive);
   const scripted = scriptedModels();
   const reading: { current: Reading } = { current: 'live' };
   const playbook = buildPlaybook({
+    clock: clockRunningFrom(startedAt),
     database: databaseReading(datasets.database, () => reading.current),
     module: scripted.module,
     ...(sales.deadlines === undefined ? {} : { deadlines: sales.deadlines }),
