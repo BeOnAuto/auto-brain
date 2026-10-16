@@ -1,12 +1,11 @@
-import { setTimeout } from 'node:timers/promises';
-
-import { Effect, Function, Layer, Logger } from 'effect';
+import { Effect, Function, Layer, Logger, Schema } from 'effect';
 import { Client } from 'pg';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { sweepsWatched } from '../content/watched-sweeps.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
 import { tally } from '../testing/tally.ts';
+import { until } from '../testing/until.ts';
 import { lostConnectionsLoggedWith } from './lost-connections.ts';
 import { plainPoolsOn, postgresqlEventStore, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 import { emmettsMigrationLock } from './postgresql-run-outcomes.ts';
@@ -46,8 +45,8 @@ function otherConnectionsTo(database: string): string {
   return `FROM pg_stat_activity WHERE datname = '${new URL(database).pathname.slice(1)}' AND pid <> pg_backend_pid()`;
 }
 
-function lockTriedOn(database: string): string {
-  return `SELECT count(*) > 0 AS tried ${otherConnectionsTo(database)} AND query LIKE '%pg_try_advisory_xact_lock%'`;
+function lastLockTryOn(database: string): string {
+  return `SELECT (extract(epoch FROM max(query_start)) * 1000)::float8 AS tried_at ${otherConnectionsTo(database)} AND query LIKE '%pg_try_advisory_xact_lock%'`;
 }
 
 function connectionsTo(database: string): string {
@@ -58,17 +57,18 @@ function endingConnectionsTo(database: string): string {
   return `SELECT pg_terminate_backend(pid) AS ended ${otherConnectionsTo(database)}`;
 }
 
-const heldPastTheMigratorsOwnWaitMs = 12_000;
+const migratorsOwnWaitMs = 10_000;
 
-const longerThanTheTestMs = 120_000;
+const decodeLastTry = Schema.decodeUnknownSync(
+  Schema.Tuple([Schema.Struct({ tried_at: Schema.NullOr(Schema.Number) })]),
+);
 
-function until(holds: () => void | Promise<void>): Promise<void> {
-  return vi.waitFor(holds, { timeout: longerThanTheTestMs, interval: 50 });
-}
-
-async function untilTheLockIsTried(database: string): Promise<void> {
+async function untilTriedAgainPast(database: string, pastMs: number): Promise<void> {
+  const tries: number[] = [];
   await until(async () => {
-    expect(await queried(database, lockTriedOn(database))).toEqual([{ tried: true }]);
+    const [{ tried_at: triedAt }] = decodeLastTry(await queried(database, lastLockTryOn(database)));
+    tries.push(...(triedAt === null ? [] : [triedAt]));
+    expect(Math.max(...tries) - Math.min(...tries)).toBeGreaterThan(pastMs);
   });
 }
 
@@ -152,8 +152,7 @@ describe.skipIf(skipped)(`A ledger whose PostgreSQL database another server is f
       opened,
       afterTheFill: fill.done,
     }));
-    await untilTheLockIsTried(database);
-    await setTimeout(heldPastTheMigratorsOwnWaitMs);
+    await untilTriedAgainPast(database, migratorsOwnWaitMs);
     fill.done = true;
     await filling.query('SELECT pg_advisory_unlock($1)', [emmettsMigrationLock]);
     const { opened, afterTheFill } = await opening;
