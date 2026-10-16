@@ -47,9 +47,9 @@ Never paste an API key into a prompt to fix a connection. The server reads keys 
 
 **Symptom.** `list_models` does not show the model you want, or shows only a wildcard such as `bedrock/*`.
 
-**Cause.** Some providers list no models of their own, and an alias can hide the models it sends elsewhere.
+**Cause.** Some providers list no models of their own, an alias can hide the models it sends elsewhere, and `allowed_models` hides every model it does not allow, which the list shows as `narrowed: true`.
 
-**Fix.** Use a concrete model reference that your configured provider supports, such as a model id from the provider's own documentation. A wildcard such as `provider/*` is not a model to run. [Listing the models](../reference/model-settings.md#listing-the-models) explains where each list comes from.
+**Fix.** Use a concrete model reference that your configured provider supports, such as a model id from the provider's own documentation. A wildcard such as `provider/*` is not a model to run. When the list says `narrowed: true`, a model it leaves out may be one that [`allowed_models`](../reference/model-settings.md#allowed-models) does not allow, and a definition can name it only once the setting allows it. [Listing the models](../reference/model-settings.md#listing-the-models) explains where each list comes from.
 
 ## The server says the identity service cannot be used {#identity-service}
 

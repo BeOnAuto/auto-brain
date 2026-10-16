@@ -92,6 +92,7 @@ export function catalogListing(parts: CatalogParts): ModelCatalog {
           object: 'list',
           data: uniqueById([...aliases, ...reachable]).toSorted(byId),
           catalog_status: all.every(({ complete }) => complete) ? 'complete' : 'partial',
+          narrowed: parts.allowed !== null,
           listed_at: listedAtOf(all, now),
         };
         return list;
