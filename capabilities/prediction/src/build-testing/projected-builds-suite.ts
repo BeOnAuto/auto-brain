@@ -18,7 +18,7 @@ type Script = Parameters<Projected['scripted']['next']>[0];
 const aRest = 2 * 60_000;
 
 function performedIn(projected: Projected, turns: readonly Script[], rested = 0): Promise<unknown> {
-  const ahead = Date.now() + 4 * day + rested * aRest;
+  const ahead = projected.playbook.now() + 4 * day + rested * aRest;
   return turns.reduce<Promise<unknown>>(
     (before, script, turn) =>
       before.then(() => {
@@ -50,9 +50,9 @@ function typesOf(facts: readonly { readonly type: string }[]): readonly string[]
 
 function shadowDecisions(settingsOf: SettingsOf): void {
   it('predicts with each version at each close, grades them once the periods close, and activates a challenger that does no worse', async () => {
-    const projected = await challenged(settingsOf, quietVisits(Math.floor(Date.now() / day)));
+    const projected = await challenged(settingsOf, quietVisits);
     const waiting = await standingOf(projected.playbook);
-    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    await performedUntilQuiet(projected.playbook, 4 * day);
     const facts = await modelFactsOf(projected.playbook);
 
     expect(waiting).toMatchObject({
@@ -70,7 +70,7 @@ function shadowDecisions(settingsOf: SettingsOf): void {
     const projected = await challenged(settingsOf);
     await performedIn(projected, ['shifted', 'real', 'shifted', 'real']);
     projected.scripted.next('real');
-    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    await performedUntilQuiet(projected.playbook, 4 * day);
     const facts = await modelFactsOf(projected.playbook);
 
     expect(facts.at(-2)).toMatchObject({ type: 'shadow_failed', data: { version: 2 } });
@@ -81,7 +81,7 @@ function shadowDecisions(settingsOf: SettingsOf): void {
     const projected = await challenged(settingsOf);
     await performedIn(projected, ['not-finite', 'real', 'not-finite', 'real']);
     projected.scripted.next('real');
-    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    await performedUntilQuiet(projected.playbook, 4 * day);
     const facts = await modelFactsOf(projected.playbook);
 
     expect(facts.filter(({ type }) => type === 'shadow_predicted')).toMatchObject([
@@ -97,9 +97,9 @@ function shadowDecisions(settingsOf: SettingsOf): void {
 
 function shadowSuperseded(settingsOf: SettingsOf): void {
   it('refuses a challenger as superseded when a newer version is built during its shadow, which then shadows in its place', async () => {
-    const projected = await challenged(settingsOf, quietVisits(Math.floor(Date.now() / day)));
+    const projected = await challenged(settingsOf, quietVisits);
     await builtFrom(projected.playbook, ['visits-mean']);
-    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    await performedUntilQuiet(projected.playbook, 4 * day);
     const facts = await modelFactsOf(projected.playbook);
 
     expect(facts.filter(({ type }) => type === 'activation_refused')).toMatchObject([
@@ -143,10 +143,10 @@ function shadowWaits(settingsOf: SettingsOf): void {
     await sleep(3500);
     await performedIn(projected, ['real', 'real', 'real', 'real'], 1);
     projected.read('empty');
-    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    await performedUntilQuiet(projected.playbook, 4 * day);
     const undecided = await modelFactsOf(projected.playbook);
     projected.read('live');
-    await performedUntilQuiet(projected.playbook.due, 5 * day);
+    await performedUntilQuiet(projected.playbook, 5 * day);
     const decisions = (await modelFactsOf(projected.playbook)).filter((fact) => decidesAShadow(fact));
 
     expect(undecided.filter(({ type }) => type === 'shadow_predicted')).toHaveLength(4);
@@ -160,7 +160,7 @@ function shadowUngraded(settingsOf: SettingsOf): void {
   it('fails once it has predicted at the most closes a shadow may without a series both versions answered', async () => {
     const projected = await challenged(settingsOf);
     projected.scripted.next('not-finite');
-    await performedUntilQuiet(projected.playbook.due, 60 * day, 512);
+    await performedUntilQuiet(projected.playbook, 60 * day, 512);
     const facts = await modelFactsOf(projected.playbook);
 
     expect(facts.filter(({ type }) => type === 'shadow_predicted')).toHaveLength(2 * 52);
@@ -175,11 +175,11 @@ function shadowUngraded(settingsOf: SettingsOf): void {
 
 function shadowGaps(settingsOf: SettingsOf): void {
   it('shadows a series observed every other day, which has no scale, and a period whose truth was not given', async () => {
-    const projected = await projectedSales(settingsOf, gappyVisits(Math.floor(Date.now() / day)));
+    const projected = await projectedSales(settingsOf, gappyVisits);
     await builtFrom(projected.playbook, ['visits-observed-mean']);
     await builtFrom(projected.playbook, ['visits-observed-mean']);
     const east = await asked(projected.playbook, { series: 'east', horizon: 1 });
-    await performedUntilQuiet(projected.playbook.due, 4 * day);
+    await performedUntilQuiet(projected.playbook, 4 * day);
     const graded = (await modelFactsOf(projected.playbook)).filter(({ type }) => type === 'shadow_graded');
 
     expect(east).toMatchObject({ output: { status: 'succeeded', output: { value: 30, low: 28, high: 32 } } });

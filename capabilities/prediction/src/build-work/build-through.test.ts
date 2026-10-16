@@ -85,7 +85,7 @@ describe('a build sent through an interaction function', () => {
     });
     await performedOnce(playbook.due, Date.now());
     const answeredBeforeScoring = await readOf(playbook, readBuildBrief, build);
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(answeredBeforeScoring).toMatchObject({ status: 'rejected', kind: 'build_ended' });
     expect(await runOf(playbook, build)).toMatchObject({ output: { status: 'succeeded', output: { version: 1 } } });
@@ -97,7 +97,7 @@ describe('a build sent through an interaction function that does not answer', ()
     const playbook = buildPlaybook();
     const build = await sentThrough(playbook, 'PT1M');
     await performedOnce(playbook.due, Date.now());
-    await performedUntilQuiet(playbook.due, 120_000);
+    await performedUntilQuiet(playbook, 120_000);
 
     expect(await runOf(playbook, build)).toMatchObject({
       output: {
@@ -117,7 +117,7 @@ describe('a build sent through an interaction function that cannot carry it', ()
     const playbook = buildPlaybook();
     const build = await sentThrough(playbook);
     await playbook.call(playbook.operations.retire, { type: 'interaction', name: 'send-build' });
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(await runOf(playbook, build)).toMatchObject({
       output: { status: 'rejected', rejection: { reason: 'unanswered', kind: 'undelivered' } },
@@ -129,7 +129,7 @@ describe('a build sent through an interaction function that cannot carry it', ()
     const build = await sentThrough(playbook);
     await performedOnce(playbook.due, Date.now());
     await playbook.cancelled(build);
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(
       await playbook.call(playbook.operations.answer, {
@@ -167,7 +167,7 @@ describe('a build sent through an interaction function, read and answered around
       run_id: childIdOf(build, '/request'),
       answer: { candidates: ['e'.repeat(64)] },
     });
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(await workOf(playbook, build)).toMatchObject([{ type: 'dataset_assembled' }]);
     expect(await runOf(playbook, build)).toMatchObject({
@@ -190,7 +190,7 @@ describe('a build sent through an interaction function whose child is cancelled'
     const build = await sentThrough(playbook);
     await performedOnce(playbook.due, Date.now());
     await playbook.cancelled(childIdOf(build, '/request'));
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(await runOf(playbook, build)).toMatchObject({
       output: {
