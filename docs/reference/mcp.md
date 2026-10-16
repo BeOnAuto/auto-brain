@@ -341,7 +341,7 @@ A successful tool result carries a plain-language summary, the operation's outpu
 
 Read `structuredContent`. The first text block is not JSON. No tool advertises an output schema, so a client should use `structuredContent` as it comes rather than validate it against a schema.
 
-- A run's result is the run: its run id, definition version and status, and its output when it succeeded. `get_run` adds the detailed record.
+- A run's result is the run: its run id, definition version and status, its `output_shape`, the shape its output takes, such as `series` for a question to a prediction function, and its output when it succeeded. `get_run` adds the detailed record.
 - A run that finishes later, such as a workflow's, is `started` when `run_definition` returns; [Runs and results](http.md#runs-and-results) says which runs do and how to read them again.
 - The summary repeats a short result in words, and points to `structuredContent` for a long one.
 - A review that recommends Revise still belongs to a succeeded run: the operation completed and produced that recommendation.
