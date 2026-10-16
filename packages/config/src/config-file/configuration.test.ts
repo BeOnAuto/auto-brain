@@ -175,6 +175,16 @@ describe('a credential written in the file', () => {
       JSON.stringify([{ name: 'g', api_key: 'k', headers: { authorization: 'Bearer t' }, enabled: true }]),
     );
   });
+
+  it('is not what a key that names a sort of credential holds, though a value in the shape of one still is', () => {
+    const sorts = { credential_kinds: 'none', token_type: 'bearer', 'secret-kind': 'reference' };
+    const { environment } = configured(`example_servers: { graph: { headers: ${JSON.stringify(sorts)} } }\n`);
+
+    expect(environment['EXAMPLE_SERVERS']).toBe(JSON.stringify({ graph: { headers: sorts } }));
+    expect(problemsIn(`example_servers: { graph: { headers: { token_type: ${secret} } } }\n`)).toBe(
+      `The configuration file auto-runtime.yaml is invalid: auto-runtime.yaml:1:52 example_servers.graph.headers.token_type: ${writtenOut}`,
+    );
+  });
 });
 
 describe('a credential written in a URL or an argument', () => {

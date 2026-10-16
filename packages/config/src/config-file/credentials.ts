@@ -17,6 +17,8 @@ const credentialWords: ReadonlySet<string> = new Set([
 
 const credentialPairs = /(?:^|-)(?:api|access|private|secret)-key(?:-|$)/u;
 
+const namesASortOfCredential = /(?:^|[^a-z0-9])(?:kinds?|types?)$/u;
+
 const credentialShapes: readonly RegExp[] = [
   /^(?:basic|bearer|digest|token)\s+\S/iu,
   /^sk-[\w-]{16,}/u,
@@ -36,9 +38,10 @@ const advice =
 function namesCredential(name: string): boolean {
   const words = name.toLowerCase().split(/[^a-z0-9]+/u);
   return (
-    name.toLowerCase() === 'key' ||
-    words.some((word) => credentialWords.has(word)) ||
-    credentialPairs.test(words.join('-'))
+    !namesASortOfCredential.test(name.toLowerCase()) &&
+    (name.toLowerCase() === 'key' ||
+      words.some((word) => credentialWords.has(word)) ||
+      credentialPairs.test(words.join('-')))
   );
 }
 
