@@ -1,5 +1,7 @@
 import { Schema } from 'effect';
 
+import { IssueSchema } from './issue.ts';
+
 export const invalidArguments = 'invalid_arguments';
 
 export const CallResultSchema = Schema.Union([
@@ -10,6 +12,7 @@ export const CallResultSchema = Schema.Union([
     detail: Schema.String,
     kind: Schema.optionalKey(Schema.String),
     because: Schema.optionalKey(Schema.String),
+    issues: Schema.optionalKey(Schema.Array(IssueSchema)),
   }),
   Schema.Struct({ status: Schema.Literal('failed'), detail: Schema.String }),
   Schema.Struct({ status: Schema.Literal('unreachable'), detail: Schema.String }),
