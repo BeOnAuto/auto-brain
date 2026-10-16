@@ -1,5 +1,7 @@
 const redacted = 'REDACTED';
 
+const tokenOfALink = /(?<=\/link\/)[^/?#]+/u;
+
 export interface RequestTarget {
   readonly origin: string;
   readonly path: string;
@@ -16,4 +18,8 @@ export function redactedUrlAttributes({ origin, path }: RequestTarget): Readonly
     url.searchParams.set(name, redacted);
   }
   return { 'url.full': url.href, 'url.query': url.search };
+}
+
+export function withoutTheTokenOfALink(url: string): string {
+  return url.replace(tokenOfALink, redacted);
 }

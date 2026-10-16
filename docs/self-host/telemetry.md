@@ -63,6 +63,7 @@ A request is a trace:
 - A request with a W3C `traceparent` header continues the caller's trace.
 - A tool an agent calls over MCP is a `tools/call <tool>` span beneath the request that carried the call. It is linked to the agent's trace when the call carries `traceparent` in its `_meta`.
 - `GET /health` is not traced.
+- Its `url.full` carries the token of a connection's link, the segment after `/link/`, as `REDACTED`, so a link that is still open never reaches the collector.
 
 Beneath the request:
 
@@ -161,6 +162,7 @@ Never recorded, whatever `TELEMETRY_CONTENT` is:
 
 - headers;
 - the query values of the URLs the server calls, each replaced by `REDACTED`;
+- the token of a connection's link in the URL of a request, replaced by `REDACTED`;
 - the keys of objects in [object storage](object-storage.md), which is named by its bucket alone;
 - the arguments and results of a tool of an MCP server called once, for an interaction function or for `execute`. Its span names the tool and how the call ended.
 
