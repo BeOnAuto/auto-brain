@@ -123,18 +123,20 @@ describe('a call of a workflow whose run names no caller', () => {
 });
 
 describe('the answer of a definition a workflow called', () => {
-  it('carries a rejection with its issues folded into its detail', async () => {
+  it('carries a rejection in the words of its detail, which says each issue, and its issues at their pointers', async () => {
+    const issues = [{ detail: 'ticket, the number of the ticket: expected text.', pointer: '/input/ticket' }];
     const { perform } = answering({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'Wrong',
-      issues: [{ detail: 'Expected a string', pointer: '/input/ticket' }],
+      detail: 'ticket, the number of the ticket: expected text.',
+      issues,
     });
 
     expect(await Effect.runPromise(perform(classify, run, origin))).toEqual({
       status: 'rejected',
       reason: 'invalid_input',
-      detail: 'Wrong (/input/ticket: Expected a string)',
+      detail: 'ticket, the number of the ticket: expected text.',
+      issues,
     });
   });
 
