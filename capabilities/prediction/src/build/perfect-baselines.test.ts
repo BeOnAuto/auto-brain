@@ -1,7 +1,11 @@
+import { setTimeout as sleep } from 'node:timers/promises';
+
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
 import { asked, askedBuild, buildAsked, runOf, savedFunction, workOf } from '../build-testing/built-versions.ts';
+import { scriptedModels } from '../build-testing/scripted-models.ts';
 import { dailyRows, steadyVisits } from '../testing/daily-rows.ts';
 
 const runIds = ['0199a3c4-7d2e-7c1a-9b3f-555555555561', '0199a3c4-7d2e-7c1a-9b3f-555555555562'];
@@ -20,15 +24,17 @@ function southMoving(series: string, day: number): number {
   return series === 'south' ? steadyVisits(series, day) : stillSeries(series, day);
 }
 
-const still = dailyRows('visits', ['north', 'south'], 40, stillSeries);
-
 function movingOnlyWhenHeldBack(series: string, day: number): number {
   return day < 32 ? stillOf(series) : steadyVisits(series, day);
 }
 
+const still = dailyRows('visits', ['north', 'south'], 40, stillSeries);
+
 const oneMoving = dailyRows('visits', ['north', 'south'], 40, southMoving);
 
 const stillWhileTrained = dailyRows('visits', ['north', 'south'], 40, movingOnlyWhenHeldBack);
+
+const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
 
 describe('a build whose baseline already predicts every period held back exactly', () => {
   it('is refused as it starts, before its brief is rendered or its trainer asked, and takes none of the builds of the day', async () => {
@@ -73,5 +79,36 @@ describe('a build whose baseline does not score 0 where its metric scores it', (
     await savedFunction(playbook, { rows: stillWhileTrained });
 
     expect(await buildAsked(playbook)).toMatchObject({ status: 'succeeded', output: { status: 'started' } });
+  });
+});
+
+describe('a build whose baselines cannot be checked', () => {
+  it('is refused as unavailable while every model process a build may hold is busy', async () => {
+    const scripted = scriptedModels();
+    const deadlines = { check: 60_000, run: 10_000, walk: 60_000, baselines: 300 };
+    const playbook = buildPlaybook({ module: scripted.module, deadlines, processes: 3, longJobs: 2 });
+    await savedFunction(playbook, { rows: still });
+    scripted.next('sleeps');
+    for (const held of ['first', 'second']) {
+      void Effect.runPromise(playbook.test.ports.models.walk({ sha256: held, path: `/${held}.onnx` }, heldWalk));
+    }
+    await sleep(100);
+    const whileBusy = await buildAsked(playbook);
+
+    expect(whileBusy).toMatchObject({ status: 'rejected', reason: 'unavailable', kind: 'model_process_busy' });
+  });
+
+  it('is refused as unavailable when the process that checks them ends before it answers', async () => {
+    const scripted = scriptedModels();
+    const playbook = buildPlaybook({ module: scripted.module });
+    await savedFunction(playbook, { rows: still });
+    scripted.next('exits');
+
+    expect(await buildAsked(playbook)).toMatchObject({
+      status: 'rejected',
+      reason: 'unavailable',
+      kind: 'model_process_failed',
+      detail: 'The model process that checks the baselines ended before it answered; ask for the build again',
+    });
   });
 });

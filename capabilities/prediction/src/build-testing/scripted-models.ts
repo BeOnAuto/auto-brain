@@ -56,7 +56,7 @@ function sourceOf(scriptFile: string): string {
     `const scriptOf = () => readFileSync(${JSON.stringify(scriptFile)}, 'utf8');`,
     'const scripted = (kind) => (payload) => scripts[scriptOf()](kind, payload);',
     "const window = (payload) => (scriptOf() === 'unreadable' ? scripts.unreadable() : real.window(payload));",
-    "serveProcessJobs({ check: scripted('check'), run: scripted('run'), walk: scripted('walk'), window }, process);",
+    "serveProcessJobs({ check: scripted('check'), run: scripted('run'), walk: scripted('walk'), window, baselines: scripted('baselines') }, process);",
   ].join('\n');
 }
 

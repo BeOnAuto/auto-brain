@@ -4,7 +4,15 @@ import type { ProcessHandlers, ProcessValue } from '@on.auto/workflow-engine/pro
 import { Schema } from 'effect';
 
 import { seriesRowsIn } from '../files/series-rows.ts';
-import { CheckJobSchema, feedsOf, RunJobSchema, WalkJobSchema, WindowJobSchema } from './model-feeds.ts';
+import { perfectBaselineIn } from './baselines-job.ts';
+import {
+  BaselinesJobSchema,
+  CheckJobSchema,
+  feedsOf,
+  RunJobSchema,
+  WalkJobSchema,
+  WindowJobSchema,
+} from './model-feeds.ts';
 import { AnsweredBadly, firstLineOf, loadWithOnnxRuntime, type LoadedModel, type LoadModel } from './model-sessions.ts';
 import { opsetOf } from './onnx-opset.ts';
 import { walked } from './walk-job.ts';
@@ -17,6 +25,8 @@ const decodeRun = Schema.decodeUnknownSync(RunJobSchema);
 const decodeWalk = Schema.decodeUnknownSync(WalkJobSchema);
 
 const decodeWindow = Schema.decodeUnknownSync(WindowJobSchema);
+
+const decodeBaselines = Schema.decodeUnknownSync(BaselinesJobSchema);
 
 type Sessions = (path: string, threads: number) => Promise<LoadedModel>;
 
@@ -76,6 +86,7 @@ export function modelJobs(load: LoadModel = loadWithOnnxRuntime): ProcessHandler
         return { q: answer.data, dims: answer.dims };
       }),
     window: (payload) => seriesWindowIn(decodeWindow(payload)),
+    baselines: async (payload) => ({ ...(await perfectBaselineIn(decodeBaselines(payload))) }),
     walk: (payload) =>
       badlyOr(async () => {
         const job = decodeWalk(payload);

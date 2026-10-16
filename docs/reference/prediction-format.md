@@ -296,25 +296,27 @@ A build asks a trainer for candidate models. It scores each against rows the tra
 
 A build can be refused as it starts. Its run then records only that it started and was rejected, with no content:
 
-| Refusal                            | When                                                                                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `conflict`, `build_in_flight`      | Another build of the function has not ended; the words name its run                                                                                                 |
-| `unavailable`, `builds_full`       | The function used its builds of the day (`because` `builds_of_the_day`; the words say when it may ask again), or the server scores as many builds as it may at once |
-| `unavailable`, `requests_full`     | The build would ask through the inbox, and the playbook already holds as many open requests as it may                                                               |
-| `unavailable`, `dataset_not_ready` | The dataset is waiting or rebuilding, or it stalled, with `because` `stalled`                                                                                       |
-| `conflict`, `dataset_too_large`    | The dataset is past the bounds a build reads, with the figures it counted                                                                                           |
-| `conflict`, `baseline_perfect`     | A baseline the function names already scores 0 on its metric over every period held back, so no candidate can beat it; see below                                    |
-| `conflict`, `unworkable`           | The brief renders past 64 KiB over this dataset                                                                                                                     |
+| Refusal                               | When                                                                                                                                                                |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `conflict`, `build_in_flight`         | Another build of the function has not ended; the words name its run                                                                                                 |
+| `unavailable`, `builds_full`          | The function used its builds of the day (`because` `builds_of_the_day`; the words say when it may ask again), or the server scores as many builds as it may at once |
+| `unavailable`, `requests_full`        | The build would ask through the inbox, and the playbook already holds as many open requests as it may                                                               |
+| `unavailable`, `dataset_not_ready`    | The dataset is waiting or rebuilding, or it stalled, with `because` `stalled`                                                                                       |
+| `conflict`, `dataset_too_large`       | The dataset is past the bounds a build reads, with the figures it counted                                                                                           |
+| `conflict`, `baseline_perfect`        | A baseline the function names already scores 0 on its metric wherever the metric scores it, so no candidate can beat it; see below                                  |
+| `unavailable`, `model_process_busy`   | Every model process a build may hold is taken while the build checks its baselines; asking again shortly may succeed                                                |
+| `unavailable`, `model_process_failed` | The model process that checks the baselines ended before it answered                                                                                                |
+| `conflict`, `unworkable`              | The brief renders past 64 KiB over this dataset                                                                                                                     |
 
 - A function has 4 builds a day unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise.
 - The server scores at most `PREDICTION_BUILDS_AT_ONCE` builds at once. A build that waits for its trainer or an approval is not counted.
 - A build whose version is in its shadow, or awaits its approval, has ended its run, so it is not in flight.
-- A build refused for its dataset, a perfect baseline or its brief takes none of the day's builds.
+- A build refused for its dataset, its baselines or its brief takes none of the day's builds.
 - Before it writes anything, the build reads the builds in flight and the builds of the day from the function's models stream. It claims its place on that stream once its rows and its brief are written.
 - Two builds asked at the same moment are decided one after the other, and the second is refused at its claim. The rows and the brief it wrote stay kept under their digests, though no record names them.
 - The builds the server is scoring, and the playbook's open requests, are counted before the build is decided. So builds asked at the same moment may pass those two bounds, by up to their number.
 
-Otherwise the build writes the two files of [The rows a build reads](#the-rows-a-build-reads). It then scores each baseline it names over the scoring rows, as [How a candidate is scored](#how-a-candidate-is-scored) scores them. A candidate must beat each walked baseline, and no score is below 0. So when a walked baseline scores 0 on `evaluation.metric` wherever that metric is defined, and is defined somewhere, no candidate can beat it, and the build is refused `conflict`, `baseline_perfect`, before it renders its brief or asks anyone. This happens, for example, when the periods held back never move: `persistence` then predicts each one exactly, and its `mase` is 0. A build can be asked again once the series moves. A baseline that the metric scores nowhere, as `mase` scores no series that is still over the training periods, is not called perfect, and the build goes ahead. Otherwise the build renders the brief over the two files and asks its trainer:
+Otherwise the build writes the two files of [The rows a build reads](#the-rows-a-build-reads). It then scores each baseline it names over the scoring rows, as [How a candidate is scored](#how-a-candidate-is-scored) scores them. A candidate must beat each walked baseline, and no score is below 0. So when a walked baseline scores 0 on `evaluation.metric` wherever that metric is defined, and is defined somewhere, no candidate can beat it, and the build is refused `conflict`, `baseline_perfect`, before it renders its brief or asks anyone. This happens, for example, when the periods held back never move: `persistence` then predicts each one exactly, and its `mase` is 0. A build can be asked again once the series moves. A baseline that the metric scores nowhere, as `mase` scores no series that is still over the training periods, is not called perfect, and the build goes ahead. The baselines are checked in a model process, so a build that finds every model process it may hold taken is refused `model_process_busy`. Otherwise the build renders the brief over the two files and asks its trainer:
 
 - With `source.to`, the default, the build is a request in the playbook's inbox. `list_interactions` lists it for its party. Its message, within 8 KiB, names the build's run id, its three routes and the opening of the brief. Its answer is `{ candidates, recipe?, limitations? }`.
 - With `source.through`, the build starts that interaction function with the input `{ build: { run_id, function, brief_sha256, routes, expires_at } }`. That function's request is the one the inbox lists, and its answer is the build's.
@@ -514,15 +516,15 @@ A question ends within its call and cannot be cancelled while it runs:
 
 A build finishes later, so `run_definition` returns it `started` and `get_run` shows how it ended:
 
-| Ending                                     | When                                                                                                                                                                                |
-| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `succeeded`                                | It scored every candidate its answer named; its output is `{ version, winner, candidates }`, `version` and `winner` null when none won or none was named                            |
-| The refusals of [A build](#a-build)        | It was refused as it started: `build_in_flight`, `builds_full`, `requests_full`, `dataset_not_ready`, `dataset_too_large`, `baseline_perfect` or `unworkable`                       |
-| `rejected` as `unanswered`, kind `expired` | Nobody answered its request before `source.expires`                                                                                                                                 |
-| `rejected` as `unanswered`                 | Through `source.through`, the function's run ended without an answer. The kind is that run's own if it ended `unanswered`, and `undelivered` if it ended otherwise or never started |
-| `rejected` as `invalid_input`              | Through `source.through`, the answer named a candidate not uploaded to the build, or a `recipe` or `limitations` past 8 KiB; its errors are under `/answer`                         |
-| `rejected` as `cancelled`                  | Cancelled while starting, waiting or scoring: by `cancel_run` (kind `requested`), or by the workflow that waited for it, which ran out of time or ended first                       |
-| `failed`                                   | The runtime itself broke down                                                                                                                                                       |
+| Ending                                     | When                                                                                                                                                                                                        |
+| ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `succeeded`                                | It scored every candidate its answer named; its output is `{ version, winner, candidates }`, `version` and `winner` null when none won or none was named                                                    |
+| The refusals of [A build](#a-build)        | It was refused as it started: `build_in_flight`, `builds_full`, `requests_full`, `dataset_not_ready`, `dataset_too_large`, `baseline_perfect`, `model_process_busy`, `model_process_failed` or `unworkable` |
+| `rejected` as `unanswered`, kind `expired` | Nobody answered its request before `source.expires`                                                                                                                                                         |
+| `rejected` as `unanswered`                 | Through `source.through`, the function's run ended without an answer. The kind is that run's own if it ended `unanswered`, and `undelivered` if it ended otherwise or never started                         |
+| `rejected` as `invalid_input`              | Through `source.through`, the answer named a candidate not uploaded to the build, or a `recipe` or `limitations` past 8 KiB; its errors are under `/answer`                                                 |
+| `rejected` as `cancelled`                  | Cancelled while starting, waiting or scoring: by `cancel_run` (kind `requested`), or by the workflow that waited for it, which ran out of time or ended first                                               |
+| `failed`                                   | The runtime itself broke down                                                                                                                                                                               |
 
 A build's history shows:
 

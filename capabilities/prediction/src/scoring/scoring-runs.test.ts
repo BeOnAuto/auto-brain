@@ -89,7 +89,10 @@ describe('the scoring of the candidates of a build', { timeout: testTimeoutMs },
 describe('a candidate whose walk ends without an answer', { timeout: testTimeoutMs }, () => {
   it('is disqualified as timed out, out of memory, crashed or answering badly, as its model process ended', async () => {
     const scripted = scriptedModels();
-    const playbook = buildPlaybook({ module: scripted.module, deadlines: { check: 30_000, run: 10_000, walk: 1500 } });
+    const playbook = buildPlaybook({
+      module: scripted.module,
+      deadlines: { check: 30_000, run: 10_000, walk: 1500, baselines: 30_000 },
+    });
     const names: readonly CandidateName[] = ['visits-mean', 'visits-last', 'visits-wide', 'visits-even'];
     const build = await answeredWith(playbook, names);
     const scripts: readonly Script[] = ['sleeps', 'allocates', 'exits', 'badly'];
@@ -158,7 +161,10 @@ describe('a candidate whose file is no longer in the cache of the model processe
 describe('a candidate scored while every model process is taken', { timeout: testTimeoutMs }, () => {
   it('waits a minute and is scored once a process is free', async () => {
     const scripted = scriptedModels();
-    const playbook = buildPlaybook({ module: scripted.module, deadlines: { check: 3000, run: 10_000, walk: 1500 } });
+    const playbook = buildPlaybook({
+      module: scripted.module,
+      deadlines: { check: 3000, run: 10_000, walk: 1500, baselines: 30_000 },
+    });
     const build = await answeredWith(playbook, ['visits-mean']);
     const { models } = playbook.test.ports;
     scripted.next('sleeps');

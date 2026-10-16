@@ -52,7 +52,7 @@ function questions(settingsOf: SettingsOf): void {
 
 function busy(settingsOf: SettingsOf): void {
   it('is told every model process is busy while builds hold every one', async () => {
-    const deadlines = { check: 30_000, run: 300, walk: 60_000 };
+    const deadlines = { check: 30_000, run: 300, walk: 60_000, baselines: 30_000 };
     const projected = await projectedSales(settingsOf, { ...visits, deadlines, processes: 2, longJobs: 2 });
     await builtFrom(projected.playbook, ['visits-mean']);
     projected.scripted.next('sleeps');

@@ -36,7 +36,7 @@ export function rowsFileOf(ports: PredictionPorts, playbook: PlaybookAddress, sh
   );
 }
 
-export function gridOfTheBuild({ predicts }: PredictionFunctionDefinitionDocument, assembled: Assembled): ScoringGrid {
+function gridOfTheBuild({ predicts }: PredictionFunctionDefinitionDocument, assembled: Assembled): ScoringGrid {
   return scoringGridOf(predicts, {
     window: assembled.window,
     holdout: assembled.holdout,

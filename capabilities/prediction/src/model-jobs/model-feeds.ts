@@ -43,6 +43,21 @@ export const WindowJobSchema = Schema.Struct({
 
 export type WindowJob = typeof WindowJobSchema.Type;
 
+export const BaselinesJobSchema = Schema.Struct({
+  rows: Schema.String,
+  period: Schema.Literals(['day', 'week', 'month', 'quarter', 'year']),
+  horizons: Schema.Array(Whole),
+  accumulates: Schema.NullOr(Schema.Literals(['week', 'month', 'quarter', 'year'])),
+  season: Schema.NullOr(Whole),
+  window: Whole,
+  holdout: Whole,
+  firstPeriod: Schema.String,
+  baselines: Schema.Array(Schema.Literals(['persistence', 'seasonal-naive'])),
+  metric: Schema.Literals(['mase', 'winkler', 'quantile']),
+});
+
+export type BaselinesJob = typeof BaselinesJobSchema.Type;
+
 export interface Fed {
   readonly y: Readonly<Float32Array>;
   readonly x: Readonly<Float32Array> | null;

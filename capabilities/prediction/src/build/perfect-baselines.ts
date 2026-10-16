@@ -1,13 +1,10 @@
-import { Conflict, type PlaybookAddress } from '@on.auto/operations';
+import { Conflict, Unavailable, type PlaybookAddress } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import type { Assembled } from '../facts/build-facts.ts';
-import { seriesRowsIn } from '../files/series-rows.ts';
-import { baselineWalk } from '../scoring/candidate-scoring.ts';
-import { losesNothing } from '../scoring/metrics.ts';
-import { featureNamesOf, gridOfTheBuild, rowsFileOf } from '../scoring/scoring-inputs.ts';
+import { rowsFileOf } from '../scoring/scoring-inputs.ts';
 
 function perfectAs(baseline: string, metric: string): Conflict {
   return new Conflict({
@@ -16,21 +13,45 @@ function perfectAs(baseline: string, metric: string): Conflict {
   });
 }
 
+const busy = new Unavailable({
+  detail: 'Every model process a build may hold is busy checking or scoring; ask for the build again shortly',
+  kind: 'model_process_busy',
+});
+
+const ended = new Unavailable({
+  detail: 'The model process that checks the baselines ended before it answered; ask for the build again',
+  kind: 'model_process_failed',
+});
+
 export function noBaselinePerfect(
   ports: PredictionPorts,
   playbook: PlaybookAddress,
-  document: PredictionFunctionDefinitionDocument,
+  { predicts, evaluation }: PredictionFunctionDefinitionDocument,
   assembled: Assembled,
-): Effect.Effect<void, Conflict> {
+): Effect.Effect<void, Conflict | Unavailable> {
   return Effect.gen(function* () {
     const path = yield* rowsFileOf(ports, playbook, assembled.scoring_sha256);
-    const features = featureNamesOf(document).length;
-    const rows = yield* Effect.promise(() => seriesRowsIn(path, { features }));
-    const grid = gridOfTheBuild(document, assembled);
-    const { baselines, metric } = document.evaluation;
-    const perfect = baselines.find((baseline) =>
-      losesNothing(grid, baselineWalk({ grid, rows }, baseline).forecasts, metric),
+    const outcome = yield* ports.models.baselines(
+      { sha256: assembled.scoring_sha256, path },
+      {
+        period: predicts.period,
+        horizons: predicts.horizons,
+        accumulates: predicts.accumulates ?? null,
+        season: predicts.season ?? null,
+        window: assembled.window,
+        holdout: assembled.holdout,
+        firstPeriod: assembled.first_period,
+        baselines: evaluation.baselines,
+        metric: evaluation.metric,
+      },
     );
-    return perfect === undefined ? undefined : yield* Effect.fail(perfectAs(perfect, metric));
+    if (outcome.ended === 'busy') {
+      return yield* Effect.fail(busy);
+    }
+    if (outcome.ended !== 'answered') {
+      return yield* Effect.fail(ended);
+    }
+    const { perfect } = outcome.answer;
+    return perfect === null ? undefined : yield* Effect.fail(perfectAs(perfect, evaluation.metric));
   });
 }

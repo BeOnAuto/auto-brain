@@ -4,15 +4,16 @@ import { pooledJob, type ProcessOutcome, type ProcessPool, type ProcessValue } f
 import { Effect, Option, Schema } from 'effect';
 
 import { TensorSchema } from '../facts/build-facts.ts';
-import type { Fed, WalkJob, WindowJob } from '../model-jobs/model-feeds.ts';
+import type { BaselinesJob, Fed, WalkJob, WindowJob } from '../model-jobs/model-feeds.ts';
 
 export interface ModelDeadlines {
   readonly check: number;
   readonly run: number;
   readonly walk: number;
+  readonly baselines: number;
 }
 
-export const modelDeadlines: ModelDeadlines = { check: 30_000, run: 10_000, walk: 600_000 };
+export const modelDeadlines: ModelDeadlines = { check: 30_000, run: 10_000, walk: 600_000, baselines: 30_000 };
 
 export const modelProcessModule = new URL('../model-jobs/model-process.ts', import.meta.url);
 
@@ -39,6 +40,10 @@ const WindowAnswerSchema = Schema.Union([
   Schema.Struct({ y: Floats, x: Schema.NullOr(Floats), origin: Schema.Number }),
 ]);
 
+const BaselinesAnswerSchema = Schema.Struct({
+  perfect: Schema.NullOr(Schema.Literals(['persistence', 'seasonal-naive'])),
+});
+
 export type Signature = typeof SignatureSchema.Type;
 
 type QuestionAnswer = typeof QuestionAnswerSchema.Type;
@@ -46,6 +51,8 @@ type QuestionAnswer = typeof QuestionAnswerSchema.Type;
 export type WalkAnswer = typeof WalkAnswerSchema.Type;
 
 type WindowAnswer = typeof WindowAnswerSchema.Type;
+
+type BaselinesAnswer = typeof BaselinesAnswerSchema.Type;
 
 type Interrupted = Exclude<ProcessOutcome['ended'], 'answered' | 'crashed'>;
 
@@ -64,11 +71,14 @@ type Walk = Omit<WalkJob, 'model' | 'threads'>;
 
 type Window = Omit<WindowJob, 'rows'>;
 
+type Baselines = Omit<BaselinesJob, 'rows'>;
+
 export interface ModelProcesses {
   readonly check: (model: ModelFile) => Effect.Effect<ModelOutcome<Signature>>;
   readonly run: (model: ModelFile, question: Fed) => Effect.Effect<ModelOutcome<QuestionAnswer>>;
   readonly walk: (model: ModelFile, walk: Walk) => Effect.Effect<ModelOutcome<WalkAnswer>>;
   readonly window: (rows: ModelFile, window: Window) => Effect.Effect<ModelOutcome<WindowAnswer>>;
+  readonly baselines: (rows: ModelFile, baselines: Baselines) => Effect.Effect<ModelOutcome<BaselinesAnswer>>;
 }
 
 export interface ModelProcessSettings {
@@ -101,6 +111,8 @@ function outcomeOf<Answer>(
   });
 }
 
+type JobKind = keyof ModelDeadlines | 'window';
+
 export function threadsOf(processes: number, cores = availableParallelism()): number {
   return Math.max(1, Math.floor(cores / processes));
 }
@@ -113,7 +125,7 @@ export function modelProcesses({
   const threads = threadsOf(pool.processes);
   const asked = <Answer>(
     key: string,
-    kind: keyof ModelDeadlines | 'window',
+    kind: JobKind,
     payload: { readonly [name: string]: ProcessValue },
     decode: (answer: unknown) => Option.Option<Answer>,
   ): Effect.Effect<ModelOutcome<Answer>> =>
@@ -126,7 +138,7 @@ export function modelProcesses({
             kind,
             payload: { ...payload, threads },
             deadlineMs: kind === 'window' ? deadlines.run : deadlines[kind],
-            long: kind === 'walk' || kind === 'check',
+            long: kind === 'walk' || kind === 'check' || kind === 'baselines',
           },
           signal,
         ),
@@ -141,5 +153,12 @@ export function modelProcesses({
       asked(model.sha256, 'walk', { ...walk, model: model.path }, Schema.decodeUnknownOption(WalkAnswerSchema)),
     window: (rows, window) =>
       asked(rows.sha256, 'window', { ...window, rows: rows.path }, Schema.decodeUnknownOption(WindowAnswerSchema)),
+    baselines: (rows, baselines) =>
+      asked(
+        rows.sha256,
+        'baselines',
+        { ...baselines, rows: rows.path },
+        Schema.decodeUnknownOption(BaselinesAnswerSchema),
+      ),
   };
 }
