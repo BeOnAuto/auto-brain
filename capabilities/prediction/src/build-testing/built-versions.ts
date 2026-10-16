@@ -60,7 +60,7 @@ export async function builtFrom(
   expect(await answered(playbook, build, { candidates: names.map((name) => candidateSha256(name)) })).toMatchObject({
     status: 'succeeded',
   });
-  await performedUntilQuiet(playbook.due);
+  await performedUntilQuiet(playbook);
   return build;
 }
 

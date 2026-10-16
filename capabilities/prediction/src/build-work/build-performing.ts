@@ -3,7 +3,7 @@ import type { Lineage } from '@on.auto/operations';
 import { Effect, Equal, type Schema } from 'effect';
 
 import { predictionBuildsName, type BuildRow } from '../builds/build-rows.ts';
-import type { BuildAddress, BuildState } from '../builds/build-state.ts';
+import type { BuildState } from '../builds/build-state.ts';
 import type { PredictionPorts, StartChild } from '../capability/prediction-ports.ts';
 import { buildRunFacts } from '../facts/prediction-facts.ts';
 
@@ -23,15 +23,18 @@ function endedMeanwhile(error: unknown): boolean {
 }
 
 export function advanced(
-  { ports }: Pick<Performing, 'ports'>,
-  { org, playbook, id }: BuildAddress,
+  { ports, row, build }: Performing,
   set: { readonly next_due_at?: number | null; readonly staged?: boolean },
 ): Effect.Effect<void> {
-  return ports.ledger.advanceRow(predictionBuildsName, { org, playbook }, id, { set, when: [] });
+  const { org, playbook, id } = build.address;
+  return ports.ledger.advanceRow(predictionBuildsName, { org, playbook }, id, {
+    set,
+    when: [{ column: 'cause', equals: row.cause }],
+  });
 }
 
 export function restingUntil(performing: Performing, at: number | null): Effect.Effect<void> {
-  return advanced(performing, performing.build.address, { next_due_at: at });
+  return advanced(performing, { next_due_at: at });
 }
 
 export function recordedWork(
