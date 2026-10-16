@@ -46,6 +46,10 @@ function otherConnectionsTo(database: string): string {
   return `FROM pg_stat_activity WHERE datname = '${new URL(database).pathname.slice(1)}' AND pid <> pg_backend_pid()`;
 }
 
+function lockTriedOn(database: string): string {
+  return `SELECT count(*) > 0 AS tried ${otherConnectionsTo(database)} AND query LIKE '%pg_try_advisory_xact_lock%'`;
+}
+
 function connectionsTo(database: string): string {
   return `SELECT count(*)::int AS open ${otherConnectionsTo(database)}`;
 }
@@ -57,6 +61,15 @@ function endingConnectionsTo(database: string): string {
 const closedWithinMs = 5000;
 
 const heldPastTheMigratorsOwnWaitMs = 12_000;
+
+async function untilTheLockIsTried(database: string): Promise<void> {
+  await vi.waitFor(
+    async () => {
+      expect(await queried(database, lockTriedOn(database))).toEqual([{ tried: true }]);
+    },
+    { timeout: 30_000, interval: 50 },
+  );
+}
 
 async function untilNoneOpen(database: string): Promise<void> {
   const client = new Client({ connectionString: database });
@@ -141,6 +154,7 @@ describe.skipIf(skipped)(`A ledger whose PostgreSQL database another server is f
       opened,
       afterTheFill: fill.done,
     }));
+    await untilTheLockIsTried(database);
     await setTimeout(heldPastTheMigratorsOwnWaitMs);
     fill.done = true;
     await filling.query('SELECT pg_advisory_unlock($1)', [emmettsMigrationLock]);
