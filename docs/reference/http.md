@@ -1063,11 +1063,11 @@ A refusal of a function's input says each issue in its `detail`, one sentence ea
   "type": "https://on.auto/problems/invalid_input",
   "title": "Invalid input",
   "status": 422,
-  "detail": "month, the month to report on, such as \"April 2026\" or \"2026-04\": expected at least 6 characters.",
+  "detail": "month, The month to report on, such as \"April 2026\" or \"2026-04\": expected at least 6 characters.",
   "reason": "invalid_input",
   "errors": [
     {
-      "detail": "month, the month to report on, such as \"April 2026\" or \"2026-04\": expected at least 6 characters.",
+      "detail": "month, The month to report on, such as \"April 2026\" or \"2026-04\": expected at least 6 characters.",
       "pointer": "/input/month"
     }
   ]

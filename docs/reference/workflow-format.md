@@ -150,7 +150,7 @@ An approval, or any other question for a person or a system, is an interaction f
 | `timeout`                                   | Optional limit for the run: `after` and a duration, or a name in `use.timeouts` |
 | `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks name              |
 
-- The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails, as a reasoning function rejects input that does not match its own schema.
+- The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and the step that needs it fails.
 - A workflow's input schema carries the rules of the fields its steps need, so a form or an agent refuses the input before a run starts. The field's `description` and `examples` are what a person is shown when it is refused.
 - `output.shape`, the runtime's own beside the DSL's keys, names an [output shape](output-shapes.md): `series`, `categories`, `table` or `text`. Its schema is published as the definition's `output_schema`, and `output.schema` beside it is refused. When the run ends, its output, after `output.as`, is checked against the shape; one that does not match ends the run `rejected` as `conflict` of the kind `unworkable`, naming the issues. A task's `output` takes no shape.
 - Schemas are written inline under `document`, as JSON Schema.
@@ -355,14 +355,14 @@ A run of the function that does not succeed raises an error the workflow can cat
 | Failed                                                     | `runtime`                                   | 500    |
 | Could not be reached                                       | `communication`                             | 503    |
 
-The status is the workflow error's own. It equals the HTTP status of the same rejection except for `invalid_input`: the HTTP API responds 422, while a workflow raises a `validation` error of status 400. A `catch` for that rejection matches status 400 or the `validation` type, never 422. The short types are under `https://open-workflow-specification.org/spec/1.0.0/errors/`. The error's `title` names the definition and, for a rejection, its reason. Its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does. `when: '${ $error.kind == "tool_not_offered" }'` handles only that kind, and `${ $error.because }` names why.
+The status is the workflow error's own. It equals the HTTP status of the same rejection except for `invalid_input`: the HTTP API responds 422, while a workflow raises a `validation` error of status 400. A `catch` for that rejection matches status 400 or the `validation` type, never 422. The error's `title` names the definition and what its run did, in plain words, such as `The computation function month-window refused its input`. Its `detail` carries the detail the run gave. A rejection that has a kind carries it as the error's `kind`, and its cause as `because`, as the [HTTP problem document](http.md#responses-and-errors) does. `when: '${ $error.kind == "tool_not_offered" }'` handles only that kind, and `${ $error.because }` names why.
 
 A function that called tools may have changed something outside the playbook, so a run of it that called tools and did not succeed is never run again under its run id ([Retrying under a run id](http.md#retrying-under-a-run-id)). In a workflow:
 
 - A function that called tools and could not finish raises a type of its own, never `communication`. It is `https://on.auto/problems/tools_unfinished`, status 503, when its server marks every tool it called read-only, so a `catch` on status 503 may run it again safely. Otherwise it is `https://on.auto/problems/effect_unknown`, status 409: a tool may have changed something, so a `catch` on status 503 or on communication errors does not run it again.
 - Their `because` field is `tool_error` when a tool returned an error, and `server_failed` when a tool server failed. A reasoning function whose tools are not offered has the kind `tool_not_offered`, and one whose tool server cannot be used `tool_server_failed`.
 - A step that meets a run whose tools may have been called before, such as when the server restarted during the step, raises `https://on.auto/problems/tools_called`, never `runtime`. A workflow that ends with it is rejected as a `conflict` of that kind: check the run's history and start a new run.
-- A `retry` that catches every error, or status 409, also takes `effect_unknown` and `tools_called`, and starts a new run of the function under a new id, which calls its tools again. Name those types in a `catch` only to start another run knowingly.
+- A `retry` that catches every error, or status 409, runs the function again under a new id, which calls its tools again.
 
 Other function types:
 
@@ -433,11 +433,11 @@ The usual way to handle a step that may fail for a moment is to retry it, then g
 
 That error is not caught, so the run ends `rejected` as `unavailable`, by its status 503; see [How a run ends](#how-a-run-ends). The rejection's `detail` reads `The review could not be run, at the step give-up.`, and the steps after it never run.
 
-Without `catch.do`, a task whose retries ran out hands on its own input as its output. The next step then receives that input in place of the function's output, and the run goes on with the wrong data. So give every retrying `catch` a `do` that raises an error, unless the workflow should go on without the output.
+Without `catch.do`, a task whose retries ran out hands on its own input as its output, and the run goes on with the wrong data. So give every retrying `catch` a `do` that raises an error, unless the workflow should go on without the output.
 
-An error has a `type` (a URI), an integer `status`, an `instance` that names the task that raised it as a JSON Pointer, and an optional `title` and `detail`. An error a function's rejection raised also has its `kind` and `because`, when the rejection has them.
+An error has a `type` (a URI), an integer `status`, an `instance` that names the task that raised it as a JSON Pointer, and an optional `title` and `detail`. An error a function's rejection raised also has its `kind`, `because` and `issues`, when the rejection has them.
 
-A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. A `raise` may name a `kind` and a `because` too, so a `catch` can raise the error it caught again without losing them: `kind: '${ $error.kind }'`. Errors raised by the runtime have types under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
+A `raise` task raises an error written inline, whose values can be expressions, or one named in `use.errors`. A `raise` may name a `kind`, a `because` and `issues` too, so a `catch` can raise the error it caught again without losing them: `kind: '${ $error.kind }'`. The short types of the errors the runtime raises, here and above, are under `https://open-workflow-specification.org/spec/1.0.0/errors/`:
 
 | Situation                                                                     | Error type      | Status |
 | ----------------------------------------------------------------------------- | --------------- | ------ |
@@ -653,10 +653,10 @@ The rejection gives a `reason`, and a `kind` where it has one:
 | `cancelled`     | `parent_ended`                   | The workflow waiting for it ended first, or its waiting branch lost a race   |
 | `unanswered`    | `expired`, `undelivered`         | It did not catch an unanswered request of an interaction function or a build |
 
-- A rejection of the kind `tools_unfinished`, `effect_unknown` or `rebuilding` keeps the error's `because`. A rejection's `detail` gives the error's detail, then the step that raised it by its name, then the error's title, or else its type, such as `Missing: audience, at the step stop. The brief is not usable.`
-- A step whose function refused its input keeps its `issues`, each at its pointer and in the field's words, such as `month, the month to report on: expected at least 6 characters.`
+- A rejection of the kind `tools_unfinished`, `effect_unknown` or `rebuilding` keeps the error's `because`. A rejection's `detail` gives the error's title, or else its type, then the step that raised it by its name, then its detail, such as `The brief is not usable, at the step stop: Missing: audience.`
+- A step whose function refused its input keeps its `issues`, each at its pointer and in the field's words: `The computation function month-window refused its input, at the step work-out-month: month, The month to report on: expected at least 6 characters.` A workflow that called that workflow reads the same, with its own step first.
 - A cancelled run's `detail` says why, in the words of whoever cancelled it.
-- A timeout that is not caught therefore rejects the run as `unavailable`. A call rejected with `invalid_input`, or a cancellation of a run it called, that is not caught rejects it as `invalid_input`.
+- A call rejected with `invalid_input`, or a cancellation of a run it called, that is not caught rejects it as `invalid_input`.
 
 ### Starting and cancelling a run
 
