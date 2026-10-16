@@ -1,3 +1,4 @@
+import { shapeNamed } from '@on.auto/definitions/testing';
 import { describe, expect, it } from 'vitest';
 
 import { documentOf, issuesIn, parsed } from '../testing/definition-documents.ts';
@@ -114,6 +115,44 @@ describe('the output', () => {
         documentOf('model: openai/gpt-5\noutput:\n  format: json\n  schema: {type: object, not: {type: string}}'),
       ),
     ).toEqual(['Line 5, /output/schema/not: Only "not": {} (no value matches) can be validated here']);
+  });
+});
+
+describe('an output of a shape', () => {
+  it('is JSON of the shape it names, with or without format: json, asked for and checked with its schema', () => {
+    const shape = shapeNamed('categories');
+    const outputs = ['output: {shape: categories}', 'output: {format: json, shape: categories}'].map(
+      (output) => parsed(documentOf(`model: openai/gpt-5\n${output}`)).output,
+    );
+
+    expect(outputs).toMatchObject([
+      { type: 'json', schema: { document: shape.schema }, shape },
+      { type: 'json', schema: { document: shape.schema }, shape },
+    ]);
+  });
+
+  it('is refused beside a schema of its own, with a text format, or for a name no shape has', () => {
+    expect(
+      [
+        'output:\n  shape: series\n  schema: {type: object}',
+        'output:\n  format: text\n  shape: series',
+        'output:\n  shape: chart',
+      ].map((output) => issuesIn(documentOf(`model: openai/gpt-5\n${output}`))),
+    ).toEqual([
+      ["Line 5, /output/schema: An output that names a shape takes no schema: the shape's schema is its schema"],
+      [
+        'Line 4, /output/format: An output that names a shape is JSON of that shape: leave format out, or set it to json',
+      ],
+      ['Line 4, /output/shape: Expected the name of a shape: series, categories, table, or text'],
+    ]);
+  });
+
+  it('carries the warnings of its schema, at the line that names it', () => {
+    const { warnings } = parsed(documentOf('model: openai/gpt-5\noutput:\n  shape: text'));
+
+    expect(warnings).toEqual([
+      'Line 4, /output/shape/properties/text/maxLength: maxLength is not enforced while Anthropic models write the answer; an answer outside it fails as output_invalid (anthropic, bedrock, bedrock-anthropic, vertex-anthropic)',
+    ]);
   });
 });
 

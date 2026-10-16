@@ -1,14 +1,53 @@
 import { describe, expect, it } from 'vitest';
 
-import { mostValueDepth, type Json } from '../dsl/json.ts';
+import { mostValueDepth, type Json, type JsonObject } from '../dsl/json.ts';
 import { errorType } from '../dsl/raised-error.ts';
 import { mostOutputBytes, mostStepsWithoutWaiting } from '../machine/limits.ts';
+import type { RunState } from '../machine/run-state.ts';
+import { testDriverOf } from '../pool-testing/test-sandbox.ts';
+import { testSettings } from '../testing/driver-inputs.ts';
 import { armedTimersAlong, drivenRunId, drivenRun, outputKindsIn, outputsIn } from '../testing/run-history.ts';
 import { workflow } from '../testing/workflows.ts';
 
 function nested(depth: number): Json {
   return depth === 0 ? 1 : [nested(depth - 1)];
 }
+
+function refusingEmpty(document: JsonObject, output: Json): string | undefined {
+  return document['output'] !== undefined && output === null ? 'The output of the workflow is empty' : undefined;
+}
+
+function endedWithRefusals(document: JsonObject): RunState {
+  const driver = testDriverOf({
+    machine: { ...testSettings, functions: { ...testSettings.functions, outputRefusal: refusingEmpty } },
+  });
+  driver.start({ runId: drivenRunId, document });
+  return driver.runUntilEnded(drivenRunId);
+}
+
+describe('the output of a run that the functions it is given refuse', () => {
+  it('ends the run raised as a conflict of the kind unworkable, at the root, in the words of the refusal', () => {
+    const ended = endedWithRefusals(workflow("output: { as: '${ null }' }\ndo:\n  - mark: { set: { done: true } }"));
+
+    expect(ended.outcome).toEqual({
+      kind: 'raised',
+      error: {
+        type: 'https://on.auto/problems/conflict',
+        status: 409,
+        title: 'The output of the workflow is empty',
+        instance: '/',
+        kind: 'unworkable',
+      },
+    });
+  });
+
+  it('leaves an output they take to complete the run', () => {
+    expect(endedWithRefusals(workflow("output: { as: '${ 1 }' }\ndo: []")).outcome).toEqual({
+      kind: 'completed',
+      output: 1,
+    });
+  });
+});
 
 describe('a run', () => {
   it('reads its input through input.from and shapes its output through output.as', () => {

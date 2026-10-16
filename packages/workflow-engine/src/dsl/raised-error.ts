@@ -109,6 +109,8 @@ const isUnansweredKind = Schema.is(UnansweredKindSchema);
 
 const unansweredType = problemTypeOf('unanswered');
 
+const conflictType = problemTypeOf('conflict');
+
 const reasonsWithTypes: ReadonlySet<string> = new Set(['cancelled', 'unanswered']);
 
 export function reasonOfStatus(status: number): 'invalid_input' | 'unavailable' {
@@ -132,11 +134,18 @@ function ownTypeRejectionOf(kind: KindWithType, detail: string, because: string 
     : { status: 'rejected', reason: 'unavailable', detail, kind, ...known };
 }
 
+export function unworkableOutputOf(title: string, instance: string): DslError {
+  return { type: conflictType, status: 409, title, instance, kind: 'unworkable' };
+}
+
 function settledRejectionOf(error: DslError): Settlement {
   const detail = describeError(error);
   const { type, kind, because } = error;
   if (type === unansweredType && isUnansweredKind(kind)) {
     return { status: 'rejected', reason: 'unanswered', kind, detail };
+  }
+  if (type === conflictType && kind === 'unworkable') {
+    return { status: 'rejected', reason: 'conflict', kind, detail };
   }
   if (isKindWithType(kind) && type === problemTypeOf(kind)) {
     return ownTypeRejectionOf(kind, detail, because);

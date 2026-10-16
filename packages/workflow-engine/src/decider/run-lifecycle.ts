@@ -1,7 +1,7 @@
 import { admitted, transform } from '../dsl/evaluation.ts';
 import { field, objectField } from '../dsl/json.ts';
 import { policyOf } from '../dsl/policy.ts';
-import { RaisedError, caughtRaise, errorType, outcomeOfOutput } from '../dsl/raised-error.ts';
+import { RaisedError, caughtRaise, errorType, outcomeOfOutput, unworkableOutputOf } from '../dsl/raised-error.ts';
 import { timedOut, timeoutMilliseconds } from '../dsl/task-outcomes.ts';
 import type { Started } from '../machine/run-input.ts';
 import type { FrameBody } from '../machine/run-state.ts';
@@ -39,7 +39,10 @@ function completed(machine: Machine, output: number): void {
     ),
     root,
   );
-  session.end(outcomeOfOutput(shaped));
+  const refusal = session.options.functions.outputRefusal?.(session.document(), shaped);
+  session.end(
+    refusal === undefined ? outcomeOfOutput(shaped) : { kind: 'raised', error: unworkableOutputOf(refusal, root) },
+  );
 }
 
 function settledRoot(machine: Machine, frame: FramePrefix, advance: BodyAdvance): void {

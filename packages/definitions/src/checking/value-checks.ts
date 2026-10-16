@@ -2,8 +2,15 @@ import { issuesDetail, schemaCheckOf } from '@on.auto/json-schema';
 import type { ValueChecks } from '@on.auto/workflow-engine/job-loop';
 import { mostValueDepth, type Json, type OutputCheck, type ViewCheck } from '@on.auto/workflow-engine/worker';
 
+import { outputShapeOfSchema } from '../shapes/output-shapes.ts';
+
 export function outputCheckOf(schema: Json): OutputCheck {
-  return schemaCheckOf(schema, { what: 'output', nesting: mostValueDepth });
+  const shape = outputShapeOfSchema(schema);
+  return schemaCheckOf(schema, {
+    what: 'output',
+    nesting: mostValueDepth,
+    ...(shape === undefined ? {} : { further: shape.further }),
+  });
 }
 
 export function viewCheckOf(schema: Json): ViewCheck {

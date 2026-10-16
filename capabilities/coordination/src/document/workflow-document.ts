@@ -19,6 +19,7 @@ import { Effect } from 'effect';
 
 import { dslProblems, type Problem } from './dsl-validation.ts';
 import { workflowPolicyOf, type WorkflowPolicy } from './workflow-functions.ts';
+import { outputShapeRejections } from './workflow-output.ts';
 
 const thirtyDays = 2_592_000_000;
 
@@ -65,6 +66,7 @@ function readWorkflowDocument(
           )),
       ...rejections,
       ...(unreadable ? [] : durationLimitRejections(value, mostDuration)),
+      ...outputShapeRejections(value),
     ].map(({ pointer, detail }) => ({ position: locate(pointer), detail: `${placeOf(pointer)}${detail}` }));
     return problems.length === 0
       ? Effect.succeed({ document: value, locate })

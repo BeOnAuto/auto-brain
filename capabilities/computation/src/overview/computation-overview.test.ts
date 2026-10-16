@@ -10,9 +10,21 @@ const golden = readFileSync(new URL('reference-example.overview.md', import.meta
 
 const [, example = ''] = /```markdown\n([\s\S]*?)```/u.exec(page) ?? [];
 
+const shapesPage = readFileSync(new URL('../../../../docs/reference/output-shapes.md', import.meta.url), 'utf8');
+
+const [, shapedExample = ''] = [...shapesPage.matchAll(/```markdown\n([\s\S]*?)```/gu)][1] ?? [];
+
 describe('the overview of the example of the reference of computation functions', () => {
   it('is, byte for byte, the overview pinned beside this test', () => {
     expect(computationWith().prepared(example).overview('campaign-pace')).toBe(golden);
+  });
+});
+
+describe('the overview of the computation function of the reference of output shapes', () => {
+  it('is, byte for byte, the overview pinned beside this test', () => {
+    expect(computationWith().prepared(shapedExample).overview('monthly-sign-ups')).toBe(
+      readFileSync(new URL('shaped-example.overview.md', import.meta.url), 'utf8'),
+    );
   });
 });
 

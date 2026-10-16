@@ -43,7 +43,7 @@ function documentedInput({ schema, defaults }: InputContract): Schema.JsonObject
 
 function producedSection(output: OutputRequest): OverviewSection {
   return output.type === 'json'
-    ? outputSection(output.schema.document)
+    ? outputSection(output.schema.document, output.shape)
     : sectionOf('What it produces', paragraph('Text: the answer the model writes.'));
 }
 

@@ -1,3 +1,4 @@
+import { shapeNamed } from '@on.auto/definitions/testing';
 import type { ProgramPool, ProgramRequest } from '@on.auto/workflow-engine/dsl';
 import { Exit } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -51,5 +52,34 @@ describe('the check of an output against the output schema', () => {
           "The program's output does not match the output schema: /0: Expected string; /1: Expected string; /2: Expected string",
       }),
     );
+  });
+});
+
+describe('the check of an output against the shape its document names', () => {
+  it('runs in the worker, with what the shape holds beyond its schema', async () => {
+    const { pool, requests } = recording(poolOf());
+    const run = computationWith(pool);
+    const shaped = (body: string) =>
+      run.running(programDocument(functionOf(body), 'language: typescript\noutput: {shape: categories}'));
+
+    expect(await shaped("return { values: [{ name: 'A', value: 2, low: 1 }] };")).toMatchObject(
+      Exit.succeed({ output: { values: [{ name: 'A', value: 2, low: 1 }] } }),
+    );
+    expect(
+      await shaped("return { values: [{ name: 'A', value: 2 }, { name: 'A', value: 1, high: 0 }] };"),
+    ).toMatchObject(
+      Exit.fail({
+        kind: 'unworkable',
+        detail:
+          "The program's output does not match the output schema: /values/1/name: Expected a name no value before it has; /values/1/high: Expected a high of at least the value",
+      }),
+    );
+    expect(await shaped('return { values: [] };')).toMatchObject(
+      Exit.fail({
+        detail:
+          "The program's output does not match the output schema: /values: Expected a value with a length of at least 1",
+      }),
+    );
+    expect(requests.map(({ context }) => context)).toEqual([0, 1, 2].map(() => shapeNamed('categories').schema));
   });
 });

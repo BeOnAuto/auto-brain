@@ -32,6 +32,22 @@ describe('the check of a computation function when it is saved', () => {
   });
 });
 
+function textOf(body: string): string {
+  return programDocument(
+    `export default function (input: Input): Output {\n  ${body}\n}`,
+    'language: typescript\noutput: {shape: text}',
+  );
+}
+
+describe('the check of a computation function whose output names a shape', () => {
+  it('checks its program against the type of the shape', async () => {
+    expect(await checking(textOf("return { text: '# Done' };"))).toMatchObject(Exit.succeed({}));
+    expect(await checking(textOf('return { text: 1 };'))).toMatchObject(
+      Exit.fail({ detail: 'The computation function definition has a problem' }),
+    );
+  });
+});
+
 describe('the check of a computation function that has problems', () => {
   it('refuses its program’s problems at their lines in the document, with the compiler’s words', async () => {
     const program = [

@@ -1,3 +1,4 @@
+import { shapeNamed } from '@on.auto/definitions/testing';
 import { Effect, Exit, Option, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -137,6 +138,16 @@ describe('the summary of a computation function', () => {
       longestAnyRunMs: 10_000,
     });
     expect(prepared(campaignPace).callsTools).toBe(false);
+  });
+
+  it('publishes the schema of the shape its output names as its output schema, and the shape in its details', () => {
+    const { prepared } = computationWith(poolOf({ workers: 1 }));
+    const source = programDocument(functionOf('return input;'), 'language: typescript\noutput: {shape: categories}');
+
+    expect(prepared(source).summary).toEqual({
+      outputSchema: shapeNamed('categories').schema,
+      details: { shape: 'categories' },
+    });
   });
 });
 

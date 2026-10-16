@@ -33,10 +33,21 @@ const [reviewAndApprove = '', schedule = ''] = yamlBlocksOf('workflow-format.md'
 
 const [, nextWeekOrders = ''] = yamlBlocksOf('prediction-format.md');
 
-describe('the overview of the examples of the references of workflows and prediction functions', () => {
+const [, campaignPaceTable = ''] = yamlBlocksOf('output-shapes.md');
+
+describe('the overview of the examples of the references of workflows, prediction functions and output shapes', () => {
   it('is, byte for byte, the overview pinned beside this test for each', () => {
     expect(overviewOf(reviewAndApprove, 'review-and-approve')).toBe(goldenOf('reference-example.overview.md'));
     expect(overviewOf(nextWeekOrders, 'next-week-orders')).toBe(goldenOf('prediction-example.overview.md'));
+    expect(overviewOf(campaignPaceTable, 'campaign-pace-table')).toBe(goldenOf('shaped-example.overview.md'));
+  });
+});
+
+describe('the overview of a workflow whose output names a shape', () => {
+  it('says the shape in what it produces, in place of the fields of its schema', () => {
+    const overview = overviewOf(`${header}output: { shape: text }\ndo:\n  - write: { set: { text: done } }\n`);
+
+    expect(sectionIn(overview, 'What it produces')).toBe('It answers a **text**: Markdown of at most 65,536 bytes.');
   });
 });
 

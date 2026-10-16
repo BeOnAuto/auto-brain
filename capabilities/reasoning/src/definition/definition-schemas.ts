@@ -1,9 +1,10 @@
+import { declaredShape, type OutputShape } from '@on.auto/definitions';
 import { issueAt, issueText, type DocumentIssue, type SourceLines } from '@on.auto/definitions/document';
 import { type SchemaIssue } from '@on.auto/json-schema';
 import { Result, type Schema } from 'effect';
 
 import type { OutputRequest } from '../model/model-request.ts';
-import { checkAnswerSchema, compileAnswerSchema } from '../schema/answer-schema.ts';
+import { checkAnswerSchema, compileAnswerSchema, shapedAnswerSchema } from '../schema/answer-schema.ts';
 import type { InputSection, OutputSection } from './front-matter-schema.ts';
 import type { InputContract } from './reasoning-function-definition.ts';
 
@@ -15,6 +16,8 @@ export interface OutputContract {
 const mostWarnings = 100;
 
 const missingKey = 'Missing key';
+
+const shapedText = 'An output that names a shape is JSON of that shape: leave format out, or set it to json';
 
 function issuesUnder(lines: SourceLines, at: string, issues: readonly SchemaIssue[]): readonly DocumentIssue[] {
   return issues.map(({ pointer, detail }) => issueAt(lines, `${at}${pointer}`, detail));
@@ -59,19 +62,46 @@ export function inputContractOf(
   return issues.length > 0 ? Result.fail(issues) : Result.succeed({ schema: compiled.success, defaults });
 }
 
-function warningsOf(document: Schema.JsonObject, lines: SourceLines): readonly string[] {
+function warningsOf(document: Schema.JsonObject, lines: SourceLines, at: string): readonly string[] {
   const { not_portable, unchecked } = checkAnswerSchema(document);
   return [
     ...not_portable.map(({ pointer, detail, providers }) =>
-      issueAt(lines, `/output/schema${pointer}`, `${detail} (${providers.join(', ')})`),
+      issueAt(lines, `${at}${pointer}`, `${detail} (${providers.join(', ')})`),
     ),
-    ...issuesUnder(lines, '/output/schema', unchecked),
+    ...issuesUnder(lines, at, unchecked),
   ]
     .slice(0, mostWarnings)
     .map((issue) => issueText(issue));
 }
 
+function shapedContractOf(
+  shape: OutputShape,
+  format: 'text' | 'json' | undefined,
+  lines: SourceLines,
+): Result.Result<OutputContract, readonly DocumentIssue[]> {
+  return format === 'text'
+    ? Result.fail([issueAt(lines, '/output/format', shapedText)])
+    : Result.succeed({
+        output: { type: 'json', schema: shapedAnswerSchema(shape), shape },
+        warnings: warningsOf(shape.schema, lines, '/output/shape'),
+      });
+}
+
 export function outputContractOf(
+  section: OutputSection,
+  lines: SourceLines,
+): Result.Result<OutputContract, readonly DocumentIssue[]> {
+  if (section?.shape === undefined) {
+    return writtenContractOf(section, lines);
+  }
+  const { shape, schema, format } = section;
+  return declaredShape(shape, schema !== undefined).pipe(
+    Result.mapError(({ at, detail }) => [issueAt(lines, `/output/${at}`, detail)]),
+    Result.flatMap((declared) => shapedContractOf(declared, format, lines)),
+  );
+}
+
+function writtenContractOf(
   section: OutputSection,
   lines: SourceLines,
 ): Result.Result<OutputContract, readonly DocumentIssue[]> {
@@ -93,5 +123,8 @@ export function outputContractOf(
   const compiled = compileAnswerSchema(document);
   return Result.isFailure(compiled)
     ? Result.fail(issuesUnder(lines, '/output/schema', compiled.failure))
-    : Result.succeed({ output: { type: 'json', schema: compiled.success }, warnings: warningsOf(document, lines) });
+    : Result.succeed({
+        output: { type: 'json', schema: compiled.success },
+        warnings: warningsOf(document, lines, '/output/schema'),
+      });
 }

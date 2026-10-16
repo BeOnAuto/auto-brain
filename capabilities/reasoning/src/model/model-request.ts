@@ -1,3 +1,4 @@
+import type { OutputShape } from '@on.auto/definitions';
 import type { Schema } from 'effect';
 
 import type { AnswerSchema } from '../schema/answer-schema.ts';
@@ -21,6 +22,7 @@ export interface TextOutput {
 export interface JsonOutput {
   readonly type: 'json';
   readonly schema: AnswerSchema;
+  readonly shape?: OutputShape;
   readonly name?: string;
   readonly description?: string;
 }

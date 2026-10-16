@@ -36,6 +36,7 @@ function summarize({ description, input, output }: ComputationFunctionDefinition
     ...(description === undefined ? {} : { description }),
     ...(input.schema === undefined ? {} : { inputSchema: input.schema.document }),
     ...(output.schema === undefined ? {} : { outputSchema: output.schema.document }),
+    ...(output.shape === undefined ? {} : { details: { shape: output.shape.name } }),
   };
 }
 

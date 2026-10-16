@@ -10,6 +10,7 @@ import {
 import { field, type JsonObject } from '@on.auto/workflow-engine';
 
 import type { ReadWorkflow } from '../document/workflow-document.ts';
+import { outputShapeOf } from '../document/workflow-output.ts';
 import { summaryOf } from '../document/workflow-summary.ts';
 import { taskDiagramOf } from '../steps/task-diagram.ts';
 import { calledSection } from './called-definitions.ts';
@@ -28,7 +29,7 @@ export function workflowOverview({ document }: ReadWorkflow): readonly OverviewS
   return [
     sectionOf('What starts it', bulletList(starts.map(({ words }) => words))),
     inputSection(inputSchema),
-    outputSection(outputSchema),
+    outputSection(outputSchema, outputShapeOf(document)),
     doneSection(
       document,
       starts.map(({ label }) => label),

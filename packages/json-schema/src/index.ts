@@ -13,6 +13,7 @@ export {
   compileJsonSchema,
   jsonSchemaLimits,
   type CompiledSchema,
+  type FurtherCheck,
   type Validation,
 } from './document/json-schema.ts';
 export { isKnownKeyword, shapeIssues } from './document/schema-shape.ts';

@@ -24,6 +24,22 @@ describe('the check of a value against a JSON Schema', () => {
     ]);
   });
 
+  it('names the issues of a further check it is given, within the same three', () => {
+    const check = schemaCheckOf(
+      { type: 'array', items: { type: 'string' } },
+      { what: 'output', nesting: 512, further: () => [{ pointer: '', detail: 'Expected two items' }] },
+    );
+
+    expect([check(['x']), check([1, 2, 3])]).toEqual([
+      [{ pointer: '', detail: 'Expected two items' }],
+      [
+        { pointer: '/0', detail: 'Expected string' },
+        { pointer: '/1', detail: 'Expected string' },
+        { pointer: '/2', detail: 'Expected string' },
+      ],
+    ]);
+  });
+
   it('refuses every value when the schema it is given does not compile, naming why', () => {
     expect(schemaCheckOf('not a schema', { what: 'output', nesting: 512 })(1)).toEqual([
       { pointer: '', detail: 'A schema is a JSON object' },
