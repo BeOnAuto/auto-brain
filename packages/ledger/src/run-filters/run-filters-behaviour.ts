@@ -89,24 +89,20 @@ async function everyPageOfRuns(
 const runsOfWorkflows: RecordedSelection = { kind: 'runs', definitionType: 'workflow' };
 
 function theRunsOfOneType(aLedger: LedgerMaker): void {
-  it(
-    'fill every page with the runs of the definition type asked for, five then two, and have no more after the last',
-    { timeout: 60_000 },
-    async () => {
-      const ledger = await twentyEightRuns(aLedger);
+  it('fill every page with the runs of the definition type asked for, five then two, and have no more after the last', async () => {
+    const ledger = await twentyEightRuns(aLedger);
 
-      const pages = await everyPageOfRuns(ledger, runsOfWorkflows, { order: 'desc', limit: 5 });
+    const pages = await everyPageOfRuns(ledger, runsOfWorkflows, { order: 'desc', limit: 5 });
 
-      expect(pages).toEqual([
-        [['run-24', 'run-20', 'run-16', 'run-12', 'run-8'], true],
-        [['run-4', 'run-0'], false],
-      ]);
-    },
-  );
+    expect(pages).toEqual([
+      [['run-24', 'run-20', 'run-16', 'run-12', 'run-8'], true],
+      [['run-4', 'run-0'], false],
+    ]);
+  });
 }
 
 function theRunsOfOneName(aLedger: LedgerMaker): void {
-  it('page through the seven runs of the name asked for, two at a time', { timeout: 60_000 }, async () => {
+  it('page through the seven runs of the name asked for, two at a time', async () => {
     const ledger = await twentyEightRuns(aLedger);
 
     const pages = await everyPageOfRuns(ledger, { kind: 'runs', name: 'qualify-enquiry' }, { order: 'desc', limit: 2 });
@@ -121,28 +117,24 @@ function theRunsOfOneName(aLedger: LedgerMaker): void {
 }
 
 function theRejectedRuns(aLedger: LedgerMaker): void {
-  it(
-    'answer a rejected run one at a time behind newer runs that succeeded, of any definition or of one',
-    { timeout: 60_000 },
-    async () => {
-      const ledger = await twentyEightRuns(aLedger);
-      const rejectedOneAtATime = { order: 'desc', limit: 1, types: ['run_rejected'] } as const;
+  it('answer a rejected run one at a time behind newer runs that succeeded, of any definition or of one', async () => {
+    const ledger = await twentyEightRuns(aLedger);
+    const rejectedOneAtATime = { order: 'desc', limit: 1, types: ['run_rejected'] } as const;
 
-      const pages = await Promise.all([
-        everyPageOfRuns(ledger, { kind: 'runs' }, rejectedOneAtATime),
-        everyPageOfRuns(ledger, runsOfWorkflows, rejectedOneAtATime),
-      ]);
+    const pages = await Promise.all([
+      everyPageOfRuns(ledger, { kind: 'runs' }, rejectedOneAtATime),
+      everyPageOfRuns(ledger, runsOfWorkflows, rejectedOneAtATime),
+    ]);
 
-      expect(pages).toEqual([
-        [
-          [['run-20'], true],
-          [['run-11'], true],
-          [['run-2'], false],
-        ],
-        [[['run-20'], false]],
-      ]);
-    },
-  );
+    expect(pages).toEqual([
+      [
+        [['run-20'], true],
+        [['run-11'], true],
+        [['run-2'], false],
+      ],
+      [[['run-20'], false]],
+    ]);
+  });
 }
 
 const awkwardText = {

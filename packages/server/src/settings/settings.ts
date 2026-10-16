@@ -29,6 +29,7 @@ export interface Settings extends FunctionSettings, AccessSettings, CredentialSe
   readonly workflows: WorkflowSettings;
   readonly telemetry: TelemetrySettings | undefined;
   readonly configFile: ConfigFileSources | undefined;
+  readonly providerSetup?: string | undefined;
 }
 
 function sourcesOf(file: FileUse | undefined): ConfigFileSources | undefined {

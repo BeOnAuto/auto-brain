@@ -112,12 +112,13 @@ the run succeeds with this output, and its record shows that it spent 0 checkpoi
 
 ## Fields
 
-| Field           | Required | Value                                                                                    |
-| --------------- | -------- | ---------------------------------------------------------------------------------------- |
-| `description`   | No       | Text of 1 to 1,000 characters                                                            |
-| `language`      | Yes      | `typescript`, the playbook's one language                                                |
-| `input.schema`  | No       | A JSON Schema of the input. The input may be any JSON value it allows                    |
-| `output.schema` | No       | A JSON Schema of the output. An output that does not match it ends the run as a conflict |
+| Field           | Required | Value                                                                                                                                                             |
+| --------------- | -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `description`   | No       | Text of 1 to 1,000 characters                                                                                                                                     |
+| `language`      | Yes      | `typescript`, the playbook's one language                                                                                                                         |
+| `input.schema`  | No       | A JSON Schema of the input. The input may be any JSON value it allows                                                                                             |
+| `output.schema` | No       | A JSON Schema of the output. An output that does not match it ends the run as a conflict                                                                          |
+| `output.shape`  | No       | The name of an [output shape](output-shapes.md), `series`, `categories`, `table` or `text`, whose schema is the output schema. Not allowed beside `output.schema` |
 
 - Unknown fields are rejected. Among them are the fields of a reasoning function that do not apply here: `model`, `config`, `tools`, `output.format` and `input.default`.
 - The body after the front matter is the program. A document without one is rejected.
@@ -211,7 +212,7 @@ Every number is an IEEE 754 double:
 
 ## How a run ends
 
-A run checks the input against `input.schema`, then calls the program. It checks that the returned value is JSON, then checks it against `output.schema`. It ends in one of these ways:
+A run checks the input against `input.schema`, then calls the program. It checks that the returned value is JSON, then checks it against `output.schema`, or against the shape `output.shape` names with the rules the shape adds, such as the order of a series' points. It ends in one of these ways:
 
 | Ending                        | When                                                                                                       |
 | ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
@@ -398,7 +399,7 @@ When the computation function's run is `unavailable`, the `compute` task retries
 `get_definition` returns a saved function with its `overview`: the function in plain words, for a person who does not read TypeScript. Auto Studio shows it before the document. The overview says:
 
 1. The `description`, or that the function has none yet.
-2. What the function needs and what it produces: each field of `input.schema` and `output.schema` with its type, bounds and default. A record one level down is shown with its fields.
+2. What the function needs and what it produces: each field of `input.schema` and `output.schema` with its type, bounds and default, or the shape `output.shape` names, in a sentence. A record one level down is shown with its fields.
 3. In one line, that the program is TypeScript and is shown under Source. The program itself is not described.
 4. **Used by**: the active definitions of the playbook that use this function, read each time it is returned, and left out when there are none.
 

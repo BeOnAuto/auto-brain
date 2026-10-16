@@ -203,6 +203,10 @@
       {
         "text": "Workflow format",
         "link": "/reference/workflow-format"
+      },
+      {
+        "text": "Output shapes",
+        "link": "/reference/output-shapes"
       }
     ]
   },

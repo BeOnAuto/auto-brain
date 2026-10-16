@@ -1,7 +1,6 @@
 import { Effect } from 'effect';
 
 import { defaultTiming } from '../bounds/call-bounds.ts';
-import { secretsOfServers } from '../bounds/secrets.ts';
 import { serverLink } from '../connections/server-links.ts';
 import { oneCall } from '../one-call/one-call.ts';
 import type { ToolServers } from '../openapi/described-api.ts';
@@ -12,7 +11,7 @@ import { toolServersOf } from './tool-servers.ts';
 export function linkedAccess(settings: ToolServers, options: LinkedOptions): LinkedAccess {
   const report = options.reportServerMessage;
   const timing = options.timing ?? defaultTiming;
-  const secrets = secretsOfServers(settings.servers);
+  const { secrets } = options;
   const linkOptions = {
     client: options.client,
     fetch: options.fetch ?? globalThis.fetch,

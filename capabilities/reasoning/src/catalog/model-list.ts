@@ -44,6 +44,11 @@ export const ModelListSchema = Schema.Struct({
   listed_at: Schema.String.annotate({
     description: 'When the oldest list of models in the answer was read from its provider, in ISO 8601',
   }),
+  provider_setup: Schema.optionalKey(
+    Schema.String.annotate({
+      description: 'When the server has no model it can call at all, how the person who runs it adds a model provider',
+    }),
+  ),
 });
 
 export type ModelList = typeof ModelListSchema.Type;

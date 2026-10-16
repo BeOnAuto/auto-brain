@@ -2,6 +2,8 @@ import type { Noun } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
 import { definitionResourceLabel } from '../capability/function-terminology.ts';
+import type { OutputShape } from '../shapes/output-shape.ts';
+import { shapeBlocks } from '../shapes/shape-words.ts';
 import type { DefinitionUser, UserRelation } from '../used-by/user-relations.ts';
 import { appendedSection, markdownOf } from './markdown-writer.ts';
 import { bulletList, named, sectionOf, type Overview, type OverviewSection } from './overview.ts';
@@ -29,10 +31,12 @@ export function inputSection(schema?: Schema.JsonObject): OverviewSection {
   );
 }
 
-export function outputSection(schema?: Schema.JsonObject): OverviewSection {
+export function outputSection(schema?: Schema.JsonObject, shape?: OutputShape): OverviewSection {
   return sectionOf(
     'What it produces',
-    ...schemaBlocks(schema, 'It produces any output, which its document does not describe.'),
+    ...(shape === undefined
+      ? schemaBlocks(schema, 'It produces any output, which its document does not describe.')
+      : shapeBlocks(shape)),
   );
 }
 

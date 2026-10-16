@@ -20,6 +20,7 @@ import {
   textField,
 } from '@on.auto/workflow-engine';
 
+import { outputRefusalOf } from './workflow-output.ts';
 import { scheduleRejections } from './workflow-schedule.ts';
 
 export const runDefinitionFunction = 'run_definition';
@@ -115,6 +116,7 @@ export function workflowFunctionsOf(names: PlaybookOwnNames): CallFunctions {
     describe: definitionDescribed,
     emitRejections: emitRejectionsOf(names),
     emitRefusal: emitRefusalOf(names),
+    outputRefusal: outputRefusalOf,
     scheduleRejections,
     howAWorkflowReachesTheWorld: 'a workflow reaches the world only through its playbook functions',
     howAWorkflowStarts: 'run the workflow with run_definition',

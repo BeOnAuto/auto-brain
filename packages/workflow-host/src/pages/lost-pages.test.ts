@@ -70,7 +70,7 @@ const workersThatNameNoFold: readonly (readonly [string, string, string])[] = [
   ],
 ];
 
-describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs }, () => {
+describe('a page of folds the pool cannot finish', () => {
   it.each(workersThatStop)(
     'counts against the fold that was going when it %s, and stalls it after its tries',
     async (_way, source, kind, message) => {
@@ -114,7 +114,7 @@ describe('a page of folds the pool cannot finish', { timeout: viewTestTimeoutMs 
   });
 });
 
-describe('a page of folds lost twice', { timeout: viewTestTimeoutMs }, () => {
+describe('a page of folds lost twice', () => {
   it('counts a try and keeps the checkpoint when what it folds before the event breaks its worker too', async () => {
     const atTheSecondRun = markingThen(2, 'throw new Error("broken on purpose");');
     const views = await viewHarness(await onSQLite(), { foldWorker: workerOf(atTheSecondRun) });
@@ -133,7 +133,7 @@ describe('a page of folds lost twice', { timeout: viewTestTimeoutMs }, () => {
   });
 });
 
-describe('a projector stopped while it folds', { timeout: viewTestTimeoutMs }, () => {
+describe('a projector stopped while it folds', () => {
   it('repeats the page when it starts again, and writes each fold once', async () => {
     const settings = await onSQLite();
     const slow = {

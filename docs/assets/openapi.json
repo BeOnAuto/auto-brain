@@ -907,6 +907,10 @@
                     "listed_at": {
                       "type": "string",
                       "description": "When the oldest list of models in the answer was read from its provider, in ISO 8601"
+                    },
+                    "provider_setup": {
+                      "type": "string",
+                      "description": "When the server has no model it can call at all, how the person who runs it adds a model provider"
                     }
                   },
                   "required": [
@@ -4222,6 +4226,20 @@
                       },
                       "description": "What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings"
                     },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "shape": {
+                          "type": "string",
+                          "description": "The output shape its output_schema is: series, categories, table or text, each a JSON Schema the runtime owns, which Auto Studio draws"
+                        }
+                      },
+                      "required": [
+                        "shape"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What the runtime declares of the definition beside its schemas"
+                    },
                     "triggers": {
                       "type": "array",
                       "items": {
@@ -4532,6 +4550,20 @@
                           },
                           "description": "What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings"
                         },
+                        "details": {
+                          "type": "object",
+                          "properties": {
+                            "shape": {
+                              "type": "string",
+                              "description": "The output shape its output_schema is: series, categories, table or text, each a JSON Schema the runtime owns, which Auto Studio draws"
+                            }
+                          },
+                          "required": [
+                            "shape"
+                          ],
+                          "additionalProperties": false,
+                          "description": "What the runtime declares of the definition beside its schemas"
+                        },
                         "triggers": {
                           "type": "array",
                           "items": {
@@ -4810,6 +4842,20 @@
                         "type": "string"
                       },
                       "description": "What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "shape": {
+                          "type": "string",
+                          "description": "The output shape its output_schema is: series, categories, table or text, each a JSON Schema the runtime owns, which Auto Studio draws"
+                        }
+                      },
+                      "required": [
+                        "shape"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What the runtime declares of the definition beside its schemas"
                     },
                     "triggers": {
                       "type": "array",
@@ -5127,6 +5173,20 @@
                       },
                       "description": "What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings"
                     },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "shape": {
+                          "type": "string",
+                          "description": "The output shape its output_schema is: series, categories, table or text, each a JSON Schema the runtime owns, which Auto Studio draws"
+                        }
+                      },
+                      "required": [
+                        "shape"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What the runtime declares of the definition beside its schemas"
+                    },
                     "triggers": {
                       "type": "array",
                       "items": {
@@ -5438,6 +5498,20 @@
                         "type": "string"
                       },
                       "description": "What the parser found that may not work everywhere, such as a schema some providers reject; the definition was accepted with these warnings"
+                    },
+                    "details": {
+                      "type": "object",
+                      "properties": {
+                        "shape": {
+                          "type": "string",
+                          "description": "The output shape its output_schema is: series, categories, table or text, each a JSON Schema the runtime owns, which Auto Studio draws"
+                        }
+                      },
+                      "required": [
+                        "shape"
+                      ],
+                      "additionalProperties": false,
+                      "description": "What the runtime declares of the definition beside its schemas"
                     },
                     "triggers": {
                       "type": "array",

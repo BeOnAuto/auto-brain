@@ -22,7 +22,7 @@ describe('the content of one answer received before and after a secret is minted
       answeredFields({ keptJson: scrubbedJsonOf(received, recording), jsonrpcId: 1, serverRequestId: null }, recording);
 
     const before = await answeredOnce();
-    secrets.add(minted);
+    secrets.replace('graph', minted);
     const after = await answeredOnce();
 
     expect([before.result_sha256, after.result_sha256].map((sha256) => keptTexts.get(String(sha256)))).toEqual([

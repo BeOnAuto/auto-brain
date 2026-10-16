@@ -11,6 +11,10 @@ const golden = readFileSync(new URL('reference-example.overview.md', import.meta
 
 const [, example = ''] = /```markdown\n([\s\S]*?)```/u.exec(page) ?? [];
 
+const shapesPage = readFileSync(new URL('../../../../docs/reference/output-shapes.md', import.meta.url), 'utf8');
+
+const [, shapedExample = ''] = /```markdown\n([\s\S]*?)```/u.exec(shapesPage) ?? [];
+
 const { prepared } = reasoningWith();
 
 const counted = new Intl.NumberFormat('en');
@@ -26,6 +30,14 @@ function sectionOf(overview: string, heading: string): string {
 describe('the overview of the example of the reference of reasoning functions', () => {
   it('is, byte for byte, the overview pinned beside this test', () => {
     expect(prepared(example).overview('review-brief')).toBe(golden);
+  });
+});
+
+describe('the overview of the reasoning function of the reference of output shapes', () => {
+  it('is, byte for byte, the overview pinned beside this test', () => {
+    expect(prepared(shapedExample).overview('queue-hours')).toBe(
+      readFileSync(new URL('shaped-example.overview.md', import.meta.url), 'utf8'),
+    );
   });
 });
 
@@ -53,6 +65,14 @@ describe('the overview of a reasoning function', () => {
     expect(sectionOf(overview, 'What it needs')).toContain('| **tone** | no | Text, “warm” when left out. |');
     expect(sectionOf(overview, 'What it needs')).toContain('| **max** | no | Any value. |');
     expect(sectionOf(overview, 'What it produces')).toContain('| **score** | yes | A whole number, at most 10. |');
+  });
+});
+
+describe('the overview of a reasoning function whose output names a shape', () => {
+  it('says the shape in what it produces, in place of the fields of its schema', () => {
+    const overview = overviewOf('---', 'model: openai/gpt-5', 'output: {shape: text}', '---', 'Write it.');
+
+    expect(sectionOf(overview, 'What it produces')).toBe('It answers a **text**: Markdown of at most 65,536 bytes.');
   });
 });
 

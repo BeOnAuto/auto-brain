@@ -45,7 +45,7 @@ function liveOverMcp(session: McpSession, folded: number, name = 'reviews'): Pro
   );
 }
 
-describe('a recall function over MCP, on the endpoint of its playbook', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function over MCP, on the endpoint of its playbook', () => {
   it('is saved, stands live once it has folded the runs it names, and answers from its view in plain words', async () => {
     const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }));
     closing.push(server.stop);
@@ -91,7 +91,7 @@ describe('a recall function over MCP, on the endpoint of its playbook', { timeou
 
 const listingTheRecallGuide: unknown = expect.arrayContaining(['recall-function']);
 
-describe('the definition tools an agent sees', { timeout: recallTestTimeoutMs }, () => {
+describe('the definition tools an agent sees', () => {
   it('name a recall function in create_definition and its guide in get_guide, which serves it whole', async () => {
     const server = await servingRecall([]);
     closing.push(server.stop);

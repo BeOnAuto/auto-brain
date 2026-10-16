@@ -4,7 +4,6 @@ import { describe, expect, it } from 'vitest';
 import { chatKey } from '../testing/servers/chat-deliveries.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { askingASystem, systemRunId, threadInput, type HistoryEvent } from '../testing/servers/system-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const aNumber: unknown = expect.any(Number);
 
@@ -20,7 +19,7 @@ function keysOf(event: HistoryEvent | undefined): readonly string[] {
   return Object.keys(event?.data ?? {});
 }
 
-describe('an interaction function that asks a system, over HTTP', { timeout: workflowTestTimeoutMs }, () => {
+describe('an interaction function that asks a system, over HTTP', () => {
   it('calls the tool once and answers at once with what it read, as get_run answers the run', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');
@@ -52,7 +51,7 @@ describe('an interaction function that asks a system, over HTTP', { timeout: wor
   });
 });
 
-describe('the history of a run that asks a system', { timeout: workflowTestTimeoutMs }, () => {
+describe('the history of a run that asks a system', () => {
   it('records the call on the run, its start under the id of the run, in the words of the history, with what it sent and what it read', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');

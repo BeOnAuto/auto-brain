@@ -1,12 +1,7 @@
 import { listedTools, plainTextIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { TimedOut } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
-import {
-  fakeStdioServerPath,
-  serveFakeMcp,
-  stdioTestTimeoutMs,
-  type FakeMcpServer,
-} from '@on.auto/tool-servers/testing';
+import { fakeStdioServerPath, serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -24,7 +19,7 @@ const closing: (() => Promise<void>)[] = [];
 
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
-}, stdioTestTimeoutMs);
+});
 
 const timedOut: ScriptedReply = () =>
   Effect.fail(
@@ -120,26 +115,22 @@ describe('run_definition over MCP on a server with tool servers', () => {
 });
 
 describe('a reasoning function with tools over MCP', () => {
-  it(
-    'runs a reasoning function with the tools of a process the server starts',
-    { timeout: stdioTestTimeoutMs },
-    async () => {
-      const reply = callingTools([['limitless__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
-      const processSource = source.replace('graph/search', 'limitless/search');
+  it('runs a reasoning function with the tools of a process the server starts', async () => {
+    const reply = callingTools([['limitless__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
+    const processSource = source.replace('graph/search', 'limitless/search');
 
-      const { first, history } = await executedTwice(await serving(await fakeGraph(), [reply]), processSource);
+    const { first, history } = await executedTwice(await serving(await fakeGraph(), [reply]), processSource);
 
-      expect(first.structuredContent).toMatchObject({ status: 'succeeded', output: 'Acme has 2 rows.' });
-      expect(history.structuredContent).toMatchObject({
-        events: [
-          { type: 'run_started' },
-          { type: 'tool_call_started', data: { server: 'limitless', tool: 'search' } },
-          { type: 'tool_call_answered', data: { is_error: false, answer: 'Found 2 rows for acme.' } },
-          { type: 'run_succeeded' },
-        ],
-      });
-    },
-  );
+    expect(first.structuredContent).toMatchObject({ status: 'succeeded', output: 'Acme has 2 rows.' });
+    expect(history.structuredContent).toMatchObject({
+      events: [
+        { type: 'run_started' },
+        { type: 'tool_call_started', data: { server: 'limitless', tool: 'search' } },
+        { type: 'tool_call_answered', data: { is_error: false, answer: 'Found 2 rows for acme.' } },
+        { type: 'run_succeeded' },
+      ],
+    });
+  });
 });
 
 describe('the words of a reasoning run over MCP that could not finish after calling tools', () => {

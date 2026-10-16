@@ -1,3 +1,4 @@
+import { declaredShape, type OutputShape } from '@on.auto/definitions';
 import {
   frontMatterIn,
   issueAt,
@@ -13,8 +14,8 @@ import { oneLanguage } from '@on.auto/workflow-engine';
 import { mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Result, type Schema } from 'effect';
 
-import type { ComputationFunctionDefinitionDocument, ValueContract } from './computation-document.ts';
-import { computationFrontMatter, decodeFrontMatter } from './front-matter.ts';
+import type { ComputationFunctionDefinitionDocument, OutputContract, ValueContract } from './computation-document.ts';
+import { computationFrontMatter, decodeFrontMatter, type OutputSection } from './front-matter.ts';
 
 type Checked<A> = Result.Result<A, readonly DocumentIssue[]>;
 
@@ -56,6 +57,26 @@ function contractOf(section: ValueSection, name: 'input' | 'output', lines: Sour
   });
 }
 
+function shapedContractOf(shape: OutputShape): OutputContract {
+  const { schema, further } = shape;
+  return {
+    schema: Result.getOrThrow(compileJsonSchema(schema, { what: 'output', nesting: mostValueDepth, further })),
+    shape,
+  };
+}
+
+function outputContractOf(section: OutputSection, lines: SourceLines): Checked<OutputContract> {
+  if (section?.shape === undefined) {
+    return contractOf(section, 'output', lines);
+  }
+  return declaredShape(section.shape, section.schema !== undefined).pipe(
+    Result.mapBoth({
+      onFailure: ({ at, detail }) => [issueAt(lines, `/output/${at}`, detail)],
+      onSuccess: shapedContractOf,
+    }),
+  );
+}
+
 function documentFrom(
   { root, lines, issues }: ReadFrontMatter,
   program: () => Checked<ProgramPart>,
@@ -68,7 +89,7 @@ function documentFrom(
   const parts = {
     language: languageOf(decoded.success.language, lines),
     input: contractOf(input, 'input', lines),
-    output: contractOf(output, 'output', lines),
+    output: outputContractOf(output, lines),
     program: program(),
   };
   const found = [

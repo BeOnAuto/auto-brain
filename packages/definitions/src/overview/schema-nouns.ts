@@ -6,16 +6,34 @@ type Noun = Readonly<Record<Count, string>>;
 
 export const text: Noun = { one: 'text', other: 'text', countedOne: 'text value', countedOther: 'text values' };
 
+const wholeNumbers: Noun = {
+  one: 'a whole number',
+  other: 'whole numbers',
+  countedOne: 'whole number',
+  countedOther: 'whole numbers',
+};
+
+export const numbers: Noun = { one: 'a number', other: 'numbers', countedOne: 'number', countedOther: 'numbers' };
+
+export const yesOrNo: Noun = {
+  one: 'yes or no',
+  other: 'yes-or-no values',
+  countedOne: 'yes-or-no value',
+  countedOther: 'yes-or-no values',
+};
+
+export const nothing: Noun = {
+  one: 'nothing',
+  other: 'empty values',
+  countedOne: 'empty value',
+  countedOther: 'empty values',
+};
+
 export const nouns: Readonly<Record<string, Noun>> = {
-  integer: { one: 'a whole number', other: 'whole numbers', countedOne: 'whole number', countedOther: 'whole numbers' },
-  number: { one: 'a number', other: 'numbers', countedOne: 'number', countedOther: 'numbers' },
-  boolean: {
-    one: 'yes or no',
-    other: 'yes-or-no values',
-    countedOne: 'yes-or-no value',
-    countedOther: 'yes-or-no values',
-  },
-  null: { one: 'nothing', other: 'empty values', countedOne: 'empty value', countedOther: 'empty values' },
+  integer: wholeNumbers,
+  number: numbers,
+  boolean: yesOrNo,
+  null: nothing,
 };
 
 export const dateAndTime: Noun = {

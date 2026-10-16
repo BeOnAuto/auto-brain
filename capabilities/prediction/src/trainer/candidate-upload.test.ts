@@ -7,8 +7,6 @@ import { askedBuild, savedFunction, uploaded, workOf } from '../build-testing/bu
 import { candidateBytes, candidateSha256, type CandidateName } from '../build-testing/due-driving.ts';
 import { uploadCandidate } from './candidate-upload.ts';
 
-const testTimeoutMs = 60_000;
-
 const alpha = { org: 'acme', playbook: 'alpha' };
 
 const someDetail: unknown = expect.any(String);
@@ -26,7 +24,7 @@ async function waitingBuild(playbook: BuildPlaybook): Promise<string> {
   return askedBuild(playbook);
 }
 
-describe('a candidate a trainer uploads to a build', { timeout: testTimeoutMs }, () => {
+describe('a candidate a trainer uploads to a build', () => {
   it('is checked and answered with its digest, its bytes and its opset, the same bytes again alike and recorded once', async () => {
     const playbook = buildPlaybook();
     const build = await waitingBuild(playbook);
@@ -60,37 +58,33 @@ function stagingThatFailsOnce(kept: RecordedContent): RecordedContent {
   };
 }
 
-describe(
-  'a candidate recorded but not staged, as when its server stops between the two',
-  { timeout: testTimeoutMs },
-  () => {
-    it('is staged by the trainer sending the same bytes again', async () => {
-      const playbook = buildPlaybook({ content: stagingThatFailsOnce });
-      const build = await waitingBuild(playbook);
-      const first = await sent(playbook, build, 'visits-mean');
-      const unstaged = await Effect.runPromise(
-        playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
-      );
-      const again = await sent(playbook, build, 'visits-mean');
-      const staged = await Effect.runPromise(
-        playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
-      );
+describe('a candidate recorded but not staged, as when its server stops between the two', () => {
+  it('is staged by the trainer sending the same bytes again', async () => {
+    const playbook = buildPlaybook({ content: stagingThatFailsOnce });
+    const build = await waitingBuild(playbook);
+    const first = await sent(playbook, build, 'visits-mean');
+    const unstaged = await Effect.runPromise(
+      playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
+    );
+    const again = await sent(playbook, build, 'visits-mean');
+    const staged = await Effect.runPromise(
+      playbook.test.ports.ledger.content.staged(alpha, build, candidateSha256('visits-mean')),
+    );
 
-      expect([first.status, unstaged, again.status, staged?.bytes]).toEqual([
-        'failed',
-        undefined,
-        'succeeded',
-        candidateBytes('visits-mean').length,
-      ]);
-      expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual([
-        'dataset_assembled',
-        'candidate_uploaded',
-      ]);
-    });
-  },
-);
+    expect([first.status, unstaged, again.status, staged?.bytes]).toEqual([
+      'failed',
+      undefined,
+      'succeeded',
+      candidateBytes('visits-mean').length,
+    ]);
+    expect((await workOf(playbook, build)).map(({ type }) => type)).toEqual([
+      'dataset_assembled',
+      'candidate_uploaded',
+    ]);
+  });
+});
 
-describe('a candidate whose data names a file outside its own', { timeout: testTimeoutMs }, () => {
+describe('a candidate whose data names a file outside its own', () => {
   it('reads none of another model the server keeps, by its digest beside it or in the folder of that model', async () => {
     const playbook = buildPlaybook();
     const build = await waitingBuild(playbook);
@@ -111,7 +105,7 @@ describe('a candidate whose data names a file outside its own', { timeout: testT
   });
 });
 
-describe('a candidate a build does not take', { timeout: testTimeoutMs }, () => {
+describe('a candidate a build does not take', () => {
   it('is refused when the runtime does not load it, when it is not in the signature the function feeds, or when it is older than opset 13', async () => {
     const playbook = buildPlaybook();
     const build = await waitingBuild(playbook);
@@ -149,7 +143,7 @@ describe('a candidate a build does not take', { timeout: testTimeoutMs }, () => 
   });
 });
 
-describe('the candidates of a build', { timeout: testTimeoutMs }, () => {
+describe('the candidates of a build', () => {
   it('are refused past the eight a build takes', async () => {
     const playbook = buildPlaybook();
     const build = await waitingBuild(playbook);
@@ -172,7 +166,7 @@ describe('the candidates of a build', { timeout: testTimeoutMs }, () => {
   });
 });
 
-describe('candidates a trainer uploads to a build at once', { timeout: testTimeoutMs }, () => {
+describe('candidates a trainer uploads to a build at once', () => {
   it('are taken once when they are the same bytes, both answered alike', async () => {
     const playbook = buildPlaybook();
     const build = await waitingBuild(playbook);

@@ -7,7 +7,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { workflowSource } from '../testing/servers/workflow-server.ts';
 
 const marker = 'marker-7d1c9e';
 
@@ -105,7 +105,7 @@ async function stopped(child: SpawnedServer): Promise<unknown> {
   return child.exited;
 }
 
-describe('a workflow that ends for a reason of its tenant', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that ends for a reason of its tenant', () => {
   it('leaves no trace of its input, document, events or nested rejections in any line the server writes', async () => {
     const child = workflowProcess(ledger.fileName);
     const port = await child.port;

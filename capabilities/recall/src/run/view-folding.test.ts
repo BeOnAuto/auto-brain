@@ -6,7 +6,7 @@ import type { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignReviews, foldOf, recallDocument } from '../testing/campaign-reviews.ts';
-import { poolOf, workerTestTimeoutMs } from '../testing/recall-runs.ts';
+import { poolOf } from '../testing/recall-runs.ts';
 import { runnableDetailsOf } from '../testing/runnable-details.ts';
 import { recallFolding } from './recall-bounds.ts';
 
@@ -94,7 +94,7 @@ function folded(pool: ProgramPool, details: ViewDetails, events: readonly Schema
   return pool.fold(request);
 }
 
-describe('the checked worker, folding the views of recall functions', { timeout: workerTestTimeoutMs }, () => {
+describe('the checked worker, folding the views of recall functions', () => {
   it('folds the example over the runs it names, in order, checking the view against its schema after each fold', async () => {
     const events = [
       review('2026-10-06T10:00:00.000Z', { campaign: 'spring', verdict: 'approve' }),
@@ -140,7 +140,7 @@ describe('the checked worker, folding the views of recall functions', { timeout:
   });
 });
 
-describe('the example of the reference page, at its largest', { timeout: workerTestTimeoutMs }, () => {
+describe('the example of the reference page, at its largest', () => {
   it('holds its view at 488,251 bytes as JSON, however long the names and verdicts it is given', async () => {
     const details = await runnableDetailsOf(campaignReviews);
     const events = [overlongReview(0, 1000), overlongReview(49, 1001)];

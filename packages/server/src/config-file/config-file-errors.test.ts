@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
 import { configuredServer } from '../testing/processes/configured-server.ts';
-import { spawnedServerTestTimeoutMs } from '../testing/processes/spawned-server.ts';
 
 const secret = 'sk-live-SECRET-0123456789abcdef';
 
@@ -15,7 +14,7 @@ async function startupLine(configText: string, environment: Readonly<Record<stri
 
 const invalid = 'Auto Runtime could not start: ConfigFileInvalid: The configuration file auto-runtime.yaml is invalid:';
 
-describe('a configuration file the server cannot use', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a configuration file the server cannot use', () => {
   it('stops the start when the file is missing, naming it', async () => {
     const { child, configFile } = configuredServer(undefined, { CONFIG_FILE: '/nonexistent/auto-runtime.yaml' });
 
@@ -27,7 +26,7 @@ describe('a configuration file the server cannot use', { timeout: spawnedServerT
   });
 });
 
-describe('a configuration file the server cannot read as settings', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('a configuration file the server cannot read as settings', () => {
   it.each([
     [
       'is not YAML',
@@ -75,7 +74,7 @@ describe('a configuration file the server cannot read as settings', { timeout: s
   });
 });
 
-describe('declared and allowed models the server refuses', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('declared and allowed models the server refuses', () => {
   it('stops the start at the line of a declared or allowed model the model settings refuse', async () => {
     const text = `declared_models:
   anthropic:
@@ -94,7 +93,7 @@ allowed_models: []
   });
 });
 
-describe('an openapi server whose document cannot be read', { timeout: spawnedServerTestTimeoutMs }, () => {
+describe('an openapi server whose document cannot be read', () => {
   it('stops the start, naming its entry', async () => {
     const lines = (await startupLine('tool_servers:\n  billing:\n    document: billing.json\n    org: acme\n')).split(
       '\n',

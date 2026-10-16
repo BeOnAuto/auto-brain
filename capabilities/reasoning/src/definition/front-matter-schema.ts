@@ -38,6 +38,7 @@ const InputSectionSchema = Schema.Struct({
 const OutputSectionSchema = Schema.Struct({
   format: Schema.optionalKey(Schema.Literals(['text', 'json'])),
   schema: Schema.optionalKey(Schema.JsonObject),
+  shape: Schema.optionalKey(Schema.String),
 });
 
 const ProviderOptionsSchema = Schema.Record(Schema.String, Schema.JsonObject);

@@ -815,6 +815,12 @@ importers:
       '@hono/otel':
         specifier: 1.2.0
         version: 1.2.0(hono@4.13.13)
+      '@modelcontextprotocol/client':
+        specifier: 2.3.1
+        version: 2.3.1
+      '@modelcontextprotocol/server':
+        specifier: 2.3.1
+        version: 2.3.1
       '@on.auto/api':
         specifier: workspace:*
         version: link:../api

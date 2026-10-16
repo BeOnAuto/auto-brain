@@ -17,13 +17,11 @@ import { candidateSha256, performedOnce, performedUntilQuiet } from '../build-te
 import { scriptedModels } from '../build-testing/scripted-models.ts';
 import { buildsDue } from '../builds/builds-due.ts';
 
-const testTimeoutMs = 60_000;
-
 const alpha = { org: 'acme', playbook: 'alpha' };
 
 const twoDays = 2 * 86_400_000;
 
-describe('a build that its trainer does not answer', { timeout: testTimeoutMs }, () => {
+describe('a build that its trainer does not answer', () => {
   it('ends unanswered as its request expires, and its row closes', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -37,7 +35,7 @@ describe('a build that its trainer does not answer', { timeout: testTimeoutMs },
   });
 });
 
-describe('a build that is cancelled', { timeout: testTimeoutMs }, () => {
+describe('a build that is cancelled', () => {
   it('ends cancelled while it waits, and lets go of the candidates staged under it', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -85,7 +83,7 @@ describe('a build that is cancelled', { timeout: testTimeoutMs }, () => {
   });
 });
 
-describe('a build that was scored and has ended', { timeout: testTimeoutMs }, () => {
+describe('a build that was scored and has ended', () => {
   it('lets go of the scoring rows the server parsed for its candidates and baselines', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -109,7 +107,7 @@ describe('a build that was scored and has ended', { timeout: testTimeoutMs }, ()
   });
 });
 
-describe('a build cancelled as the walk of its candidate ends', { timeout: testTimeoutMs }, () => {
+describe('a build cancelled as the walk of its candidate ends', () => {
   it('takes the end of its run as done, and records nothing of the candidate', async () => {
     const scripted = scriptedModels();
     const playbook = buildPlaybook({ module: scripted.module });
@@ -130,7 +128,7 @@ describe('a build cancelled as the walk of its candidate ends', { timeout: testT
   });
 });
 
-describe('a build after its server restarts', { timeout: testTimeoutMs }, () => {
+describe('a build after its server restarts', () => {
   it('carries on from the last fact it recorded', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);
@@ -147,7 +145,7 @@ describe('a build after its server restarts', { timeout: testTimeoutMs }, () => 
   });
 });
 
-describe('a build that two performs end at once', { timeout: testTimeoutMs }, () => {
+describe('a build that two performs end at once', () => {
   it('is settled by one of them, the other taking the settlement as done', async () => {
     const playbook = buildPlaybook();
     await savedFunction(playbook);

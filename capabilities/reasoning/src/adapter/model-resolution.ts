@@ -6,6 +6,7 @@ import { ProviderNotConfigured } from '../failure/provider-not-configured.ts';
 import { aliasResolution } from '../model/model-alias.ts';
 import { modelOffer } from '../model/model-offer.ts';
 import { parseModelReference } from '../model/model-reference.ts';
+import type { ModelSettings } from '../settings/model-settings.ts';
 import type { ProviderStatus } from '../settings/provider-status.ts';
 import type { ModelFactory, SdkModel } from './sdk-model.ts';
 
@@ -38,11 +39,16 @@ function aliasesOf(aliasNames: readonly string[]): string {
   return aliasNames.length === 0 ? '' : `. Aliases: ${aliasNames.join(', ')}`;
 }
 
-function notConfigured(provider: string, status: ProviderStatus, aliasNames: readonly string[]): ProviderNotConfigured {
+function setupOf(providerSetup: string | undefined): string {
+  return providerSetup === undefined ? '' : `. ${providerSetup}`;
+}
+
+function notConfigured(provider: string, status: ProviderStatus, settings: ResolutionSettings): ProviderNotConfigured {
   const missing = status.unconfigured.find((unconfigured) => unconfigured.provider === provider)?.missing;
   const absent = missing === undefined ? `There is no provider named ${provider}` : `${provider} is not configured`;
+  const aliasNames = [...settings.aliases.keys()];
   return new ProviderNotConfigured({
-    detail: `${absent}. ${configuredOf(status)}${aliasesOf(aliasNames)}`,
+    detail: `${absent}. ${configuredOf(status)}${aliasesOf(aliasNames)}${setupOf(settings.providerSetup)}`,
     provider,
     configured: status.configured,
     missing: missing ?? [],
@@ -53,15 +59,15 @@ function notAllowed(requested: string, provider: string): ModelNotAllowed {
   return new ModelNotAllowed({ detail: `${requested} is not one of the models this server offers`, provider });
 }
 
+export type ResolutionSettings = Pick<ModelSettings, 'aliases' | 'allowed' | 'providerSetup'>;
+
 export function modelResolution(
   models: ReadonlyMap<string, ModelFactory>,
-  aliases: ReadonlyMap<string, string>,
+  settings: ResolutionSettings,
   status: ProviderStatus,
-  allowed: readonly string[] | null,
 ): ModelResolution {
-  const resolve = aliasResolution(aliases);
-  const offer = modelOffer(allowed);
-  const aliasNames = [...aliases.keys()];
+  const resolve = aliasResolution(settings.aliases);
+  const offer = modelOffer(settings.allowed);
   return (requested) => {
     const resolved = resolve(requested);
     return Option.match(parseModelReference(resolved), {
@@ -72,7 +78,7 @@ export function modelResolution(
         }
         const factory = models.get(provider);
         return factory === undefined
-          ? Result.fail(notConfigured(provider, status, aliasNames))
+          ? Result.fail(notConfigured(provider, status, settings))
           : Result.succeed({ provider, requested, resolved, model: () => factory(model) });
       },
     });

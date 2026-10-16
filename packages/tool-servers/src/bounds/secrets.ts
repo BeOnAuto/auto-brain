@@ -5,7 +5,7 @@ import { Redacted } from 'effect';
 import { authOf, type AuthSettings, type ServerSettings } from '../settings/server-settings.ts';
 
 export interface Secrets {
-  readonly add: (secret: string) => void;
+  readonly replace: (source: string, secret: string) => void;
   readonly scrub: (text: string) => string;
   readonly scrubValue: (value: unknown) => unknown;
 }
@@ -57,24 +57,35 @@ function asInBasic(secret: string): string {
   return Buffer.from(secret).toString('base64');
 }
 
+function formsOf(secret: string): readonly string[] {
+  return secret.length < leastSecretCharacters
+    ? []
+    : [
+        asInJson(asInJson(secret)),
+        asInJson(secret),
+        asInQuery(secret),
+        encodeURIComponent(secret),
+        asInBasic(secret),
+        secret,
+      ];
+}
+
+function formsOfEach(secrets: readonly string[]): readonly string[] {
+  return [...new Set(secrets.flatMap((secret) => formsOf(secret)))];
+}
+
 export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
-  const known = new Set<string>();
-  const add = (secret: string): void => {
-    if (secret.length >= leastSecretCharacters) {
-      known.add(asInJson(asInJson(secret)));
-      known.add(asInJson(secret));
-      known.add(asInQuery(secret));
-      known.add(encodeURIComponent(secret));
-      known.add(asInBasic(secret));
-      known.add(secret);
-    }
+  const configured = redacted.map((value) => Redacted.value(value));
+  const heldBySource = new Map<string, readonly string[]>();
+  let known = formsOfEach(configured);
+  const replace = (source: string, secret: string): void => {
+    const [replaced] = heldBySource.get(source) ?? [];
+    heldBySource.set(source, replaced === undefined ? [secret] : [secret, replaced]);
+    known = formsOfEach([...configured, ...[...heldBySource.values()].flat()]);
   };
-  for (const value of redacted) {
-    add(Redacted.value(value));
-  }
   const scrub = (text: string): string =>
-    [...known].reduce((scrubbed, secret) => scrubbed.replaceAll(secret, redactedMark), text);
-  return { add, scrub, scrubValue: (value) => scrubbedValueOf(value, scrub) };
+    known.reduce((scrubbed, secret) => scrubbed.replaceAll(secret, redactedMark), text);
+  return { replace, scrub, scrubValue: (value) => scrubbedValueOf(value, scrub) };
 }
 
 function credentialOf(auth: AuthSettings | null): readonly Redacted.Redacted[] {

@@ -70,19 +70,26 @@ function patternWords(patterns: readonly ModelEntry[], afterModels: boolean): st
   return `${opening} ${listed(patterns.map((entry) => anyModelOf(entry)))}.`;
 }
 
-function nothingWords(provider: string | undefined): string {
-  return provider === undefined
+function nothingWords(provider: string | undefined, providerSetup: string | undefined): string {
+  if (provider !== undefined) {
+    return `This server has no model it can call through ${provider}.`;
+  }
+  return providerSetup === undefined
     ? 'This server has no model it can call.'
-    : `This server has no model it can call through ${provider}.`;
+    : `This server has no model it can call. ${providerSetup}`;
 }
 
 const incomplete = 'The list may be incomplete: a provider could not be asked just now.';
 
-export function modelsListed({ data, catalog_status: status }: ModelList, provider?: string): string {
+export function modelsListed(
+  { data, catalog_status: status }: ModelList,
+  provider?: string,
+  providerSetup?: string,
+): string {
   const models = data.filter(({ pattern }) => pattern !== true);
   const patterns = data.filter(({ pattern }) => pattern === true);
   const words = [
-    data.length === 0 ? nothingWords(provider) : modelsWords(models),
+    data.length === 0 ? nothingWords(provider, providerSetup) : modelsWords(models),
     patternWords(patterns, models.length > 0),
     status === 'partial' ? incomplete : '',
   ];

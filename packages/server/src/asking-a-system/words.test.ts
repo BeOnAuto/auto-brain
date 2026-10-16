@@ -9,7 +9,6 @@ import {
   threadInput,
   type SystemServer,
 } from '../testing/servers/system-calls.ts';
-import { workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
 
 const longestName = `thread-${'x'.repeat(41)}`;
 
@@ -29,7 +28,7 @@ function saidOf(server: SystemServer, name: string, input: unknown = {}) {
   });
 }
 
-describe('the words of a run that asks a system, over MCP', { timeout: workflowTestTimeoutMs }, () => {
+describe('the words of a run that asks a system, over MCP', () => {
   it('say what the tool answered, naming the tool in words', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');
@@ -55,7 +54,7 @@ describe('the words of a run that asks a system, over MCP', { timeout: workflowT
   });
 });
 
-describe('the words of a run that asks a system, kept plain', { timeout: workflowTestTimeoutMs }, () => {
+describe('the words of a run that asks a system, kept plain', () => {
   it('name no internal term, and an output carries no secret of the server', async () => {
     const server = await askingASystem({ hints: { denied: { readOnlyHint: false } } });
     await server.define('thread-replies');

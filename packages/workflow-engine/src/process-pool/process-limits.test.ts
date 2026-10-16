@@ -8,8 +8,6 @@ import { memoryLimiter } from './memory-limit.ts';
 import { processPool, type ProcessOutcome, type ProcessPool, type ProcessPoolSettings } from './process-pool.ts';
 import type { ProcessValue } from './process-values.ts';
 
-const poolTestTimeoutMs = 30_000;
-
 const ordinaryDeadlineMs = 10_000;
 
 const mebibyte = 1_048_576;
@@ -60,7 +58,7 @@ function pidOf(outcome: ProcessOutcome): number {
   return decodePid(outcome.ended === 'answered' ? outcome.answer : {}).pid;
 }
 
-describe('the memory of a process of the pool', { timeout: poolTestTimeoutMs }, () => {
+describe('the memory of a process of the pool', () => {
   it('is bounded by prlimit, given a core file size of 0 and the bound of its data, where prlimit is on the path', async () => {
     const fake = aFake();
     const pool = poolOf({ path: fake.limiting, memoryBytes: fakeBound });
@@ -84,7 +82,7 @@ describe('the memory of a process of the pool', { timeout: poolTestTimeoutMs }, 
   });
 });
 
-describe(`the memory of a process of the pool on Linux${elsewhere}`, { timeout: poolTestTimeoutMs }, () => {
+describe(`the memory of a process of the pool on Linux${elsewhere}`, () => {
   it.skipIf(!onLinux)(
     'is bounded by the prlimit of the system, its data at the bound and its core file size at 0, so the kernel writes no core file, and a job that fills twice the bound ends out of memory while the next job starts in a fresh process',
     async () => {

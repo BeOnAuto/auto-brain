@@ -7,7 +7,6 @@ import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server
 import {
   playbookWithReviews,
   liveWith,
-  recallTestTimeoutMs,
   recalled,
   reviewed,
   servingRecall,
@@ -39,7 +38,7 @@ async function reviewing(...outputs: readonly Schema.Json[]): Promise<ReasoningS
   return server;
 }
 
-describe('a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => {
+describe('a recall function over HTTP', () => {
   it('folds the runs of a reasoning function in order, guarded against what an output may be, one over the event bound seen as its size', async () => {
     const server = await reviewing(
       { campaign: 'spring', verdict: 'approve' },
@@ -82,7 +81,7 @@ describe('a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => 
   });
 });
 
-describe('the input of a run of a recall function over HTTP', { timeout: recallTestTimeoutMs }, () => {
+describe('the input of a run of a recall function over HTTP', () => {
   it('runs with an empty input when it is given none, and refuses an input its schema refuses with a pointer', async () => {
     const server = await reviewing({ campaign: 'spring', verdict: 'approve' });
     await standingUntil(server, 'reviews', liveWith(1));
@@ -96,7 +95,7 @@ describe('the input of a run of a recall function over HTTP', { timeout: recallT
   });
 });
 
-describe('a run of a recall function the server cannot finish, over HTTP', { timeout: recallTestTimeoutMs }, () => {
+describe('a run of a recall function the server cannot finish, over HTTP', () => {
   it('is unavailable when no worker is free to answer, and failed when the worker answering breaks', async () => {
     const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }), {}, (settings) =>
       scriptedPool(

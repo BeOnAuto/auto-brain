@@ -1,15 +1,9 @@
+import { shapeNamed } from '@on.auto/definitions/testing';
 import { Effect, Exit, Option, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { campaignPace, campaignRows } from '../testing/campaign-pace.ts';
-import {
-  computationWith,
-  functionOf,
-  poolOf,
-  programDocument,
-  workerTestTimeoutMs,
-  type Run,
-} from '../testing/computation-runs.ts';
+import { computationWith, functionOf, poolOf, programDocument, type Run } from '../testing/computation-runs.ts';
 
 const decodeFinished = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -73,7 +67,7 @@ async function succeeded(running: () => Promise<Run>): Promise<unknown> {
   return Option.getOrThrow(Exit.getSuccess(await running()));
 }
 
-describe('a run of a computation function', { timeout: workerTestTimeoutMs }, () => {
+describe('a run of a computation function', () => {
   it('applies its program to its input and answers its output exactly, in cents, with what the run took', async () => {
     const input = campaignRows(1000);
 
@@ -144,6 +138,16 @@ describe('the summary of a computation function', () => {
       longestAnyRunMs: 10_000,
     });
     expect(prepared(campaignPace).callsTools).toBe(false);
+  });
+
+  it('publishes the schema of the shape its output names as its output schema, and the shape in its details', () => {
+    const { prepared } = computationWith(poolOf({ workers: 1 }));
+    const source = programDocument(functionOf('return input;'), 'language: typescript\noutput: {shape: categories}');
+
+    expect(prepared(source).summary).toEqual({
+      outputSchema: shapeNamed('categories').schema,
+      details: { shape: 'categories' },
+    });
   });
 });
 

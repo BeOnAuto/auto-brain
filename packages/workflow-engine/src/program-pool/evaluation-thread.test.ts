@@ -16,8 +16,6 @@ type PoolSettings = Parameters<typeof programPool>[0];
 
 type Machine = ProgramPool['evaluations']['machine'];
 
-const evaluationTestTimeoutMs = 30_000;
-
 const severalTimesSlowerMs = 3000;
 
 const timerMs = 20;
@@ -79,73 +77,65 @@ async function timed<Answer>(work: () => Answer | Promise<Answer>): Promise<{ an
   return { answer, ms: performance.now() - started };
 }
 
-describe(
-  'the evaluation worker of a pool, given native work that no checkpoint interrupts',
-  { timeout: evaluationTestTimeoutMs },
-  () => {
-    it('ends the expression of a decision at the input deadline, within about 2.1 s, and decides the next input on a fresh worker', async () => {
-      const { machine } = poolOf().evaluations;
-      const churning = `do:\n  - churn: { set: { churned: '\${ ${churn} }' } }`;
-      await Effect.runPromise(machine.reserve);
+describe('the evaluation worker of a pool, given native work that no checkpoint interrupts', () => {
+  it('ends the expression of a decision at the input deadline, within about 2.1 s, and decides the next input on a fresh worker', async () => {
+    const { machine } = poolOf().evaluations;
+    const churning = `do:\n  - churn: { set: { churned: '\${ ${churn} }' } }`;
+    await Effect.runPromise(machine.reserve);
 
-      const { answer: ended, ms } = await timed(() => decidedOnce(machine, churning, now));
-      await Effect.runPromise(machine.reserve);
-      const next = decidedOnce(machine, 'do:\n  - add: { set: { sum: "${ 1 + 1 }" } }', now);
+    const { answer: ended, ms } = await timed(() => decidedOnce(machine, churning, now));
+    await Effect.runPromise(machine.reserve);
+    const next = decidedOnce(machine, 'do:\n  - add: { set: { sum: "${ 1 + 1 }" } }', now);
 
-      expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
-      expect(JSON.stringify(ended.outcome)).toContain(
-        'The program ran past its deadline: the expressions of one input may take 2000 ms',
-      );
-      expect(ms).toBeGreaterThan(2000);
-      expect(ms).toBeLessThan(2000 + answerGraceMs + severalTimesSlowerMs);
-      expect(next.outcome).toEqual({ kind: 'completed', output: { sum: 2 } });
+    expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
+    expect(JSON.stringify(ended.outcome)).toContain(
+      'The program ran past its deadline: the expressions of one input may take 2000 ms',
+    );
+    expect(ms).toBeGreaterThan(2000);
+    expect(ms).toBeLessThan(2000 + answerGraceMs + severalTimesSlowerMs);
+    expect(next.outcome).toEqual({ kind: 'completed', output: { sum: 2 } });
+  });
+});
+
+describe('the filter worker of a pool, given native work that no checkpoint interrupts', () => {
+  it('ends a trigger filter at its own deadline of 200 ms, stopped, and matches the filter after it on a fresh worker', async () => {
+    const { filters } = poolOf().evaluations;
+    await filterVerdictsOf([plainFilter], closed, filters, now);
+
+    const { answer, ms } = await timed(() => filterVerdictsOf([churningFilter, plainFilter], closed, filters, now));
+
+    expect(answer).toMatchObject([{ error: { status: 500, instance: '/churn' }, stopped: true }, true]);
+    expect(JSON.stringify(answer)).toContain(
+      `The program ran past its deadline: one filter may take ${mostFilterMs} ms`,
+    );
+    expect(ms).toBeGreaterThan(mostFilterMs);
+    expect(ms).toBeLessThan(mostFilterMs + answerGraceMs + severalTimesSlowerMs);
+  });
+
+  it("leaves the main thread free while a plain filter and a churning one after it are matched, so the main thread's timer fires on schedule", async () => {
+    const { filters } = poolOf().evaluations;
+    await filterVerdictsOf([plainFilter], closed, filters, now);
+    const order: string[] = [];
+
+    const fired = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        order.push('timer');
+        resolve();
+      }, timerMs);
     });
-  },
-);
-
-describe(
-  'the filter worker of a pool, given native work that no checkpoint interrupts',
-  { timeout: evaluationTestTimeoutMs },
-  () => {
-    it('ends a trigger filter at its own deadline of 200 ms, stopped, and matches the filter after it on a fresh worker', async () => {
-      const { filters } = poolOf().evaluations;
-      await filterVerdictsOf([plainFilter], closed, filters, now);
-
-      const { answer, ms } = await timed(() => filterVerdictsOf([churningFilter, plainFilter], closed, filters, now));
-
-      expect(answer).toMatchObject([{ error: { status: 500, instance: '/churn' }, stopped: true }, true]);
-      expect(JSON.stringify(answer)).toContain(
-        `The program ran past its deadline: one filter may take ${mostFilterMs} ms`,
-      );
-      expect(ms).toBeGreaterThan(mostFilterMs);
-      expect(ms).toBeLessThan(mostFilterMs + answerGraceMs + severalTimesSlowerMs);
+    const matched = filterVerdictsOf([plainFilter, churningFilter], closed, filters, now).then((verdicts) => {
+      order.push('verdicts');
+      return verdicts;
     });
+    await Promise.all([fired, matched]);
 
-    it("leaves the main thread free while a plain filter and a churning one after it are matched, so the main thread's timer fires on schedule", async () => {
-      const { filters } = poolOf().evaluations;
-      await filterVerdictsOf([plainFilter], closed, filters, now);
-      const order: string[] = [];
+    expect(timerMs).toBeLessThan(mostFilterMs);
+    expect(order).toEqual(['timer', 'verdicts']);
+    expect(await matched).toMatchObject([true, { stopped: true }]);
+  });
+});
 
-      const fired = new Promise<void>((resolve) => {
-        setTimeout(() => {
-          order.push('timer');
-          resolve();
-        }, timerMs);
-      });
-      const matched = filterVerdictsOf([plainFilter, churningFilter], closed, filters, now).then((verdicts) => {
-        order.push('verdicts');
-        return verdicts;
-      });
-      await Promise.all([fired, matched]);
-
-      expect(timerMs).toBeLessThan(mostFilterMs);
-      expect(order).toEqual(['timer', 'verdicts']);
-      expect(await matched).toMatchObject([true, { stopped: true }]);
-    });
-  },
-);
-
-describe('the filter worker of a pool, matching groups at the same time', { timeout: evaluationTestTimeoutMs }, () => {
+describe('the filter worker of a pool, matching groups at the same time', () => {
   it('prepares again on the fresh worker the groups prepared on the worker a churning filter ended, so groups matched at the same time still match', async () => {
     const { filters } = poolOf().evaluations;
     await filterVerdictsOf([plainFilter], closed, filters, now);
@@ -162,58 +152,54 @@ describe('the filter worker of a pool, matching groups at the same time', { time
   });
 });
 
-describe(
-  'the evaluation worker of a pool, given a stack or a memory to exhaust',
-  { timeout: evaluationTestTimeoutMs },
-  () => {
-    it("gives a caught stack bomb one answer, from the shallow stack of the host, from 5,000 frames deep and on a host's own thread", async () => {
-      const { machine } = poolOf().evaluations;
-      const here = machineSandboxOf();
-      await Promise.all([Effect.runPromise(machine.reserve), Effect.runPromise(here.reserve)]);
+describe('the evaluation worker of a pool, given a stack or a memory to exhaust', () => {
+  it("gives a caught stack bomb one answer, from the shallow stack of the host, from 5,000 frames deep and on a host's own thread", async () => {
+    const { machine } = poolOf().evaluations;
+    const here = machineSandboxOf();
+    await Promise.all([Effect.runPromise(machine.reserve), Effect.runPromise(here.reserve)]);
 
-      const shallow = evaluatedIn(machine, caughtStackBomb);
-      const deep = nested(5000, () => evaluatedIn(machine, caughtStackBomb));
-      const onTheThread = evaluatedIn(here, caughtStackBomb);
+    const shallow = evaluatedIn(machine, caughtStackBomb);
+    const deep = nested(5000, () => evaluatedIn(machine, caughtStackBomb));
+    const onTheThread = evaluatedIn(here, caughtStackBomb);
 
-      expect(shallow).toMatchObject({ ran: 'answered' });
-      expect([deep, onTheThread]).toEqual([shallow, shallow]);
-    });
+    expect(shallow).toMatchObject({ ran: 'answered' });
+    expect([deep, onTheThread]).toEqual([shallow, shallow]);
+  });
 
-    it('raises a runtime error, status 500, from a decision whose expression fills its sandbox', async () => {
-      const { machine } = poolOf().evaluations;
-      await Effect.runPromise(machine.reserve);
+  it('raises a runtime error, status 500, from a decision whose expression fills its sandbox', async () => {
+    const { machine } = poolOf().evaluations;
+    await Effect.runPromise(machine.reserve);
 
-      const ended = decidedOnce(machine, `do:\n  - fill: { set: { filled: '\${ ${filling} }' } }`, now);
+    const ended = decidedOnce(machine, `do:\n  - fill: { set: { filled: '\${ ${filling} }' } }`, now);
 
-      expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
-      expect(JSON.stringify(ended.outcome)).toContain(
-        'The program used more memory than it may: the expressions of one input may use the memory of their sandbox and no more',
-      );
-    });
+    expect(ended.outcome).toMatchObject({ kind: 'raised', error: { type: runtimeError, status: 500 } });
+    expect(JSON.stringify(ended.outcome)).toContain(
+      'The program used more memory than it may: the expressions of one input may use the memory of their sandbox and no more',
+    );
+  });
 
-    it('ends a unit whose instance refused to grow, and answers the next unit on a fresh worker', async () => {
-      const { machine } = poolOf().evaluations;
-      await Effect.runPromise(machine.reserve);
-      const unit = machine.unit();
+  it('ends a unit whose instance refused to grow, and answers the next unit on a fresh worker', async () => {
+    const { machine } = poolOf().evaluations;
+    await Effect.runPromise(machine.reserve);
+    const unit = machine.unit();
 
-      const runs = [
-        unit.evaluate(filling, {}, within(machine, 10_000)),
-        unit.evaluate('1 + 1', {}, within(machine, 10_000)),
-      ];
-      unit.close();
-      await Effect.runPromise(machine.reserve);
-      const next = evaluatedIn(machine, '1 + 1');
+    const runs = [
+      unit.evaluate(filling, {}, within(machine, 10_000)),
+      unit.evaluate('1 + 1', {}, within(machine, 10_000)),
+    ];
+    unit.close();
+    await Effect.runPromise(machine.reserve);
+    const next = evaluatedIn(machine, '1 + 1');
 
-      expect(runs).toMatchObject([
-        { ran: 'exhausted', limit: 'memory' },
-        { ran: 'exhausted', limit: 'memory', work: 0 },
-      ]);
-      expect(next).toMatchObject({ ran: 'answered', text: '2' });
-    });
-  },
-);
+    expect(runs).toMatchObject([
+      { ran: 'exhausted', limit: 'memory' },
+      { ran: 'exhausted', limit: 'memory', work: 0 },
+    ]);
+    expect(next).toMatchObject({ ran: 'answered', text: '2' });
+  });
+});
 
-describe('the evaluation worker of a pool that cannot answer', { timeout: evaluationTestTimeoutMs }, () => {
+describe('the evaluation worker of a pool that cannot answer', () => {
   it('starts no worker once the pool closed, and ends an evaluation and a filter at once at their deadlines', async () => {
     const pool = poolOf();
     await pool.close();

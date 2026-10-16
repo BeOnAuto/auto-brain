@@ -3,34 +3,53 @@ import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 
+import manifest from '../package.json' with { type: 'json' };
+
 const docs = resolve(import.meta.dirname, '../docs');
 
-await test('the install step defaults to Agent on the left with Manual on the right', () => {
-  const guide = readFileSync(join(docs, 'get-started/local.md'), 'utf8');
-  const install = guide.split('## 1. Install Auto Runtime')[1]?.split('## 2. Add your model provider key')[0];
-  assert.ok(install !== undefined);
-  const options = [...install.matchAll(/```(bash|text) \[(Manual|Agent)\]\n([\s\S]*?)```/gu)];
-  assert.deepEqual(
-    options.map((option: readonly string[]) => [option[1], option[2]]),
-    [
-      ['text', 'Agent'],
-      ['bash', 'Manual'],
-    ],
+const release = `@on.auto/runtime@${manifest.version}`;
+
+const entry = `${release} mcp`;
+
+interface Tab {
+  readonly label: string;
+  readonly body: string;
+}
+
+function connectStepOf(guide: string): string {
+  return guide.split('## 1. Add Auto to your agent {#connect-your-agent}')[1]?.split('## 2.')[0] ?? '';
+}
+
+function tabsIn(step: string): readonly Tab[] {
+  return [...step.matchAll(/```(?:bash|json) \[([^\]]+)\]\n([\s\S]*?)```/gu)].map(
+    ([, label = '', body = '']: readonly string[]) => ({ label, body }),
   );
-  assert.equal(options[1]?.[3], 'mkdir auto-runtime\ncd auto-runtime\nnpx @on.auto/runtime --version\n');
-  const prompt = options[0]?.[3];
-  assert.ok(prompt !== undefined);
-  assert.ok(prompt.includes('npx @on.auto/runtime'));
-  assert.ok(prompt.includes('Ask before installing prerequisites'));
-  assert.equal(prompt.trimEnd().split('\n').length, 4);
-  assert.ok(prompt.includes('keep existing files and .env'));
-  assert.ok(prompt.includes('Never print secrets or ask for API keys in chat'));
-  assert.ok(prompt.includes('Help configure my model provider'));
-  assert.ok(prompt.includes('then show how to start the server'));
-  assert.doesNotMatch(prompt, /Stop after install|mcp add/u);
+}
+
+function promptIn(step: string): string {
+  return /```text\n([\s\S]*?)```/u.exec(step)?.[1] ?? '';
+}
+
+await test('the connect step gives a prompt for the agent, then a tab per agent with Claude Code first', () => {
+  const step = connectStepOf(readFileSync(join(docs, 'get-started/local.md'), 'utf8'));
+  const tabs = tabsIn(step);
+  const commands = tabs.slice(0, -1);
+  const config: unknown = JSON.parse(String(tabs.at(-1)?.body));
+
+  assert.ok(promptIn(step).includes(`npx -y ${entry}`));
+  assert.deepEqual(
+    tabs.map(({ label }) => label),
+    ['Claude Code', 'Codex', 'Gemini CLI', 'Grok', 'Cursor, Claude Desktop'],
+  );
+  assert.deepEqual(
+    commands.filter(({ body }) => !body.includes(entry)).map(({ label }) => label),
+    [],
+  );
+  assert.deepEqual(config, {
+    mcpServers: { 'auto-runtime': { command: 'npx', args: ['-y', release, 'mcp'] } },
+  });
   const html = readFileSync(join(docs, '.vitepress/dist/get-started/local.html'), 'utf8');
-  const tabs = html.match(/class="vp-code-group[^"]*"[^>]*><div class="tabs">([\s\S]*?)<\/div>/u)?.[1];
-  assert.ok(tabs !== undefined);
-  assert.match(tabs, /<input[^>]* checked[^>]*><label[^>]*>Agent<\/label>/u);
-  assert.match(tabs, /<input(?![^>]* checked)[^>]*><label[^>]*>Manual<\/label>/u);
+  const labels = html.match(/class="vp-code-group[^"]*"[^>]*><div class="tabs">([\s\S]*?)<\/div>/u)?.[1];
+  assert.ok(labels !== undefined);
+  assert.match(labels, /<input[^>]* checked[^>]*><label[^>]*>Claude Code<\/label>/u);
 });

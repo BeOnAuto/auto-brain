@@ -18,32 +18,28 @@ const runs: RecordedSelection = { kind: 'runs' };
 
 function theRunsAPageExamines(aLedger: LedgerMaker): void {
   describe('the runs a page of runs examines', () => {
-    it(
-      'are at most 1,000, so a page that finds none of the status asked for still carries a cursor',
-      { timeout: 60_000 },
-      async () => {
-        const ledger = await aLedger();
-        await happen(ledger, inAlpha('runs/oldest'), noted('run_started'), noted('run_failed'));
-        await Effect.runPromise(
-          Effect.forEach(
-            Array.from({ length: 1000 }, (_, index) => index),
-            (index) => ledger.execute(inAlpha(`runs/run-${index}`), happenings, [noted('run_started')]),
-            { concurrency: 8, discard: true },
-          ),
-        );
+    it('are at most 1,000, so a page that finds none of the status asked for still carries a cursor', async () => {
+      const ledger = await aLedger();
+      await happen(ledger, inAlpha('runs/oldest'), noted('run_started'), noted('run_failed'));
+      await Effect.runPromise(
+        Effect.forEach(
+          Array.from({ length: 1000 }, (_, index) => index),
+          (index) => ledger.execute(inAlpha(`runs/run-${index}`), happenings, [noted('run_started')]),
+          { concurrency: 8, discard: true },
+        ),
+      );
 
-        const page = { order: 'desc', limit: 20, types: ['run_failed'] } as const;
-        const first = await reading(ledger, runs, page);
-        const rest = await reading(ledger, runs, { ...page, cursor: String(first.nextCursor) });
+      const page = { order: 'desc', limit: 20, types: ['run_failed'] } as const;
+      const first = await reading(ledger, runs, page);
+      const rest = await reading(ledger, runs, { ...page, cursor: String(first.nextCursor) });
 
-        expect([first.records.length, first.hasMore, streamsAndTypes(rest), rest.nextCursor]).toEqual([
-          0,
-          true,
-          ['playbook/acme/alpha/runs/oldest run_started', 'playbook/acme/alpha/runs/oldest run_failed'],
-          null,
-        ]);
-      },
-    );
+      expect([first.records.length, first.hasMore, streamsAndTypes(rest), rest.nextCursor]).toEqual([
+        0,
+        true,
+        ['playbook/acme/alpha/runs/oldest run_started', 'playbook/acme/alpha/runs/oldest run_failed'],
+        null,
+      ]);
+    });
   });
 }
 
@@ -145,7 +141,7 @@ function pageFigures({ records, hasMore }: Awaited<ReturnType<typeof reading>>):
 
 function theRunsLeavingOutSomeStreams(aLedger: LedgerMaker): void {
   describe('the read of runs that leaves out the streams beginning with some types', () => {
-    it('fills its page from the runs among them, and has no more once they are read', { timeout: 60_000 }, async () => {
+    it('fills its page from the runs among them, and has no more once they are read', async () => {
       const ledger = await aLedger();
       await streamsBeginningWith(ledger, runsWithOneLeftOutEvery(21, 105));
 
@@ -154,7 +150,7 @@ function theRunsLeavingOutSomeStreams(aLedger: LedgerMaker): void {
       expect(pageFigures(page)).toEqual([100, false, false]);
     });
 
-    it('has no more after the last run when the oldest stream is left out', { timeout: 60_000 }, async () => {
+    it('has no more after the last run when the oldest stream is left out', async () => {
       const ledger = await aLedger();
       await happen(ledger, inAlpha('runs/oldest'), noted('run_cancel_requested'));
       await streamsBeginningWith(ledger, runsWithOneLeftOutEvery(101, 101).slice(1));

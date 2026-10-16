@@ -135,6 +135,7 @@ The `source` is a [reasoning function document](reasoning-format.md). These rule
 - Changing a document creates a version. Updating it with identical source records no change.
 - A run uses the latest active version.
 - A retired definition can be read, but cannot be edited or run.
+- A definition carries its `input_schema` and `output_schema` where its document declares them. A reasoning function, a computation function or a workflow whose `output.shape` names an [output shape](output-shapes.md) has the shape's schema as its `output_schema`, and the shape's name as `details.shape`, such as `"details": { "shape": "series" }`; `details` is left out otherwise. `list_definitions` shows both too.
 
 `create_definition`, `update_definition`, `get_definition` and `retire_definition` return the definition with its `overview`; `list_definitions` leaves it out. The overview describes the definition in plain words, for a person who does not read its document:
 
@@ -328,7 +329,7 @@ These routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`:
 The `source` is a [workflow document](workflow-format.md). Names, document size, versions and retirement follow the rules for [reasoning functions](#reasoning-functions).
 
 - A saved workflow has the `media_type` `application/yaml`.
-- Its `description`, `input_schema` and `output_schema` come from the document.
+- Its `description`, `input_schema` and `output_schema` come from the document, the `output_schema` from its `output.shape` where it names one, with `details.shape`.
 - A workflow whose document has a `schedule` also has `triggers`, in `get_definition` and `list_definitions`. They are the [triggers](workflow-format.md#triggers) its schedule names, in the order it names them.
 
 | Trigger field  | Contents                                                                              |

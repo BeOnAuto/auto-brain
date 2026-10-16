@@ -16,6 +16,7 @@ import { onThisServer } from './on-this-server.ts';
 
 export interface ReasoningFunctionAdapterOptions extends RunServices {
   readonly offered: OfferedModels;
+  readonly providerSetup?: string | undefined;
 }
 
 export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOptions): Capability {
@@ -25,7 +26,7 @@ export function makeReasoningFunctionAdapter(options: ReasoningFunctionAdapterOp
     title: functionCategoryLabels.reasoning,
     guide: {
       name: 'reasoning-function',
-      onThisServer: onThisServer(options.offered, options.tools.configured),
+      onThisServer: onThisServer(options.offered, options.tools.configured, options.providerSetup),
     },
     noun: { one: functionResourceLabels.reasoning.singular, other: functionResourceLabels.reasoning.plural },
     describeOutput: outputInWords('answer'),

@@ -1,4 +1,10 @@
-import { createApiHandler, makeAppRuntime, type RegisterRoutes, type AppRuntime } from '@on.auto/api';
+import {
+  createApiHandler,
+  makeAppRuntime,
+  type RegisterRoutes,
+  type AppRuntime,
+  type RuntimeControl,
+} from '@on.auto/api';
 import type { Environment } from '@on.auto/config';
 import {
   authenticatorFor,
@@ -20,7 +26,7 @@ import {
 import { readSettings, type Settings } from '../settings/settings.ts';
 import { startTelemetry, type Telemetry } from '../telemetry/start-telemetry.ts';
 import { createHttpServer, listen, ownOriginOf, tcpPort } from './http-server.ts';
-import { shutDown } from './shutdown.ts';
+import { exitDeadlineMs, shutDown, shutdownTimeoutMs } from './shutdown.ts';
 import { StartupError } from './startup-error.ts';
 
 export interface RunningServer {
@@ -42,10 +48,17 @@ export interface Composed<R> {
   readonly serve: (runtime: AppRuntime<R>, ownOrigin: () => string) => Served | Promise<Served>;
 }
 
+export interface LocalServing {
+  readonly runtimeControl?: RuntimeControl;
+  readonly providerSetup: string;
+  readonly appended?: NonNullable<Telemetry['appended']>;
+}
+
 export interface ServerOptions<R> {
   readonly composed: (settings: Settings, telemetry: Telemetry) => Composed<R>;
   readonly shutdownTimeoutMs: number;
   readonly exitDeadlineMs: number;
+  readonly localServingIn?: (mode: AccessMode) => LocalServing;
 }
 
 export function servedBy(routes: readonly RegisterRoutes[]): Served {
@@ -54,8 +67,8 @@ export function servedBy(routes: readonly RegisterRoutes[]): Served {
 
 export const defaultServerOptions: ServerOptions<never> = {
   composed: () => ({ services: Layer.empty, serve: () => servedBy([]) }),
-  shutdownTimeoutMs: 8000,
-  exitDeadlineMs: 1000,
+  shutdownTimeoutMs,
+  exitDeadlineMs,
 };
 
 interface Starting<R> {
@@ -86,8 +99,30 @@ async function startRuntime<R>(
   }
 }
 
+function settingsServing(settings: Settings, local: LocalServing | undefined): Settings {
+  return local === undefined ? settings : { ...settings, providerSetup: local.providerSetup };
+}
+
+function telemetryServing(telemetry: Telemetry, local: LocalServing | undefined): Telemetry {
+  const counting = local?.appended;
+  if (counting === undefined) {
+    return telemetry;
+  }
+  const traced = telemetry.appended;
+  return {
+    ...telemetry,
+    appended: {
+      appended: (stream, events, place) => {
+        traced?.appended(stream, events, place);
+        counting.appended(stream, events, place);
+      },
+    },
+  };
+}
+
 async function started<R>({ settings, authenticator, telemetry, options }: Starting<R>): Promise<RunningServer> {
-  const composed = options.composed(settings, telemetry);
+  const local = options.localServingIn?.(authenticator.mode);
+  const composed = options.composed(settingsServing(settings, local), telemetryServing(telemetry, local));
   const runtime = await startRuntime(composed.services, settings, telemetry.layer);
   await runtime.run(logAccessMode({ ...settings, mode: authenticator.mode }));
   await runtime.run(logConfigFile(settings.configFile));
@@ -102,6 +137,7 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
       void runtime.run(logIncident({ id, original: error, call }).pipe(Effect.annotateLogs({ requestId })));
     },
     ...(telemetry.requests === undefined ? {} : { requests: telemetry.requests }),
+    ...(local?.runtimeControl === undefined ? {} : { runtimeControl: local.runtimeControl }),
   });
   const server = createHttpServer(api.listener);
   try {

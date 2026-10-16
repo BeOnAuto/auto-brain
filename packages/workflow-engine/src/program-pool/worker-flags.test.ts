@@ -10,8 +10,6 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import type { ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
 import { programPool } from './program-pool.ts';
 
-const poolTestTimeoutMs = 30_000;
-
 const reading = new URL(
   `data:text/javascript,${encodeURIComponent(
     [
@@ -76,7 +74,7 @@ async function printedBy(nodeArguments: readonly string[]): Promise<string> {
   return printed.text;
 }
 
-describe('the flags of a worker', { timeout: poolTestTimeoutMs }, () => {
+describe('the flags of a worker', () => {
   it("are none of the server's, so neither the env file nor the preload the server started with reaches a program's worker", async () => {
     const directory = temporaryDirectory();
     const envFile = join(directory, 'server.env');
@@ -99,7 +97,7 @@ describe('the flags of a worker', { timeout: poolTestTimeoutMs }, () => {
   });
 });
 
-describe('the environment of a worker', { timeout: poolTestTimeoutMs }, () => {
+describe('the environment of a worker', () => {
   it('is empty unless the pool is given one, so no setting of the server, such as a key, reaches a program or its worker', async () => {
     expect(Object.keys(process.env).length).toBeGreaterThan(1);
     expect(await poolReading().run(request)).toMatchObject({ ran: 'answered', output: { environment: [] } });

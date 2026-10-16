@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { askingASystem } from '../testing/servers/system-calls.ts';
 import { until } from '../testing/servers/workflow-calls.ts';
-import { workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { workflowSource } from '../testing/servers/workflow-server.ts';
 
 const paging = {
   tool: 'pages',
@@ -63,7 +63,7 @@ const decodeRuns = Schema.decodeUnknownSync(
   Schema.Struct({ runs: Schema.Array(Schema.Struct({ run_id: Schema.String, status: Schema.String })) }),
 );
 
-describe('a workflow that reads every page of a tool that pages', { timeout: workflowTestTimeoutMs }, () => {
+describe('a workflow that reads every page of a tool that pages', () => {
   it('calls again with the cursor while there is one, each page a run of its own, keeping what it read', async () => {
     const server = await askingASystem();
     await server.define('paging', paging);
@@ -75,7 +75,7 @@ describe('a workflow that reads every page of a tool that pages', { timeout: wor
   });
 });
 
-describe('what a call read, kept and reacted to', { timeout: workflowTestTimeoutMs }, () => {
+describe('what a call read, kept and reacted to', () => {
   it('is folded by a recall function from the run that ended, and starts a workflow that listens for that ending', async () => {
     const server = await askingASystem();
     await server.define('thread-replies');
