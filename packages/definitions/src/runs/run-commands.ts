@@ -1,6 +1,7 @@
 import type { CallLink, StartingTrigger } from '@on.auto/operations';
 import type { Schema } from 'effect';
 
+import type { OutputShapeName } from '../shapes/shape-names.ts';
 import type {
   CancelRequestKind,
   RequestAnswered,
@@ -21,6 +22,7 @@ export interface RunStart extends RunRequest {
   readonly definition_version: number;
   readonly calls_tools: boolean;
   readonly finishes_later?: boolean;
+  readonly output_shape?: OutputShapeName;
   readonly depth?: number;
   readonly call_depth?: number;
   readonly called_by?: CallLink;

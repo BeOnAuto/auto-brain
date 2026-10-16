@@ -2915,7 +2915,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -2924,6 +2924,16 @@
                     "definition_version": {
                       "type": "integer",
                       "description": "The definition version that ran"
+                    },
+                    "output_shape": {
+                      "type": "string",
+                      "enum": [
+                        "series",
+                        "categories",
+                        "table",
+                        "text"
+                      ],
+                      "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                     },
                     "status": {
                       "type": "string",
@@ -3289,7 +3299,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -3298,6 +3308,16 @@
                     "definition_version": {
                       "type": "integer",
                       "description": "The definition version that ran"
+                    },
+                    "output_shape": {
+                      "type": "string",
+                      "enum": [
+                        "series",
+                        "categories",
+                        "table",
+                        "text"
+                      ],
+                      "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                     },
                     "status": {
                       "type": "string",
@@ -3678,7 +3698,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -3687,6 +3707,16 @@
                     "definition_version": {
                       "type": "integer",
                       "description": "The definition version that ran"
+                    },
+                    "output_shape": {
+                      "type": "string",
+                      "enum": [
+                        "series",
+                        "categories",
+                        "table",
+                        "text"
+                      ],
+                      "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                     },
                     "status": {
                       "type": "string",
@@ -4130,7 +4160,7 @@
                         },
                         "type": {
                           "type": "string",
-                          "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                          "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                         },
                         "name": {
                           "type": "string",
@@ -4139,6 +4169,16 @@
                         "definition_version": {
                           "type": "integer",
                           "description": "The definition version that ran"
+                        },
+                        "output_shape": {
+                          "type": "string",
+                          "enum": [
+                            "series",
+                            "categories",
+                            "table",
+                            "text"
+                          ],
+                          "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                         },
                         "status": {
                           "type": "string",

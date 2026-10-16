@@ -415,7 +415,7 @@ A cancelled run's rejection names the kind of its cancellation:
 
 ## Runs and results
 
-A run records its `run_id`, `type`, `name`, `definition_version`, `status`, timestamps and caller identity. A successful run includes `output`, and a rejected run includes a rejection. `get_run` also returns the detailed `record`.
+A run records its `run_id`, `type`, `name`, `definition_version`, `status`, timestamps and caller identity. A successful run includes `output`, and a rejected run includes a rejection. `get_run` also returns the detailed `record`. A run whose output takes an [output shape](output-shapes.md#what-a-run-shows) says it as `output_shape`, such as `"output_shape": "series"` on a question to a prediction function; a build of a prediction function, and a run of a definition that declares no shape, has none.
 
 Most runs finish within the request that starts them. These runs finish later, so `run_definition` returns them `started`, unless one ended before its first wait:
 

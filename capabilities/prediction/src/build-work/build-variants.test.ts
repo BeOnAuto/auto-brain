@@ -8,7 +8,7 @@ import { uploadedDailyTotals } from '../testing/daily-documents.ts';
 import { uploadedWeeklyOrders } from '../testing/weekly-orders.ts';
 
 describe('a build of a function that predicts a total to the end of the week', () => {
-  it('scores the total against the run-rate, builds the version and answers the total to the end of the next week', async () => {
+  it('scores the total against the run-rate, builds the version in a run of no output shape, and answers the total to the end of the next week', async () => {
     const playbook = buildPlaybook();
     const source = uploadedDailyTotals(weekdaysAndWeekends.sha256).replace(
       '  holdout: 14',
@@ -17,9 +17,12 @@ describe('a build of a function that predicts a total to the end of the week', (
     await savedFunction(playbook, { name: 'weekly-sales', rows: weekdaysAndWeekends, source });
     const build = await builtFrom(playbook, ['totals-run-rate'], 'weekly-sales');
 
-    expect(await runOf(playbook, build)).toMatchObject({
+    const built = await runOf(playbook, build);
+
+    expect(built).toMatchObject({
       output: { status: 'succeeded', output: { version: 1, winner: candidateSha256('totals-run-rate') } },
     });
+    expect(built).not.toHaveProperty('output.output_shape');
     expect(await asked(playbook, { series: 'north' }, { name: 'weekly-sales' })).toMatchObject({
       output: {
         status: 'succeeded',

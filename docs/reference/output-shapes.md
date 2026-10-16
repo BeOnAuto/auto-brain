@@ -39,8 +39,18 @@ A reasoning function's shape is sent to the provider as an output schema of the 
 `get_definition`, `list_definitions`, `create_definition` and `update_definition` show the shape of a definition that declares one, and of every prediction function:
 
 - `output_schema` is the shape's schema. Its `$id` is `https://on.auto/shapes/` followed by the shape's name, such as `https://on.auto/shapes/series`, and its `title` is the name.
-- `details.shape` is the shape's name. Auto Studio draws the output of each run from it.
+- `details.shape` is the shape's name: what the definition answers.
 - The [overview](http.md#reasoning-functions) says the shape in **What it produces**, in place of a table of its fields. The overview of a prediction function says its series in **What it predicts**, in the same words for what it holds: "It answers the last 8 observed weeks and 1 and 4 weeks ahead, each with a likely value, a low and a high."
+
+## What a run shows
+
+`get_run`, `list_runs` and `run_definition` show a run's own shape as `output_shape`, the name of the shape its output takes, and Auto Studio draws the output of a run from it:
+
+- A run of a reasoning function, a computation function or a workflow that declares `output.shape` says that shape.
+- A question to a prediction function says `series`. A build of a prediction function, whose output is `{ version, winner, candidates }`, says none.
+- A run of a definition that declares no shape says none.
+
+The run says its shape from the moment it starts, so a run that is rejected still says the shape its output would have taken.
 
 ## The four shapes
 

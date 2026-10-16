@@ -3,7 +3,7 @@ import { alternatives, listed, type Noun } from '@on.auto/operations';
 import { named, paragraph, type OverviewBlock, type Phrases } from '../overview/overview.ts';
 import { nothing, numbers, text, yesOrNo } from '../overview/schema-nouns.ts';
 import { categoriesBounds } from './categories-shape.ts';
-import type { OutputShape, OutputShapeName } from './output-shape.ts';
+import type { OutputShape } from './output-shape.ts';
 import type { SeriesGrain } from './period-forms.ts';
 import { seriesBounds } from './series-shape.ts';
 import { counted } from './shape-values.ts';
@@ -73,7 +73,7 @@ const textWords: Phrases = [
   `: Markdown of at most ${counted.format(textBounds.mostBytes)} bytes.`,
 ];
 
-const shapeWords: Readonly<Record<OutputShapeName, Phrases>> = {
+const shapeWords: Readonly<Record<OutputShape['name'], Phrases>> = {
   series: seriesWords,
   categories: categoriesWords,
   table: tableWords,

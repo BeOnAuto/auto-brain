@@ -50,6 +50,7 @@ describe('the answer to a question to a prediction function', () => {
       status: 'succeeded',
       output: {
         status: 'succeeded',
+        output_shape: 'series',
         output: steadySouth,
         record: {
           version: 1,

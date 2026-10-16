@@ -144,6 +144,7 @@ export interface CapabilityDeclaration<Parsed> {
   readonly callsTools?: (parsed: NoInfer<Parsed>) => boolean;
   readonly finishesLater?: boolean | ((parsed: NoInfer<Parsed>) => boolean);
   readonly finishesLaterFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => boolean;
+  readonly answersItsShapeFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => boolean;
   readonly longestRunOf?: (parsed: NoInfer<Parsed>) => number;
   readonly longestRunFor?: (parsed: NoInfer<Parsed>, input: Schema.Json) => number;
   readonly cancel?: CancelDecision;
@@ -162,6 +163,7 @@ export interface PreparedDefinition {
   readonly whenCancelled: WhenCancelled;
   readonly callsTools: boolean;
   readonly finishesLaterFor: (input: Schema.Json) => boolean;
+  readonly answersItsShapeFor: (input: Schema.Json) => boolean;
   readonly longestRunMs: number;
   readonly longestRunMsFor: (input: Schema.Json) => number;
 }
@@ -253,6 +255,7 @@ function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longest
     check: definition.check ?? needsNoCheck,
     whenCancelled: definition.whenCancelled ?? 'stop',
     callsTools: definition.callsTools ?? callsNoTools,
+    answersItsShapeFor: definition.answersItsShapeFor ?? (() => true),
     ...declaredLengths(definition, longestAnyRunMs),
   };
 }
@@ -260,10 +263,8 @@ function declaredRuns<Parsed>(definition: CapabilityDeclaration<Parsed>, longest
 export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parsed>): Capability {
   const { type, title, guide, noun, describeOutput, mediaType, parse, summarize, overview, run } = definition;
   const bounds = declaredBounds(definition);
-  const { check, whenCancelled, callsTools, finishesLaterFor, longestRunOf, longestRunFor } = declaredRuns(
-    definition,
-    bounds.longestAnyRunMs,
-  );
+  const { check, whenCancelled, callsTools, answersItsShapeFor, finishesLaterFor, longestRunOf, longestRunFor } =
+    declaredRuns(definition, bounds.longestAnyRunMs);
   if (!isDefinitionTypeName(type)) {
     throw new Error(`The type ${type} is malformed`);
   }
@@ -287,6 +288,7 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
             whenCancelled,
             callsTools: callsTools(parsed),
             finishesLaterFor: (input) => finishesLaterFor(parsed, input),
+            answersItsShapeFor: (input) => answersItsShapeFor(parsed, input),
             longestRunMs: longestRunOf(parsed),
             longestRunMsFor: (input) => longestRunFor(parsed, input),
           };
