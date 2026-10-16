@@ -202,7 +202,7 @@ export {
   functionResourceLabels,
   type FunctionType,
 } from './capability/function-terminology.ts';
-export { refusedInput, wordedIssuesOf } from './checking/schema-refusals.ts';
+export { checkedInput, refusedInput, wordedIssuesOf } from './checking/schema-refusals.ts';
 export { checkedWorker } from './checking/worker-url.ts';
 export {
   bulletList,

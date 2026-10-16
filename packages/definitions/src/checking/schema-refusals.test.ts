@@ -1,8 +1,9 @@
 import { compileJsonSchema } from '@on.auto/json-schema';
-import { Result, type Schema } from 'effect';
+import { InvalidInput } from '@on.auto/operations';
+import { Effect, Exit, Result, type Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { refusedInput, wordedIssuesOf } from '../index.ts';
+import { checkedInput, refusedInput, wordedIssuesOf } from '../index.ts';
 
 function refusalOf(document: Schema.JsonObject, value: Schema.Json, what = 'input') {
   const issues = wordedIssuesOf(Result.getOrThrow(compileJsonSchema(document, { what, nesting: 64 })), value);
@@ -245,5 +246,37 @@ describe('the refusal of a value as a whole', () => {
 
   it('is no refusal at all for a value the schema takes', () => {
     expect(refusalOf({ type: 'object', properties: { month } }, { month: 'April 2026' })).toBeUndefined();
+  });
+});
+
+describe('the check of the input of a run', () => {
+  const seats = Result.getOrThrow(
+    compileJsonSchema(
+      { type: 'object', properties: { seats: { type: 'integer', minimum: 1 } } },
+      { what: 'input', nesting: 512 },
+    ),
+  );
+  const deep = Array.from({ length: 600 }).reduce<Schema.Json>((inner) => [inner], 'x');
+
+  it('takes an input its schema takes, and any input of a function without one, as it is', () => {
+    expect([
+      Effect.runSyncExit(checkedInput({ seats: 2 }, seats, 'booking function')),
+      Effect.runSyncExit(checkedInput('anything', undefined, 'booking function')),
+    ]).toEqual([Exit.succeed({ seats: 2 }), Exit.succeed('anything')]);
+  });
+
+  it('refuses an input its schema refuses in the words of its fields, and one nested past a value, naming the noun', () => {
+    expect([
+      Effect.runSyncExit(checkedInput({ seats: 0 }, seats, 'booking function')),
+      Effect.runSyncExit(checkedInput(deep, undefined, 'interaction function')),
+    ]).toEqual([
+      Exit.fail(refusedInput([{ pointer: '/seats', detail: 'seats: expected at least 1.' }])),
+      Exit.fail(
+        new InvalidInput({
+          detail: 'The input nests more than the 512 levels an interaction function takes',
+          issues: [{ pointer: '', detail: 'Expected a value nested at most 512 levels deep' }],
+        }),
+      ),
+    ]);
   });
 });

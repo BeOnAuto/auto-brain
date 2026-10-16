@@ -1,4 +1,10 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import {
+  checkedInput,
+  functionResourceLabels,
+  type CapabilityAnswer,
+  type CapabilityRejection,
+  type RunContext,
+} from '@on.auto/definitions';
 import type { Conflict, InvalidInput } from '@on.auto/operations';
 import { toolBounds, type ToolAccess } from '@on.auto/tool-servers';
 import { runIdKey } from '@on.auto/tool-servers/policy';
@@ -6,7 +12,6 @@ import { Clock, Effect, Result, type Schema } from 'effect';
 
 import type { CallDocument } from '../document/interaction-document.ts';
 import { unrenderableFor, unworkable } from '../run/request-rendering.ts';
-import { preparedInput } from '../run/run-input.ts';
 import {
   argumentsFailureWords,
   momentVariables,
@@ -48,7 +53,7 @@ export function callRun(ports: CallPorts) {
     context: RunContext,
   ): Effect.Effect<CapabilityAnswer, CapabilityRejection> =>
     Effect.gen(function* () {
-      const admitted = yield* preparedInput(input, document.input);
+      const admitted = yield* checkedInput(input, document.input.schema, functionResourceLabels.interaction.singular);
       const at = new Date(yield* Clock.currentTimeMillis).toISOString();
       const rendered = yield* argumentsOf(document, momentVariables(admitted, at));
       const { server, tool } = document.call;

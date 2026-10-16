@@ -1,5 +1,7 @@
 import {
+  checkedInput,
   checkedWorker,
+  functionResourceLabels,
   type CapabilityAnswer,
   type CapabilityRejection,
   type StrippedForms,
@@ -10,7 +12,6 @@ import { Clock, Effect, type Schema } from 'effect';
 
 import type { ComputationFunctionDefinitionDocument } from '../document/computation-document.ts';
 import { computationBounds, mostOutputBytes } from './run-bounds.ts';
-import { preparedInput } from './run-input.ts';
 import { endingOf } from './run-outcome.ts';
 
 export interface ComputationRunOptions {
@@ -70,7 +71,11 @@ function runnableOf(
 
 export function computationRun({ pool, ...bounds }: ComputationRunOptions): ComputationRun {
   return (document, input, stripped) =>
-    Effect.all([runnableOf(document, stripped), preparedInput(input, document.input), Clock.currentTimeMillis]).pipe(
+    Effect.all([
+      runnableOf(document, stripped),
+      checkedInput(input, document.input.schema, functionResourceLabels.computation.singular),
+      Clock.currentTimeMillis,
+    ]).pipe(
       Effect.flatMap(
         ([runnable, admitted, moment]: readonly [Runnable, Schema.Json, number]): Effect.Effect<
           CapabilityAnswer,

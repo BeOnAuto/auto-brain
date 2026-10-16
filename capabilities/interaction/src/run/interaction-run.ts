@@ -1,4 +1,10 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import {
+  checkedInput,
+  functionResourceLabels,
+  type CapabilityAnswer,
+  type CapabilityRejection,
+  type RunContext,
+} from '@on.auto/definitions';
 import type { Conflict, InvalidInput } from '@on.auto/operations';
 import { Clock, Effect, type Schema } from 'effect';
 
@@ -8,7 +14,6 @@ import { routeOf, toolsOf } from '../tool-blocks/routes.ts';
 import { checkedArguments, offered, roomFor, type InteractionPorts } from './request-reach.ts';
 import type { RequestRecord } from './request-record.ts';
 import { checkedAnswerer, checkedParty, fromPart, messagePart, renderedPart, toPart } from './request-rendering.ts';
-import { preparedInput } from './run-input.ts';
 
 type Variables = Readonly<Record<string, Schema.Json>>;
 
@@ -66,7 +71,7 @@ export function requestRun(ports: InteractionPorts) {
     context: RunContext,
   ): Effect.Effect<CapabilityAnswer, CapabilityRejection> =>
     Effect.gen(function* () {
-      const admitted = yield* preparedInput(input, document.input);
+      const admitted = yield* checkedInput(input, document.input.schema, functionResourceLabels.interaction.singular);
       const playbook = { org: context.org, playbook: context.playbook };
       yield* offered(toolsOf(routeOf(document.route ?? {})), ports, playbook);
       if (!asksLater(document)) {

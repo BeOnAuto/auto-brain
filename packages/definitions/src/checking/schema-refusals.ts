@@ -1,6 +1,7 @@
 import type { Breach, CompiledSchema, FoundIssue } from '@on.auto/json-schema';
-import { asSentence, InvalidInput, type Issue } from '@on.auto/operations';
-import { JsonPointer, type Schema } from 'effect';
+import { articled, asSentence, InvalidInput, type Issue } from '@on.auto/operations';
+import { measureOf, mostValueDepth } from '@on.auto/workflow-engine';
+import { Effect, JsonPointer, type Schema } from 'effect';
 
 import type { Phrases } from '../overview/overview.ts';
 import { trailingWords } from '../overview/schema-bounds.ts';
@@ -133,4 +134,23 @@ export function wordedIssuesOf(schema: CompiledSchema, value: Schema.Json): read
 
 export function refusedInput(issues: readonly Issue[]): InvalidInput {
   return new InvalidInput({ detail: issues.map(({ detail }) => detail).join(' '), issues });
+}
+
+function tooDeepFor(noun: string): InvalidInput {
+  return new InvalidInput({
+    detail: `The input nests more than the ${mostValueDepth} levels ${articled(noun)} takes`,
+    issues: [{ pointer: '', detail: `Expected a value nested at most ${mostValueDepth} levels deep` }],
+  });
+}
+
+export function checkedInput(
+  input: Schema.Json,
+  schema: CompiledSchema | undefined,
+  noun: string,
+): Effect.Effect<Schema.Json, InvalidInput> {
+  if (measureOf(input) === undefined) {
+    return Effect.fail(tooDeepFor(noun));
+  }
+  const issues = schema === undefined ? [] : wordedIssuesOf(schema, input);
+  return issues.length === 0 ? Effect.succeed(input) : Effect.fail(refusedInput(issues));
 }

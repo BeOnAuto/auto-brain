@@ -1,11 +1,16 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import {
+  checkedInput,
+  functionResourceLabels,
+  type CapabilityAnswer,
+  type CapabilityRejection,
+  type RunContext,
+} from '@on.auto/definitions';
 import { Conflict, Unavailable, type InvalidInput } from '@on.auto/operations';
 import { jsonBytesOf } from '@on.auto/workflow-engine/dsl';
 import type { KeptView, ViewsPort } from '@on.auto/workflow-host';
 import { Effect, type Schema } from 'effect';
 
 import type { Answered } from './answer-endings.ts';
-import { preparedInput } from './run-input.ts';
 import { answerOf, type RecallRunOptions, type RunnableRecall } from './view-answer.ts';
 import { rebuildingDetail, stalledDetail } from './view-words.ts';
 
@@ -70,7 +75,7 @@ function ranOn(options: RecallRunOptions, runnable: RunnableRecall, run: RunCont
 
 export function recallRun(options: RecallRunOptions): RecallRun {
   return (runnable, input, run) =>
-    preparedInput(input, runnable.document.input).pipe(
+    checkedInput(input, runnable.document.input.schema, functionResourceLabels.recall.singular).pipe(
       Effect.flatMap((admitted): Effect.Effect<CapabilityAnswer, CapabilityRejection | InvalidInput> =>
         options.views
           .viewOf({ org: run.org, playbook: run.playbook }, run.definition.name)
