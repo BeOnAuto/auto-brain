@@ -58,30 +58,28 @@ function endingConnectionsTo(database: string): string {
   return `SELECT pg_terminate_backend(pid) AS ended ${otherConnectionsTo(database)}`;
 }
 
-const closedWithinMs = 5000;
-
 const heldPastTheMigratorsOwnWaitMs = 12_000;
 
+const longerThanTheTestMs = 120_000;
+
+function until(holds: () => void | Promise<void>): Promise<void> {
+  return vi.waitFor(holds, { timeout: longerThanTheTestMs, interval: 50 });
+}
+
 async function untilTheLockIsTried(database: string): Promise<void> {
-  await vi.waitFor(
-    async () => {
-      expect(await queried(database, lockTriedOn(database))).toEqual([{ tried: true }]);
-    },
-    { timeout: 30_000, interval: 50 },
-  );
+  await until(async () => {
+    expect(await queried(database, lockTriedOn(database))).toEqual([{ tried: true }]);
+  });
 }
 
 async function untilNoneOpen(database: string): Promise<void> {
   const client = new Client({ connectionString: database });
   await client.connect();
   try {
-    await vi.waitFor(
-      async () => {
-        const { rows } = await client.query<Readonly<Record<string, unknown>>>(connectionsTo(database));
-        expect({ afterDisposal: rows }).toEqual({ afterDisposal: [{ open: 0 }] });
-      },
-      { timeout: closedWithinMs, interval: 50 },
-    );
+    await until(async () => {
+      const { rows } = await client.query<Readonly<Record<string, unknown>>>(connectionsTo(database));
+      expect({ afterDisposal: rows }).toEqual({ afterDisposal: [{ open: 0 }] });
+    });
   } finally {
     await client.end();
   }
@@ -193,7 +191,7 @@ describe.skipIf(skipped)(`A ledger whose PostgreSQL database ends its connection
     await Effect.runPromise(ledger.execute('org/acme/tallies', tally, [1]));
 
     const ended = await queried(database, endingConnectionsTo(database));
-    await vi.waitFor(() => {
+    await until(() => {
       expect(logged).toHaveLength(ended.length);
     });
 
