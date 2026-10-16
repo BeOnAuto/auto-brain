@@ -63,7 +63,11 @@ There is no read model: each call folds the stream (`connectionsFold`, the fold 
 
 ## The policy
 
-`readConnectionPolicy(environment, ownVariables)` reads `CONNECTIONS`, a JSON object, `connections` of the configuration file through `ConnectionPolicySchema`: `people_may_add`, `true` when left out; `allowed_hosts`, each a host or `*.` and a host, every host when left out; `credential_kinds`, every kind when left out; and `variables`, the variable names a `reference` may give, none when left out. A name in `variables` that is one of `ownVariables`, the variables the server reads for itself, is a problem at its pointer, so the server stops at start rather than let a connection send one of them. A pattern `*.example.com` takes every host under `example.com` and not `example.com` itself, and an `openapi` connection's `document` and `base_url` are each checked. A malformed value is `ConnectionPolicyInvalid`, naming each problem at its pointer.
+`readConnectionPolicy(environment, ownVariables)` reads `CONNECTIONS`, a JSON object, `connections` of the configuration file through `ConnectionPolicySchema`: `people_may_add`, `true` when left out; `allowed_hosts`, each a host or `*.` and a host, every host when left out; `credential_kinds`, every kind when left out; and `variables`, the variable names a `reference` may give, none when left out. A name in `variables` that is one of `ownVariables`, the variables the server reads for itself, is a problem at its pointer, so the server stops at start rather than let a connection send one of them. A pattern `*.example.com` takes every host under `example.com` and not `example.com` itself, and the hosts checked are those of an `mcp` connection's `url`, of an `openapi` connection's `document` and `base_url`, and of a `client_credentials` credential's `issuer`, which the client secret or the key's assertion reaches. A malformed value is `ConnectionPolicyInvalid`, naming each problem at its pointer.
+
+## What calling through connections owes
+
+When functions call through connections, `allowed_hosts` holds every other host a call reaches as well: the server an `openapi` connection's document names, which a call uses where `base_url` is left out, and each host a redirect leads to.
 
 ## Source
 

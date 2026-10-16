@@ -198,6 +198,16 @@ describe('the policy of the runtime, of the hosts', () => {
     });
   });
 
+  it('refuses the issuer of client credentials where no pattern allows it, since the client secret goes there', async () => {
+    const h = harness({ policy: connectionPolicyOf({ allowed_hosts: ['*.example.com'] }) });
+    const issuedElsewhere = { ...billing, credential: { ...billing.credential, issuer: 'https://login.example.org' } };
+
+    expect(await adding(h, issuedElsewhere)).toMatchObject({
+      reason: 'forbidden',
+      detail: 'A connection may not reach the host login.example.org on this runtime, which allows *.example.com',
+    });
+  });
+
   it('says when it allows no host', async () => {
     const h = harness({ policy: connectionPolicyOf({ allowed_hosts: [] }) });
 

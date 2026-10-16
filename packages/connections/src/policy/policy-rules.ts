@@ -19,8 +19,8 @@ function matches(pattern: string, host: string): boolean {
   return lowered.startsWith('*.') ? host.endsWith(lowered.slice(1)) : host === lowered;
 }
 
-function hostsOf({ kind, entry }: Pick<Addition, 'kind' | 'entry'>): readonly string[] {
-  const addresses = kind === 'mcp' ? [entry.url] : [entry.document, entry.base_url];
+function hostsOf({ kind, entry, credential }: Addition): readonly string[] {
+  const addresses = [...(kind === 'mcp' ? [entry.url] : [entry.document, entry.base_url]), credential.issuer];
   return addresses.filter((address) => address !== undefined).map((address) => new URL(address).hostname);
 }
 
