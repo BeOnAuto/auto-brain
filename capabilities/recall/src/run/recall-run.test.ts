@@ -71,8 +71,8 @@ describe('the input of a run of a recall function', () => {
     expect(await run.running(campaignReviews, { last: 1 })).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The input does not match the recall function’s input schema',
-          issues: [{ pointer: '/campaign', detail: 'Missing key' }],
+          detail: 'The input: expected the field campaign.',
+          issues: [{ pointer: '/campaign', detail: 'The input: expected the field campaign.' }],
         }),
       ),
     );

@@ -1,6 +1,7 @@
+import { refusedInput, wordedIssuesOf } from '@on.auto/definitions';
 import { InvalidInput } from '@on.auto/operations';
 import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
-import { Effect, Result, type Schema } from 'effect';
+import { Effect, type Schema } from 'effect';
 
 import type { ValueContract } from '../document/recall-document.ts';
 
@@ -13,13 +14,6 @@ export function preparedInput(input: Schema.Json, { schema }: ValueContract): Ef
   if (measureOf(input) === undefined) {
     return Effect.fail(tooDeep);
   }
-  return schema === undefined
-    ? Effect.succeed(input)
-    : Result.match(schema.validate(input), {
-        onSuccess: () => Effect.succeed(input),
-        onFailure: (issues) =>
-          Effect.fail(
-            new InvalidInput({ detail: 'The input does not match the recall function’s input schema', issues }),
-          ),
-      });
+  const issues = schema === undefined ? [] : wordedIssuesOf(schema, input);
+  return issues.length === 0 ? Effect.succeed(input) : Effect.fail(refusedInput(issues));
 }

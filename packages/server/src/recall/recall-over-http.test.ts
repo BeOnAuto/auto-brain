@@ -90,7 +90,10 @@ describe('the input of a run of a recall function over HTTP', () => {
 
     expect(withoutInput).toMatchObject({
       status: 422,
-      body: { reason: 'invalid_input', errors: [{ pointer: '/input/campaign', detail: 'Missing key' }] },
+      body: {
+        reason: 'invalid_input',
+        errors: [{ pointer: '/input/campaign', detail: 'The input: expected the field campaign.' }],
+      },
     });
   });
 });
