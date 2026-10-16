@@ -1,7 +1,6 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { setTimeout } from 'node:timers/promises';
 
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -19,6 +18,7 @@ import {
   type FakeMcpServer,
   type WritesOptions,
 } from '../testing/index.ts';
+import { until } from '../testing/waiting.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -57,14 +57,6 @@ function graphOn(fake: FakeMcpServer) {
 
 function requestsOf(fake: FakeMcpServer): readonly string[] {
   return fake.seen().map(({ method, rpc = '' }) => `${method} ${rpc}`.trim());
-}
-
-async function until(holds: () => boolean, waited = 0): Promise<boolean> {
-  if (holds() || waited >= 5000) {
-    return holds();
-  }
-  await setTimeout(10);
-  return until(holds, waited + 10);
 }
 
 const callAndEnd: ReadonlySet<string> = new Set(['POST tools/call', 'DELETE']);
@@ -120,7 +112,7 @@ describe('a call whose caller goes away while the tool is called', () => {
     const settled = await settling;
 
     expect(settled).toEqual({ status: 'cancelled' });
-    expect(await until(() => fake.endedSessions() === 1)).toBe(true);
+    await until(() => fake.endedSessions() === 1);
     expect((await recorded()).map(({ type }) => type)).toEqual(['tool_call_started']);
     expect(fake.received()).toHaveLength(1);
     await callsByHand(access).execute(searching);
@@ -152,7 +144,7 @@ describe('a call whose caller goes away while its server is slow to end the sess
 
     expect(settled).toEqual({ status: 'cancelled' });
     expect(answeredWithinMs).toBeLessThan(1000);
-    expect(await until(() => fake.endedSessions() === 1)).toBe(true);
+    await until(() => fake.endedSessions() === 1);
   });
 });
 
@@ -164,7 +156,7 @@ describe('a call the ledger cannot record', () => {
     expect(await execute(searching)).toEqual({ status: 'failed', incident: incidents()[0]?.id });
     expect(incidents()).toHaveLength(1);
     expect(fake.received()).toEqual([]);
-    expect(await until(() => fake.endedSessions() === 1)).toBe(true);
+    await until(() => fake.endedSessions() === 1);
   });
 
   it('is reported as an incident naming the call once its caller has gone, and sends nothing', async () => {
@@ -189,7 +181,7 @@ describe('a call the ledger cannot record', () => {
       call: { operation: 'execute', org: 'acme', playbook: 'alpha', caller: 'acme-builder' },
     });
     expect(fake.received()).toEqual([]);
-    expect(await until(() => fake.endedSessions() === 1)).toBe(true);
+    await until(() => fake.endedSessions() === 1);
   });
 });
 

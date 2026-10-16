@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -11,6 +9,7 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
+import { isWatched, until } from '../testing/waiting.ts';
 import type { CallJournal } from './recorded-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
@@ -60,11 +59,11 @@ describe('a run that has ended', () => {
 
 describe('a run that ends while it calls', () => {
   it('records a call in flight when the run ends as cancelled', async () => {
-    const { call, journal } = await runWith(['sleep']);
+    const { call, fake, journal } = await runWith(['sleep']);
     const signals = controlledSignals();
 
     const replied = call('sleep', { ms: 5000 }, signals);
-    await setTimeout(100);
+    await until(() => fake.received().length === 1);
     signals.end();
 
     expect(await replied).toMatchObject({
@@ -75,11 +74,11 @@ describe('a run that ends while it calls', () => {
   });
 
   it('leaves a call in flight when the run is cancelled with a start and no answer', async () => {
-    const { call, journal } = await runWith(['sleep']);
+    const { call, fake, journal } = await runWith(['sleep']);
     const signals = controlledSignals();
 
     const replied = call('sleep', { ms: 5000 }, signals);
-    await setTimeout(100);
+    await until(() => fake.received().length === 1);
     signals.cancel();
     await replied;
 
@@ -92,7 +91,7 @@ describe('a run that ends while it calls', () => {
 
     fake.answerNextOf('tools/call', 429, 1, { 'retry-after': '5' });
     const replied = call('search', { query: 'waiting' }, signals);
-    await setTimeout(100);
+    await until(() => isWatched(signals.signal));
     signals.end();
 
     expect(await replied).toMatchObject({ isError: true });

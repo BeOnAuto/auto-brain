@@ -12,6 +12,7 @@ import {
   type AccessOptions,
   type FakeMcpServer,
 } from '../testing/index.ts';
+import { until } from '../testing/waiting.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -200,12 +201,9 @@ async function initializing(fake: FakeMcpServer): Promise<void> {
   await initializing(fake);
 }
 
-async function sessionsEnded(fake: FakeMcpServer, waited = 0): Promise<number> {
-  if (fake.endedSessions() > 0 || waited >= 5000) {
-    return fake.endedSessions();
-  }
-  await setTimeout(10);
-  return sessionsEnded(fake, waited + 10);
+async function sessionsEnded(fake: FakeMcpServer): Promise<number> {
+  await until(() => fake.endedSessions() > 0);
+  return fake.endedSessions();
 }
 
 describe('the session a listing opens', () => {

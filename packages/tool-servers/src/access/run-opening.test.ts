@@ -4,6 +4,7 @@ import { Effect, Fiber } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun, type FakeMcpServer } from '../testing/index.ts';
+import { until } from '../testing/waiting.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -28,12 +29,9 @@ function accessTo(fake: FakeMcpServer) {
   return access;
 }
 
-async function noSessionOpen(fake: FakeMcpServer, waited = 0): Promise<number> {
-  if (fake.openSessions() === 0 || waited >= 5000) {
-    return fake.openSessions();
-  }
-  await setTimeout(10);
-  return noSessionOpen(fake, waited + 10);
+async function noSessionOpen(fake: FakeMcpServer): Promise<number> {
+  await until(() => fake.openSessions() === 0);
+  return fake.openSessions();
 }
 
 async function initializing(fake: FakeMcpServer): Promise<void> {
