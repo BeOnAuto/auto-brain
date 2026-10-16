@@ -446,19 +446,21 @@ The server does not connect to an MCP server or start a process until a run or o
 
 ## Connections
 
-A connection is a tool server that a person adds to an org through their agent, which every playbook of the org may use; [Let people add connections](connections.md) sets out how a person adds and approves one. The `connections` section of the configuration file says what people may add; `CONNECTIONS`, the same object as JSON, wins over it. Every rule has a default, so leaving the section out lets people add any connection.
+A connection is a tool server that a person adds to an org through their agent, which every playbook of the org may use; [Let people add connections](connections.md) sets out how a person adds and approves one. The `connections` section of the configuration file says what people may add; `CONNECTIONS`, the same object as JSON, wins over it. Every rule has a default, so leaving the section out lets people add any connection but one of the credential `reference`, which names no variable until `variables` lists it.
 
 ```yaml
 connections:
   people_may_add: true
   allowed_hosts: ['*.example.com', 'crm.example.com']
   credential_kinds: [none, reference, secret, client_credentials]
+  variables: [CRM_API_KEY]
 ```
 
-| Key                | Default    | Purpose                                                                                                                                                                                       |
-| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `people_may_add`   | `true`     | `false` refuses every connection                                                                                                                                                              |
-| `allowed_hosts`    | every host | The hosts a connection may reach, each a host or `*.` and a host for every host under it; the host of an `mcp` connection's `url`, and of an `openapi` connection's `document` and `base_url` |
-| `credential_kinds` | every kind | The kinds of credential a connection may take: `none`, `reference`, `secret`, `client_credentials` and `authorization`, which the runtime refuses until a later release adds it               |
+| Key                | Default    | Purpose                                                                                                                                                                                                                                                                                                                                                                                          |
+| ------------------ | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `people_may_add`   | `true`     | `false` refuses every connection                                                                                                                                                                                                                                                                                                                                                                 |
+| `allowed_hosts`    | every host | The hosts a connection may reach, each a host or `*.` and a host for every host under it; the host of an `mcp` connection's `url`, and of an `openapi` connection's `document` and `base_url`                                                                                                                                                                                                    |
+| `credential_kinds` | every kind | The kinds of credential a connection may take: `none`, `reference`, `secret`, `client_credentials` and `authorization`, which the runtime refuses until a later release adds it                                                                                                                                                                                                                  |
+| `variables`        | none       | The environment variables a `reference` credential may name, such as `CRM_API_KEY`. None of them may be a variable the runtime reads for itself: `SECRETS_KEY`, `SECRETS_KEY_PREVIOUS`, `API_KEYS`, `PUBLIC_URL`, `DATABASE_URL`, a provider's key, a gateway's `api_key_env`, the telemetry exporter's headers, a proxy, or a variable that a reference of this file or of `TOOL_SERVERS` names |
 
-`add_connection` refuses with `403` a connection one of these rules does not take, with the sentence of the rule, and with `409` a connection named as an entry of `tool_servers`. A key the section does not know, a pattern that is not a host and a kind there is not stop the server at start, naming the line.
+`add_connection` refuses with `403` a connection one of these rules does not take, with the sentence of the rule, and with `409` a connection named as an entry of `tool_servers`. A key the section does not know, a pattern that is not a host, a kind there is not and a variable the runtime reads for itself stop the server at start, naming the line.

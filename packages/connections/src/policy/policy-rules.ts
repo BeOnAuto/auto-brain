@@ -36,6 +36,21 @@ function hostRefusal(allowedHosts: readonly string[] | null, addition: Addition)
       });
 }
 
+const variablesRule = 'A reference may name only a variable the operator lists in connections.variables';
+
+function referenceRefusal(variables: readonly string[], { credential }: Addition): Forbidden | undefined {
+  const { kind, name = '' } = credential;
+  if (kind !== 'reference' || variables.includes(name)) {
+    return undefined;
+  }
+  return new Forbidden({
+    detail:
+      variables.length === 0
+        ? `${variablesRule}, and this runtime lists none`
+        : `${variablesRule}, which are ${listed(variables)}, and ${name} is not one of them`,
+  });
+}
+
 function kindRefusal(credentialKinds: ConnectionPolicy['credentialKinds'], { credential }: Addition) {
   return credentialKinds === null || credentialKinds.includes(credential.kind)
     ? undefined
@@ -50,5 +65,9 @@ export function policyRefusalOf(policy: ConnectionPolicy, addition: Addition): F
       detail: 'People may not add connections on this runtime: its operator sets up its tool servers itself',
     });
   }
-  return hostRefusal(policy.allowedHosts, addition) ?? kindRefusal(policy.credentialKinds, addition);
+  return (
+    hostRefusal(policy.allowedHosts, addition) ??
+    kindRefusal(policy.credentialKinds, addition) ??
+    referenceRefusal(policy.variables, addition)
+  );
 }

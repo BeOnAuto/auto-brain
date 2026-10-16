@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { connectionPolicyOf } from '../policy/connection-policy.ts';
 import { added, crm, notes } from '../testing/additions.ts';
 import { acmeViewer, ada, grace, harness, operationNamed, type Harness } from '../testing/harness.ts';
 
@@ -41,7 +42,7 @@ describe('reading a link', () => {
 
 describe('approving a connection', () => {
   it('connects one that takes no credential to give, and uses its link up', async () => {
-    const h = harness();
+    const h = harness({ policy: connectionPolicyOf({ variables: ['NOTES_API_KEY'] }) });
     const { id, token } = await added(h, notes);
     const reference = await added(h, {
       ...notes,

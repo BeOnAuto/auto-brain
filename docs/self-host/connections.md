@@ -34,7 +34,7 @@ Auto checks an entry as it checks an entry of the settings file, and refuses one
 | Kind                 | What the person gives                                                                                                                                                                                                        | Where the value is kept                 |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |
 | `none`               | Nothing; the server takes no credential                                                                                                                                                                                      | Nowhere                                 |
-| `reference`          | Nothing; `name` names an environment variable of Auto, such as `CRM_API_KEY`, that you set                                                                                                                                   | In Auto's environment, where you put it |
+| `reference`          | Nothing; `name` names an environment variable of Auto, such as `CRM_API_KEY`, that you set and list in the rule `variables`                                                                                                  | In Auto's environment, where you put it |
 | `secret`             | A key or token, on Studio's page. `name` and `in` say where it goes: `in: header` and the header's name, or for an HTTP API `in: query` and a query parameter's name, or `in: security` and a scheme of its OpenAPI document | Sealed in Auto's secret store           |
 | `client_credentials` | The client secret, or a private key with its algorithm, on Studio's page. `issuer`, `client_id` and `scope` name the authorization server and the client                                                                     | Sealed in Auto's secret store           |
 | `authorization`      | The consent flow, which a later release adds. Auto refuses it until then                                                                                                                                                     |                                         |
@@ -45,19 +45,21 @@ A secret is only as recoverable as the key it was sealed under. When the key is 
 
 ## Set the rules in `auto-runtime.yaml`
 
-A `connections` section of `auto-runtime.yaml` says what people may add. Every rule has a default, so a file without the section lets people add any connection.
+A `connections` section of `auto-runtime.yaml` says what people may add. Every rule has a default, so a file without the section lets people add any connection but one of the credential `reference`.
 
 ```yaml
 connections:
   people_may_add: true
   allowed_hosts: ['*.example.com', 'crm.example.com']
   credential_kinds: [none, reference, secret, client_credentials]
+  variables: [CRM_API_KEY]
 ```
 
-| Rule               | What it does                                                                                                                                                                                                                          | When left out |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| `people_may_add`   | `false` refuses every connection: you set up every tool server yourself                                                                                                                                                               | `true`        |
-| `allowed_hosts`    | The hosts a connection may reach. A pattern is a host, or `*.` and a host for every host under it, so `*.example.com` takes `crm.example.com` and not `example.com`. An `openapi` connection's document and base URL are each checked | Every host    |
-| `credential_kinds` | The kinds of credential a connection may take, of the five above                                                                                                                                                                      | Every kind    |
+| Rule               | What it does                                                                                                                                                                                                                                                                                                     | When left out                         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------- |
+| `people_may_add`   | `false` refuses every connection: you set up every tool server yourself                                                                                                                                                                                                                                          | `true`                                |
+| `allowed_hosts`    | The hosts a connection may reach. A pattern is a host, or `*.` and a host for every host under it, so `*.example.com` takes `crm.example.com` and not `example.com`. An `openapi` connection's document and base URL are each checked                                                                            | Every host                            |
+| `credential_kinds` | The kinds of credential a connection may take, of the five above                                                                                                                                                                                                                                                 | Every kind                            |
+| `variables`        | The environment variables a `reference` may name. A reference sends the value of a variable of Auto to the server the person names, so you list each one a connection may send; Auto refuses to start on a list that names a variable it reads for itself, such as `SECRETS_KEY`, `API_KEYS` or a provider's key | None, so every `reference` is refused |
 
 `add_connection` refuses a connection a rule does not take with `403`, saying which rule, such as `A connection may not reach the host api.billing.example.org on this runtime, which allows *.example.com and crm.example.com`. A rule the file gives that Auto cannot read stops it at start, naming the line. `CONNECTIONS`, the same rules as JSON, wins over the file. The [configuration reference](configuration.md#connections) lists the section.

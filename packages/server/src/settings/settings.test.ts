@@ -49,7 +49,7 @@ describe('readSettings', () => {
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
-      connections: { peopleMayAdd: true, allowedHosts: null, credentialKinds: null },
+      connections: { peopleMayAdd: true, allowedHosts: null, credentialKinds: null, variables: [] },
       telemetry: undefined,
       configFile: undefined,
     });
@@ -105,7 +105,7 @@ describe('readSettings given every setting', () => {
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
-      connections: { peopleMayAdd: false, allowedHosts: ['*.example.com'], credentialKinds: ['none'] },
+      connections: { peopleMayAdd: false, allowedHosts: ['*.example.com'], credentialKinds: ['none'], variables: [] },
       telemetry: undefined,
       configFile: undefined,
     });

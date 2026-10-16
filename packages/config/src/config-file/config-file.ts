@@ -8,13 +8,14 @@ import { credentialProblems } from './credentials.ts';
 import { below, entriesOf, type FileProblem } from './file-problem.ts';
 import type { FileSetting } from './file-setting.ts';
 import { placeIn } from './places.ts';
-import { substituted } from './references.ts';
+import { referencedVariablesOf, substituted } from './references.ts';
 
 export class ConfigFileInvalid extends Data.TaggedError('ConfigFileInvalid')<{ readonly message: string }> {}
 
 export interface ConfigFile {
   readonly path: string;
   readonly settings: ReadonlyMap<string, string>;
+  readonly referenced: readonly string[];
   readonly place: (setting: string, pointer: string) => string;
 }
 
@@ -127,6 +128,7 @@ function settingsIn(
   return Result.succeed({
     path,
     settings: new Map(readings.flatMap((reading) => reading.written)),
+    referenced: [...new Set(entriesOf(document.value).flatMap(([, raw]) => referencedVariablesOf(raw)))],
     place: (setting, pointer) =>
       located({ pointer: `${below('', setting.toLowerCase())}${pointer}`, detail: '' }).place,
   });

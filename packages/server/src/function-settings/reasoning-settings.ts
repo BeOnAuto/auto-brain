@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
 
-import { settingProblemText, type Environment, type FileUse } from '@on.auto/config';
+import type { Environment, FileUse } from '@on.auto/config';
 import {
   defaultMostInputTokens,
   ModelSettingsInvalid,
@@ -12,6 +12,7 @@ import {
 import { ToolServerSettingsInvalid, readToolServerSettings, type ToolServerSettings } from '@on.auto/tool-servers';
 import { Effect } from 'effect';
 
+import { problemsListed } from '../config-file/placed-problems.ts';
 import { countsIn } from './counted-settings.ts';
 
 interface ReasoningBounds {
@@ -37,22 +38,18 @@ interface Problems {
   readonly problems: readonly SettingProblem[];
 }
 
-function listedIn({ problems }: Problems, file: FileUse | undefined): string {
-  const listed = problems.map((problem) =>
-    file !== undefined && file.fromFile.includes(problem.setting) ? file.placed(problem) : settingProblemText(problem),
-  );
-  return listed.join('; ');
-}
-
 function modelsPlaced(invalid: Problems, file: FileUse | undefined): ModelSettingsInvalid {
   const { problems } = invalid;
-  return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listedIn(invalid, file)}`, problems });
+  return new ModelSettingsInvalid({
+    message: `The model settings are invalid. ${problemsListed(problems, file)}`,
+    problems,
+  });
 }
 
 function serversPlaced(invalid: Problems, file: FileUse | undefined): ToolServerSettingsInvalid {
   const { problems } = invalid;
   return new ToolServerSettingsInvalid({
-    message: `The tool server settings are invalid. ${listedIn(invalid, file)}`,
+    message: `The tool server settings are invalid. ${problemsListed(problems, file)}`,
     problems,
   });
 }

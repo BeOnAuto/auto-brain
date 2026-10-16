@@ -9,6 +9,7 @@ export interface FileUse {
   readonly path: string;
   readonly fromFile: readonly string[];
   readonly overridden: readonly string[];
+  readonly referenced: readonly string[];
   readonly place: (setting: string, pointer: string) => string;
   readonly placed: (problem: SettingProblem) => string;
 }
@@ -22,7 +23,7 @@ function isSet(value: string | undefined): value is string {
   return value !== undefined && value !== '';
 }
 
-function layered(environment: Environment, { path, settings, place }: ConfigFile): Configuration {
+function layered(environment: Environment, { path, settings, referenced, place }: ConfigFile): Configuration {
   const named = [...settings.keys()];
   const overridden = named.filter((setting) => isSet(environment[setting]));
   const fromFile = named.filter((setting) => !overridden.includes(setting));
@@ -32,6 +33,7 @@ function layered(environment: Environment, { path, settings, place }: ConfigFile
       path,
       fromFile,
       overridden,
+      referenced,
       place,
       placed: ({ setting, pointer = '', detail }) => `${place(setting, pointer)}: ${detail}`,
     },

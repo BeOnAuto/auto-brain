@@ -22,9 +22,9 @@ function fileOf(text: string): string {
   return path;
 }
 
-function refusalOf(path: string): string {
+function refusalOf(path: string, environment: Readonly<Record<string, string>> = {}): string {
   try {
-    readSettings({ CONFIG_FILE: path });
+    readSettings({ CONFIG_FILE: path, ...environment });
   } catch (error) {
     return String(error).replaceAll(path, 'auto-runtime.yaml');
   }
@@ -35,7 +35,10 @@ const policy = `connections:
   people_may_add: true
   allowed_hosts: ['*.example.com', 'crm.example.com']
   credential_kinds: [none, reference, secret, client_credentials]
+  variables: [CRM_API_KEY]
 `;
+
+const ownVariable = 'is a variable the runtime reads for itself, which no connection may name';
 
 describe('the connections section of the configuration file', () => {
   it('is read as the policy of what people may add, its kinds of credential not taken for credentials', () => {
@@ -43,7 +46,37 @@ describe('the connections section of the configuration file', () => {
       peopleMayAdd: true,
       allowedHosts: ['*.example.com', 'crm.example.com'],
       credentialKinds: ['none', 'reference', 'secret', 'client_credentials'],
+      variables: ['CRM_API_KEY'],
     });
+  });
+
+  it('stops the start at a variable the runtime reads for itself, of its own or one the file refers to, at its place', () => {
+    const naming = `model_gateways:
+  - { name: corp, base_url: 'https://llm.example.com/v1', api_key: '\${CORP_KEY}' }
+tool_servers:
+  graph: { url: 'https://graph.example.com/mcp', headers: { Authorization: 'Bearer \${GRAPH_API_KEY}' }, org: acme }
+connections:
+  variables: [CRM_API_KEY, SECRETS_KEY, CORP_KEY, GRAPH_API_KEY]
+`;
+
+    expect(refusalOf(fileOf(naming), { CORP_KEY: 'k', GRAPH_API_KEY: 'k' })).toBe(
+      `connection_policy_invalid: The connection settings are invalid. auto-runtime.yaml:6:28 connections.variables[1]: SECRETS_KEY ${ownVariable}; auto-runtime.yaml:6:41 connections.variables[2]: CORP_KEY ${ownVariable}; auto-runtime.yaml:6:51 connections.variables[3]: GRAPH_API_KEY ${ownVariable}`,
+    );
+  });
+
+  it('names the setting where the policy and the gateways come from the environment, a gateway key among the own variables', () => {
+    const environment = {
+      MODEL_GATEWAYS: JSON.stringify([
+        { name: 'lab', base_url: 'https://lab.example.com/v1', api_key_env: 'LAB_KEY' },
+        { name: 'edge', base_url: 'https://edge.example.com/v1' },
+      ]),
+      LAB_KEY: 'k',
+      CONNECTIONS: JSON.stringify({ variables: ['API_KEYS', 'LAB_KEY', 'WIKI_TOKEN'] }),
+    };
+
+    expect(refusalOf(fileOf('connections: {}\n'), environment)).toBe(
+      `connection_policy_invalid: The connection settings are invalid. CONNECTIONS: /variables/0: API_KEYS ${ownVariable}; CONNECTIONS: /variables/1: LAB_KEY ${ownVariable}`,
+    );
   });
 
   it('stops the start at the place of a rule it does not accept', () => {

@@ -44,7 +44,11 @@ describe('a configuration file', () => {
       ]),
       EXAMPLE_ORIGINS: 'https://app.example.com,https://admin.example.com',
     });
-    expect(file).toMatchObject({ fromFile: ['EXAMPLE_GATEWAYS', 'EXAMPLE_ORIGINS'], overridden: [] });
+    expect(file).toMatchObject({
+      fromFile: ['EXAMPLE_GATEWAYS', 'EXAMPLE_ORIGINS'],
+      overridden: [],
+      referenced: ['GATEWAY_KEY'],
+    });
   });
 
   it('gives way to an environment variable that sets the same setting, whole', () => {

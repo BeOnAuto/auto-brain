@@ -207,6 +207,30 @@ describe('the policy of the runtime, of the hosts', () => {
   });
 });
 
+function naming(name: string) {
+  return { ...notes, credential: { kind: 'reference', name } };
+}
+
+describe('the policy of the runtime, of the variables a reference names', () => {
+  it('takes a reference to a variable it lists, and refuses one it does not, or every one where it lists none', async () => {
+    const listing = harness({ policy: connectionPolicyOf({ variables: ['NOTES_API_KEY', 'WIKI_TOKEN'] }) });
+
+    expect(await adding(listing, naming('NOTES_API_KEY'))).toMatchObject({ status: 'succeeded' });
+    expect(await adding(listing, { ...naming('CRM_API_KEY'), name: 'crm-key' })).toEqual({
+      status: 'rejected',
+      reason: 'forbidden',
+      detail:
+        'A reference may name only a variable the operator lists in connections.variables, which are NOTES_API_KEY and WIKI_TOKEN, and CRM_API_KEY is not one of them',
+    });
+    expect(await adding(harness(), naming('NOTES_API_KEY'))).toEqual({
+      status: 'rejected',
+      reason: 'forbidden',
+      detail:
+        'A reference may name only a variable the operator lists in connections.variables, and this runtime lists none',
+    });
+  });
+});
+
 describe('the policy of the runtime, of the kinds of credential', () => {
   it('refuses a kind it does not list, and says when it lists none', async () => {
     const kinds = harness({ policy: connectionPolicyOf({ credential_kinds: ['none', 'reference'] }) });

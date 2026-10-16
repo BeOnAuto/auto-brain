@@ -293,6 +293,14 @@
             "enum": ["none", "reference", "secret", "client_credentials", "authorization"]
           },
           "description": "The kinds of credential a connection may take, of none, reference, secret, client_credentials and authorization; every kind when left out"
+        },
+        "variables": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
+          },
+          "description": "The variables of the runtime a reference credential may name, never one the runtime reads for itself; none when left out, so no connection takes a reference"
         }
       },
       "additionalProperties": false,
