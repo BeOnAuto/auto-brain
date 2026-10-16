@@ -1,10 +1,4 @@
-import {
-  seriesShape,
-  shapeMismatchOf,
-  type CapabilityAnswer,
-  type CapabilityRejection,
-  type RunContext,
-} from '@on.auto/definitions';
+import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
 import { Unavailable, type PlaybookAddress } from '@on.auto/operations';
 import { Clock, Effect, Option, Schema } from 'effect';
 
@@ -13,6 +7,7 @@ import type { PredictionFunctionDefinitionDocument, Predicts } from '../document
 import { enclosingOf, periodsToTheEnd } from '../periods/enclosing.ts';
 import { periodForm } from '../periods/grains.ts';
 import { activeVersionOf } from './active-version.ts';
+import { checkedAnswer } from './answer-check.ts';
 import { seriesWindow, type SeriesWindow } from './series-window.ts';
 
 const QuestionSchema = Schema.Struct({
@@ -35,14 +30,6 @@ const notFinite = new Unavailable({
   kind: 'model_process_failed',
   because: 'not_finite',
 });
-
-function notInOrder(mismatch: string): Unavailable {
-  return new Unavailable({
-    detail: `The answer does not match the series shape: ${mismatch}`,
-    kind: 'model_process_failed',
-    because: 'not_in_order',
-  });
-}
 
 interface AskedPoint {
   readonly step: number;
@@ -191,10 +178,7 @@ export function questionRun(
       ],
       ...(question.marks === undefined ? {} : { marks: question.marks }),
     };
-    const mismatch = shapeMismatchOf(seriesShape, output);
-    if (mismatch !== undefined) {
-      return yield* Effect.fail(notInOrder(mismatch));
-    }
+    yield* checkedAnswer(output);
     return {
       output,
       record: {
