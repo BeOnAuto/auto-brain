@@ -59,6 +59,7 @@ describe('internalTermsIn', () => {
       internalTermsIn(measured, ['orders', 'sign-ups']),
       internalTermsIn(measured),
       internalTermsIn('It answered 404 for 131 orders.', ['orders']),
-    ]).toEqual([[], ['131'], ['404']]);
+      internalTermsIn('It answered 404 and 3 rows.'),
+    ]).toEqual([[], ['131'], ['404'], ['404']]);
   });
 });

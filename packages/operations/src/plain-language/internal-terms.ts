@@ -24,7 +24,7 @@ function escaped(unit: string): string {
 function statusCodeOf(units: readonly string[]): RegExp {
   const measured = [...measures, ...units.map((unit) => escaped(unit))].join('|');
   return new RegExp(
-    String.raw`(?<![\d,])(?<!\d\.)\b[1-5]\d{2}\b(?!\.\d|[\d,]|(?:\s(?:to|and)\s[\d.,]+)?\s?(?:${measured})(?![\p{L}\p{N}_]))`,
+    String.raw`(?<![\d,])(?<!\d\.)\b[1-5]\d{2}\b(?!\.\d|[\d,]|(?:\sto\s[\d.,]+)?\s?(?:${measured})(?![\p{L}\p{N}_]))`,
     'u',
   );
 }
