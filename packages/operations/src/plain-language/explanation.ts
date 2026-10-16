@@ -161,6 +161,7 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
   stalled: 'because its dataset stopped at an event its fold could not take',
   not_finite: 'because the model answered something other than finite numbers',
   not_in_order: 'because the model answered a low above its likely value or a high below it',
+  baseline_check: 'because the process that checks a build’s baselines ended before it answered',
 };
 
 const remedyByBecause: Remedies = {
@@ -191,6 +192,10 @@ const explanationByKindAndBecause: Readonly<
     not_in_order: {
       why: 'the model answered a low above its likely value or a high below it',
       remedy: 'Trying again gives the same answer; a new build gives the function another model.',
+    },
+    baseline_check: {
+      why: 'the process that checks the build’s baselines ended before it answered',
+      remedy: 'Nothing needs to change: asking for the build again starts a new process to check them.',
     },
   },
   tools_called: {

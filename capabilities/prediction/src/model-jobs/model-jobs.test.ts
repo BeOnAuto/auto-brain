@@ -188,3 +188,62 @@ describe('the sessions a model process keeps', () => {
     expect([loaded.loads(), failing.loads(), first]).toEqual([1, 2, { loaded: false, detail: 'No such file' }]);
   });
 });
+
+function scoringRows(values: readonly number[]): string {
+  const path = join(scratchDirectory(), 'perfect.csv');
+  const days = values.map((value, day) => `north,2026-10-${String(day + 1).padStart(2, '0')},${value},1`);
+  writeFileSync(path, ['series,period,visits,promotion', ...days].join('\r\n'));
+  return path;
+}
+
+const perfectJob = {
+  period: 'day',
+  horizons: [1],
+  accumulates: null,
+  season: null,
+  window: 12,
+  holdout: 4,
+  firstPeriod: '2026-10-01',
+  baselines: ['persistence'],
+  metric: 'mase',
+  threads: 1,
+};
+
+describe('the check of the baselines of a build in a model process', () => {
+  it('names a baseline that loses nothing where its metric scores it, and none that misses a period or scores nothing', async () => {
+    const moving = [1, 2, 3, 2, 3, 4, 3, 4];
+
+    expect([
+      await asked('baselines', { ...perfectJob, rows: scoringRows([...moving, 5, 5, 5, 5]) }),
+      await asked('baselines', { ...perfectJob, rows: scoringRows([...moving, 5, 5, 6, 6]) }),
+      await asked('baselines', { ...perfectJob, rows: scoringRows([5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7, 8]) }),
+      await asked('baselines', {
+        ...perfectJob,
+        accumulates: 'week',
+        season: 7,
+        horizons: [],
+        rows: scoringRows([...moving, 5, 5, 6, 6]),
+      }),
+    ]).toEqual([
+      { perfect: 'persistence', unscorable: false },
+      { perfect: null, unscorable: false },
+      { perfect: null, unscorable: true },
+      { perfect: null, unscorable: false },
+    ]);
+  });
+
+  it('calls a build unscorable when mase judges no period held back that a baseline walks, since no series moved while trained', async () => {
+    const stillWhileTrained = scoringRows([5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7, 8]);
+    const nothingHeldBack = scoringRows([5, 5, 5, 5, 5, 5, 5, 5, Number.NaN, Number.NaN, Number.NaN, Number.NaN]);
+
+    expect([
+      await asked('baselines', { ...perfectJob, rows: stillWhileTrained }),
+      await asked('baselines', { ...perfectJob, metric: 'winkler', rows: stillWhileTrained }),
+      await asked('baselines', { ...perfectJob, rows: nothingHeldBack }),
+    ]).toEqual([
+      { perfect: null, unscorable: true },
+      { perfect: null, unscorable: false },
+      { perfect: null, unscorable: false },
+    ]);
+  });
+});

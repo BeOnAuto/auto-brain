@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 
 import type { Evaluation, Predicts } from '../document/prediction-document.ts';
 import { baselineForecast, scaleOf } from './baselines.ts';
+import { baselineWalks } from './baselines.ts';
 import { seedOf } from './bootstrap.ts';
-import { baselineWalks, verdictOf, type Scoring } from './candidate-scoring.ts';
+import { verdictOf, type Scoring } from './candidate-scoring.ts';
 import { originDifferences, primaryOf, scoredOf } from './metrics.ts';
 import { meanOf, rounded } from './score-math.ts';
 import { remainingOfTheOrigins, scoringGridOf } from './scoring-grid.ts';

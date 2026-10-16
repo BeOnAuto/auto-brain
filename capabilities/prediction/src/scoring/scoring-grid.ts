@@ -30,7 +30,9 @@ export interface GridOf {
 
 export const percentiles = 3;
 
-function accumulatedOf({ period, accumulates }: Predicts, first: number, window: number): Accumulated | undefined {
+export type GridReach = Pick<Predicts, 'period' | 'season' | 'horizons' | 'accumulates'>;
+
+function accumulatedOf({ period, accumulates }: GridReach, first: number, window: number): Accumulated | undefined {
   if (accumulates === undefined) {
     return undefined;
   }
@@ -41,7 +43,7 @@ function accumulatedOf({ period, accumulates }: Predicts, first: number, window:
   };
 }
 
-export function scoringGridOf(predicts: Predicts, { window, holdout, firstPeriod }: GridOf): ScoringGrid {
+export function scoringGridOf(predicts: GridReach, { window, holdout, firstPeriod }: GridOf): ScoringGrid {
   const first = Number(periodOfForm(predicts.period, firstPeriod));
   const accumulated = accumulatedOf(predicts, first, window);
   const steps = Math.max(0, ...predicts.horizons);

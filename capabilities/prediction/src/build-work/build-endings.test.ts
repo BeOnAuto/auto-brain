@@ -57,7 +57,7 @@ describe('a build that is cancelled', () => {
     const scripted = scriptedModels();
     const playbook = buildPlaybook({
       module: scripted.module,
-      deadlines: { check: 30_000, run: 10_000, walk: 30_000 },
+      deadlines: { check: 30_000, run: 10_000, walk: 30_000, baselines: 30_000 },
     });
     await savedFunction(playbook);
     const build = await askedBuild(playbook);

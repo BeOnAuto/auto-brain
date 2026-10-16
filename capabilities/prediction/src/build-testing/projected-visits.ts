@@ -29,7 +29,7 @@ export interface Sales {
   readonly before: number;
   readonly after: number;
   readonly valueOf: (level: number, day: number) => number | null | undefined;
-  readonly deadlines?: { readonly check: number; readonly run: number; readonly walk: number };
+  readonly deadlines?: NonNullable<Parameters<typeof buildPlaybook>[0]>['deadlines'];
   readonly processes?: number;
   readonly longJobs?: number;
   readonly events?: readonly Schema.JsonObject[];

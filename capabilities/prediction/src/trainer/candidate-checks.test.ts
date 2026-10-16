@@ -27,7 +27,10 @@ async function waitingBuild(playbook: BuildPlaybook): Promise<string> {
 describe('a candidate whose check ends without an answer', () => {
   it('is refused as one that does not load past the deadline of a check, out of memory, or when its process ends or answers badly', async () => {
     const scripted = scriptedModels();
-    const hurried = buildPlaybook({ module: scripted.module, deadlines: { check: 1500, run: 10_000, walk: 60_000 } });
+    const hurried = buildPlaybook({
+      module: scripted.module,
+      deadlines: { check: 1500, run: 10_000, walk: 60_000, baselines: 30_000 },
+    });
     const playbook = buildPlaybook({ module: scripted.module });
     const hurriedBuild = await waitingBuild(hurried);
     const build = await waitingBuild(playbook);
@@ -68,7 +71,7 @@ describe('a candidate uploaded while every model process is taken', () => {
     const playbook = buildPlaybook({
       module: scripted.module,
       processes: 2,
-      deadlines: { check: 300, run: 60_000, walk: 60_000 },
+      deadlines: { check: 300, run: 60_000, walk: 60_000, baselines: 30_000 },
     });
     const build = await waitingBuild(playbook);
     scripted.next('sleeps');

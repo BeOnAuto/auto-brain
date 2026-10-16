@@ -21,7 +21,7 @@ function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
 
 type Deadlines = NonNullable<PortOptions['deadlines']>;
 
-const ordinaryDeadlines: Deadlines = { check: 30_000, run: 10_000, walk: 60_000 };
+const ordinaryDeadlines: Deadlines = { check: 30_000, run: 10_000, walk: 60_000, baselines: 30_000 };
 
 async function scriptedVisits(deadlines: Deadlines = ordinaryDeadlines, processes = 4) {
   const scripted: ScriptedModels = scriptedModels();
@@ -126,7 +126,7 @@ describe('a question whose model answers a low above its likely value or a high 
 describe('a question whose model processes are all taken', () => {
   it('is told every model process is busy while every one is taken', async () => {
     const scripted = scriptedModels();
-    const deadlines = { check: 60_000, run: 300, walk: 60_000 };
+    const deadlines = { check: 60_000, run: 300, walk: 60_000, baselines: 30_000 };
     const playbook = await activeVisits({ module: scripted.module, deadlines, processes: 3, longJobs: 3 });
     scripted.next('sleeps');
     const { models } = playbook.test.ports;

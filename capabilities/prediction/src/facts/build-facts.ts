@@ -1,6 +1,8 @@
 import { RunContextSchema, factOf } from '@on.auto/operations';
 import { Option, Schema } from 'effect';
 
+import { BaselineSchema } from '../document/front-matter.ts';
+
 export const TensorSchema = Schema.Struct({
   name: Schema.String,
   type: Schema.String,
@@ -18,8 +20,6 @@ export const ScoreSchema = Schema.Struct({
 });
 
 export type Score = typeof ScoreSchema.Type;
-
-export const BaselineSchema = Schema.Literals(['persistence', 'seasonal-naive']);
 
 export const AgainstSchema = Schema.Struct({ baseline: BaselineSchema, p_better: Schema.Number });
 

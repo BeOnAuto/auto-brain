@@ -6,6 +6,7 @@ import { isProjected, type PredictionFunctionDefinitionDocument } from '../docum
 import type { Assembled } from '../facts/build-facts.ts';
 import { writtenDatasetFiles } from '../files/dataset-files.ts';
 import type { DatasetFiles, DatasetFilesRefused } from '../files/files-refusals.ts';
+import { candidatesJudgeable } from './perfect-baselines.ts';
 import { uploadedDatasetFiles } from './uploaded-files.ts';
 
 export function notReadyAs({ refusal, detail }: Pick<DatasetFilesRefused, 'refusal' | 'detail'>): Unavailable {
@@ -38,14 +39,18 @@ export function assembledOf(files: DatasetFiles): Assembled {
 }
 
 export function buildFilesOf(
-  { ledger, database }: Pick<PredictionPorts, 'ledger' | 'database'>,
+  ports: PredictionPorts,
   playbook: PlaybookAddress,
   document: PredictionFunctionDefinitionDocument,
   now: number,
 ): Effect.Effect<DatasetFiles, Conflict | Unavailable> {
   const { data } = document;
+  const { ledger, database } = ports;
   const written = isProjected(data)
     ? writtenDatasetFiles({ database, content: ledger.content, playbook, document, now })
     : uploadedDatasetFiles(ledger.content, playbook, document, data.dataset);
-  return written.pipe(Effect.mapError(refusedAs));
+  return written.pipe(
+    Effect.mapError(refusedAs),
+    Effect.tap((files) => candidatesJudgeable(ports, playbook, document, assembledOf(files))),
+  );
 }

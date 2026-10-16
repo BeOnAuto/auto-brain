@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 import { Schema } from 'effect';
 
 import { measuredFiles, seriesMeasured, daysMeasured } from './measure/model-files.ts';
-import { modelTimings, questionTimings } from './measure/model-timings.ts';
+import { baselineCheckTimings, modelTimings, questionTimings } from './measure/model-timings.ts';
 
 const mebibyte = 1_048_576;
 
@@ -59,6 +59,10 @@ try {
   );
   write(
     `a session of a ${mib(largeBytes)} model on ${memory.threads} threads walking ${memory.series} series of ${mib(widestBytes)} of rows in ${ms(memory.walkMs)}: ${mib(memory.before)} resident before it, ${mib(memory.after)} after, ${mib(memory.peak)} at the peak`,
+  );
+  const checked = await baselineCheckTimings(files);
+  write(
+    `the check of two baselines at a build's start over ${mib(widestBytes)} of rows, in a model process: ${ms(checked.checkMs)}, ${checked.perfect ?? 'none'} perfect, the server's heap ${mib(checked.heapGrowth)} larger after it`,
   );
   const asked = await questionTimings(files);
   write(

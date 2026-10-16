@@ -51,10 +51,13 @@ describe('the model processes of a server', () => {
   });
 
   it('end a job past its deadline, which is by default 30 s for a check, 10 s for a question and 10 minutes for a walk', async () => {
-    const models = modelProcesses({ pool: closedAfterTheTest(3), deadlines: { check: 1, run: 1, walk: 1 } });
+    const models = modelProcesses({
+      pool: closedAfterTheTest(3),
+      deadlines: { check: 1, run: 1, walk: 1, baselines: 30_000 },
+    });
 
     expect(await Effect.runPromise(models.check(fileOf('visits-mean')))).toMatchObject({ ended: 'timed_out' });
-    expect(modelDeadlines).toEqual({ check: 30_000, run: 10_000, walk: 600_000 });
+    expect(modelDeadlines).toEqual({ check: 30_000, run: 10_000, walk: 600_000, baselines: 30_000 });
   });
 });
 

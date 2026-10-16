@@ -10,6 +10,14 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
   ],
   [{ reason: 'conflict', kind: 'build_in_flight' }, 'a build of the function is already in flight'],
   [{ reason: 'conflict', kind: 'dataset_too_large' }, 'its dataset holds more rows or series than a build takes'],
+  [
+    { reason: 'conflict', kind: 'baseline_perfect' },
+    'a baseline its candidates must beat already predicts every period held back as well as a score can, so no candidate can beat it',
+  ],
+  [
+    { reason: 'conflict', kind: 'unscorable' },
+    'no series of its dataset moved during the periods a build trains on, so no candidate could be judged against its baselines',
+  ],
   [{ reason: 'conflict', kind: 'not_a_build' }, 'the run named is not a build of a prediction function'],
   [
     { reason: 'conflict', kind: 'build_ended' },
@@ -42,6 +50,10 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
     { reason: 'unavailable', kind: 'model_process_failed', because: 'not_in_order' },
     'the model answered a low above its likely value or a high below it',
   ],
+  [
+    { reason: 'unavailable', kind: 'model_process_failed', because: 'baseline_check' },
+    'the process that checks the build’s baselines ended before it answered',
+  ],
 ];
 
 const aSentence: unknown = expect.stringMatching(/\.$/u);
@@ -54,6 +66,17 @@ describe('the explanation of a refusal of a prediction function', () => {
   it('says how to ask for a build when no version is active, and that nothing was changed', () => {
     expect(unsuccessfulWords('predict', 'command', rejected('conflict', 'x', undefined, 'no_active_version'))).toBe(
       'Could not predict: the function has no model that answers yet. Nothing was changed. It answers once a build has given it an active version: ask for one with the input { build: {} }.',
+    );
+  });
+
+  it('says that the process that checks a build’s baselines ended, and to ask for the build again', () => {
+    expect(
+      unsuccessfulWords('build', 'command', {
+        ...rejected('unavailable', 'x', undefined, 'model_process_failed'),
+        because: 'baseline_check',
+      }),
+    ).toBe(
+      'Could not build: the process that checks the build’s baselines ended before it answered. Nothing was changed. Nothing needs to change: asking for the build again starts a new process to check them.',
     );
   });
 });

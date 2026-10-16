@@ -3,9 +3,9 @@ import { Array } from 'effect';
 import type { Baseline, Evaluation } from '../document/prediction-document.ts';
 import type { Score } from '../facts/build-facts.ts';
 import type { SeriesRows } from '../files/series-rows.ts';
-import { baselineForecast, scaleOf } from './baselines.ts';
+import { scaleOf, type BaselineWalk } from './baselines.ts';
 import { pBetterOf } from './bootstrap.ts';
-import { originDifferences, scoredOf, type Scored, type SeriesForecast } from './metrics.ts';
+import { originDifferences, scoredOf, type SeriesForecast } from './metrics.ts';
 import { answeredInOrder } from './quantile-order.ts';
 import { rounded } from './score-math.ts';
 import { percentiles, type ScoringGrid } from './scoring-grid.ts';
@@ -15,12 +15,6 @@ export interface Scoring {
   readonly rows: readonly SeriesRows[];
   readonly evaluation: Evaluation;
   readonly seed: number;
-}
-
-export interface BaselineWalk {
-  readonly baseline: Baseline;
-  readonly forecasts: readonly SeriesForecast[];
-  readonly scored: Scored;
 }
 
 export interface WalkedAnswer {
@@ -44,19 +38,6 @@ export type Verdict =
     };
 
 const figures = new Intl.NumberFormat('en', { maximumFractionDigits: 4 });
-
-export function baselineWalk({ grid, rows }: Scoring, baseline: Baseline): BaselineWalk {
-  const forecasts = rows.map(({ values }) => ({
-    values,
-    forecast: baselineForecast(grid, values, baseline),
-    scale: scaleOf(grid, values),
-  }));
-  return { baseline, forecasts, scored: scoredOf(grid, forecasts) };
-}
-
-export function baselineWalks(scoring: Scoring): readonly BaselineWalk[] {
-  return scoring.evaluation.baselines.map((baseline) => baselineWalk(scoring, baseline));
-}
 
 function badlyOf({ grid, rows }: Scoring, answer: WalkedAnswer): string | undefined {
   const length = grid.holdout * grid.steps * percentiles;

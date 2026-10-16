@@ -4,7 +4,8 @@ import { Effect } from 'effect';
 import type { Evaluation } from '../src/document/prediction-document.ts';
 import { seriesRowsIn } from '../src/files/series-rows.ts';
 import { modelProcesses, type ModelProcesses } from '../src/model-processes/model-processes.ts';
-import { baselineWalks, verdictOf } from '../src/scoring/candidate-scoring.ts';
+import { baselineWalks } from '../src/scoring/baselines.ts';
+import { verdictOf } from '../src/scoring/candidate-scoring.ts';
 import { scoringGridOf } from '../src/scoring/scoring-grid.ts';
 import { gradeOf } from '../src/shadow/shadow-grades.ts';
 import { daysMeasured, widestFeatures, type MeasuredFiles } from './model-files.ts';
@@ -77,7 +78,7 @@ async function scoredOnce(models: ModelProcesses, files: MeasuredFiles): Promise
   const started = performance.now();
   const rows = await seriesRowsIn(files.rows, { features: 0 });
   const grid = scoringGridOf(
-    { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits', history: 4 },
+    { period: 'day', horizons: [1, 2] },
     { window: daysMeasured, holdout: 8, firstPeriod: '2026-03-01' },
   );
   const scoring = { grid, rows, evaluation, seed: 1 };
@@ -162,4 +163,40 @@ export async function questionTimings(files: MeasuredFiles): Promise<QuestionTim
   const heapGrowth = process.memoryUsage().heapUsed - heapBefore;
   await pool.close();
   return { windowMs, runMs, heapGrowth };
+}
+
+export interface BaselineCheckTimed {
+  readonly checkMs: number;
+  readonly perfect: string | null;
+  readonly heapGrowth: number;
+}
+
+export async function baselineCheckTimings(files: MeasuredFiles): Promise<BaselineCheckTimed> {
+  const pool = processPool({ processes: 4, longJobs: 2, memoryBytes: 1280 * mebibyte, path: process.env['PATH'] });
+  const models = modelProcesses({ pool });
+  const heapBefore = process.memoryUsage().heapUsed;
+  const started = performance.now();
+  const checked = await Effect.runPromise(
+    models.baselines(
+      { sha256: 'widest', path: files.widest },
+      {
+        period: 'day',
+        horizons: [1, 2],
+        accumulates: null,
+        season: 7,
+        window: daysMeasured,
+        holdout: 8,
+        firstPeriod: '2026-03-01',
+        baselines: ['persistence', 'seasonal-naive'],
+        metric: 'mase',
+      },
+    ),
+  );
+  const checkMs = millisecondsOf(started);
+  const heapGrowth = process.memoryUsage().heapUsed - heapBefore;
+  await pool.close();
+  if (checked.ended !== 'answered') {
+    throw new Error(`The check of the baselines ended ${checked.ended}`);
+  }
+  return { checkMs, perfect: checked.answer.perfect, heapGrowth };
 }

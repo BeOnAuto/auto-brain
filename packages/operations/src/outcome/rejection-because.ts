@@ -20,6 +20,7 @@ export const RejectionBecauseSchema = Schema.Literals([
   'stalled',
   'not_finite',
   'not_in_order',
+  'baseline_check',
 ]);
 
 export type RejectionBecause = typeof RejectionBecauseSchema.Type;

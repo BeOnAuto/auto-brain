@@ -5,7 +5,8 @@ import { untilTheRunEnds } from '../build-work/run-watch.ts';
 import type { PredictionFunctionDefinitionDocument } from '../document/prediction-document.ts';
 import type { Assembled, BuildWorkOf } from '../facts/build-facts.ts';
 import type { ModelOutcome, WalkAnswer } from '../model-processes/model-processes.ts';
-import { baselineWalks, verdictOf, type Scoring } from './candidate-scoring.ts';
+import { baselineWalks } from './baselines.ts';
+import { verdictOf, type Scoring } from './candidate-scoring.ts';
 import { remainingOfTheOrigins } from './scoring-grid.ts';
 import { featureNamesOf, givenIndexesOf, scoringOf, type ScoredBuild } from './scoring-inputs.ts';
 

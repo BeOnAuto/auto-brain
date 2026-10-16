@@ -1,6 +1,8 @@
-import type { Baseline } from '../document/prediction-document.ts';
+import type { Baseline, Evaluation } from '../document/prediction-document.ts';
+import type { SeriesRows } from '../files/series-rows.ts';
 import { accumulatedForecast, runRateScale } from './accumulated-baselines.ts';
 import { emptyForecast, finite, observedUpTo, placed, seasonalLagOf } from './forecast-parts.ts';
+import { scoredOf, type Scored, type SeriesForecast } from './metrics.ts';
 import { meanOf } from './score-math.ts';
 import { originAt, placeOf, type ScoringGrid } from './scoring-grid.ts';
 
@@ -70,4 +72,30 @@ export function scaleOf(grid: ScoringGrid, values: Readonly<Float64Array>): numb
   }
   const errors = errorsAtLag(values, grid.training, grid.season ?? 1);
   return meanOf(errors.map((error) => Math.abs(error)));
+}
+
+export interface BaselineWalk {
+  readonly baseline: Baseline;
+  readonly forecasts: readonly SeriesForecast[];
+  readonly scored: Scored;
+}
+
+interface WalkedRows {
+  readonly grid: ScoringGrid;
+  readonly rows: readonly SeriesRows[];
+}
+
+export function baselineWalk({ grid, rows }: WalkedRows, baseline: Baseline): BaselineWalk {
+  const forecasts = rows.map(({ values }) => ({
+    values,
+    forecast: baselineForecast(grid, values, baseline),
+    scale: scaleOf(grid, values),
+  }));
+  return { baseline, forecasts, scored: scoredOf(grid, forecasts) };
+}
+
+export function baselineWalks(
+  walked: WalkedRows & { readonly evaluation: Pick<Evaluation, 'baselines'> },
+): readonly BaselineWalk[] {
+  return walked.evaluation.baselines.map((baseline) => baselineWalk(walked, baseline));
 }

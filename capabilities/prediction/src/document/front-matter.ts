@@ -31,13 +31,17 @@ const DataSchema = Schema.Struct({
   dataset: Schema.optionalKey(Schema.String),
 });
 
+export const BaselineSchema = Schema.Literals(['persistence', 'seasonal-naive']);
+
+export const MetricSchema = Schema.Literals(['mase', 'winkler', 'quantile']);
+
 const ActivationSchema = Schema.Union([Schema.Literal('automatic'), Schema.Struct({ approved: Schema.String })]);
 
 const EvaluationSchema = Schema.Struct({
   holdout: Schema.Number,
-  metric: Schema.optionalKey(Schema.Literals(['mase', 'winkler', 'quantile'])),
+  metric: Schema.optionalKey(MetricSchema),
   coverage_floor: Schema.optionalKey(Schema.Number),
-  baselines: Schema.optionalKey(Schema.Array(Schema.Literals(['persistence', 'seasonal-naive']))),
+  baselines: Schema.optionalKey(Schema.Array(BaselineSchema)),
   confidence: Schema.optionalKey(Schema.Number),
   shadow_periods: Schema.optionalKey(Schema.Number),
   activate: ActivationSchema,

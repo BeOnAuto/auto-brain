@@ -214,16 +214,18 @@ A data test can also run out of time or memory. No event causes that, so the eve
 
 `get_definition` of a prediction function adds the dataset's `standing`:
 
-| Field                          | Meaning                                                                                                                              |
-| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
-| `kind`                         | `projection`; a function that names an uploaded dataset has the standing `{ kind: "uploaded", sha256 }` and none of the fields below |
-| `data_sha256`                  | The dataset's digest                                                                                                                 |
-| `phase`                        | `waiting` for a slot to be built, `rebuilding` from the history, `live` or `stalled`                                                 |
-| `checkpoint`, `checkpoint_at`  | Where the dataset has read to in the playbook's history                                                                              |
-| `rows`, `series`               | How many rows and series it holds                                                                                                    |
-| `first_period`, `last_period`  | Its first and last periods                                                                                                           |
-| `events_folded`, `passed_over` | How many events it folded, and how many it passed over                                                                               |
-| `stall`                        | Null unless it stalled; then `{ record, detail }`, the event it stopped at and why                                                   |
+| Field                          | Meaning                                                                              |
+| ------------------------------ | ------------------------------------------------------------------------------------ |
+| `kind`                         | `projection`                                                                         |
+| `data_sha256`                  | The dataset's digest                                                                 |
+| `phase`                        | `waiting` for a slot to be built, `rebuilding` from the history, `live` or `stalled` |
+| `checkpoint`, `checkpoint_at`  | Where the dataset has read to in the playbook's history                              |
+| `rows`, `series`               | How many rows and series it holds                                                    |
+| `first_period`, `last_period`  | Its first and last periods                                                           |
+| `events_folded`, `passed_over` | How many events it folded, and how many it passed over                               |
+| `stall`                        | Null unless it stalled; then `{ record, detail }`, the event it stopped at and why   |
+
+A function that names an uploaded dataset has the standing `{ kind: "uploaded", sha256 }` and none of the other fields.
 
 ### The rows a build reads
 
@@ -311,24 +313,28 @@ A build asks a trainer for candidate models. It scores each against rows the tra
 
 A build can be refused as it starts. Its run then records only that it started and was rejected, with no content:
 
-| Refusal                            | When                                                                                                                                                                |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `conflict`, `build_in_flight`      | Another build of the function has not ended; the words name its run                                                                                                 |
-| `unavailable`, `builds_full`       | The function used its builds of the day (`because` `builds_of_the_day`; the words say when it may ask again), or the server scores as many builds as it may at once |
-| `unavailable`, `requests_full`     | The build would ask through the inbox, and the playbook already holds as many open requests as it may                                                               |
-| `unavailable`, `dataset_not_ready` | The dataset is waiting or rebuilding, or it stalled, with `because` `stalled`                                                                                       |
-| `conflict`, `dataset_too_large`    | The dataset is past the bounds a build reads, with the figures it counted                                                                                           |
-| `conflict`, `unworkable`           | The brief renders past 64 KiB over this dataset                                                                                                                     |
+- `conflict`, `build_in_flight`: another build of the function has not ended. The words name its run.
+- `unavailable`, `builds_full`: the function used its builds of the day, with `because` `builds_of_the_day`, and the words say when it may ask again; or the server scores as many builds as it may at once.
+- `unavailable`, `requests_full`: the build would ask through the inbox, and the playbook already holds as many open requests as it may.
+- `unavailable`, `dataset_not_ready`: the dataset is waiting or rebuilding, or it stalled, with `because` `stalled`.
+- `conflict`, `dataset_too_large`: the dataset is past the bounds a build reads, with the figures it counted.
+- `conflict`, `baseline_perfect`: a baseline already scores 0 on the metric wherever the metric scores it, so no candidate can beat it; see below.
+- `conflict`, `unscorable`: no series moved during the training periods, so `mase` can judge no candidate; see below.
+- `unavailable`, `model_process_busy`: every model process a build may hold stayed taken for the 30 seconds the build waits to check its baselines. Asking again shortly may succeed.
+- `unavailable`, `model_process_failed`, with `because` `baseline_check`: the model process that checks the baselines ended before it answered. Asking for the build again may succeed.
+- `conflict`, `unworkable`: the brief renders past 64 KiB over this dataset.
+
+Of these refusals:
 
 - A function has 4 builds a day unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise.
 - The server scores at most `PREDICTION_BUILDS_AT_ONCE` builds at once. A build that waits for its trainer or an approval is not counted.
 - A build whose version is in its shadow, or awaits its approval, has ended its run, so it is not in flight.
-- A build refused for its dataset or its brief takes none of the day's builds.
+- A build refused for its dataset, its baselines or its brief takes none of the day's builds.
 - Before it writes anything, the build reads the builds in flight and the builds of the day from the function's models stream. It claims its place on that stream once its rows and its brief are written.
 - Two builds asked at the same moment are decided one after the other, and the second is refused at its claim. The rows and the brief it wrote stay kept under their digests, though no record names them.
 - The builds the server is scoring, and the playbook's open requests, are counted before the build is decided. So builds asked at the same moment may pass those two bounds, by up to their number.
 
-Otherwise the build writes the two files of [The rows a build reads](#the-rows-a-build-reads), renders the brief over them and asks its trainer:
+Otherwise the build writes the two files of [The rows a build reads](#the-rows-a-build-reads) and scores each baseline it names over the scoring rows, as [How a candidate is scored](#how-a-candidate-is-scored) does, in a model process it waits up to 30 seconds for. A candidate must beat each walked baseline, and no score is below 0. So when a walked baseline scores 0 on `evaluation.metric` wherever that metric is defined, and is defined somewhere, the build is refused `baseline_perfect` before it renders its brief. This happens when the periods held back never move: `persistence` then predicts each one exactly, and its `mase` is 0. When no series moved during the training periods, `mase`, which scales each error by that movement, scores no period held back, so no candidate could be judged against a walked baseline, and the build is refused `unscorable`. A series with nothing held back is left out, and a build whose baselines walk no series goes ahead, judged by its coverage alone; `winkler` and `quantile` judge such series. Either way, a build can be asked again once the series moves. Otherwise the build renders the brief over the two files and asks its trainer:
 
 - With `source.to`, the default, the build is a request in the playbook's inbox. `list_interactions` lists it for its party. Its message, within 8 KiB, names the build's run id, its three routes and the opening of the brief. Its answer is `{ candidates, recipe?, limitations? }`.
 - With `source.through`, the build starts that interaction function with the input `{ build: { run_id, function, brief_sha256, routes, expires_at } }`. That function's request is the one the inbox lists, and its answer is the build's.
@@ -472,7 +478,7 @@ A build keeps a winner that beats the baselines as the function's next version. 
 
 The version also keeps its `recipe` and `limitations`.
 
-The run succeeds with `{ version, winner, candidates }`. Each candidate has its `verdict`: `won`, `scored`, or why it was disqualified. `version` and `winner` are null when no candidate won. Otherwise the build ends `rejected`, as [How a run ends](#how-a-run-ends) lists: unanswered, cancelled, or with an answer that fails its check.
+The run succeeds with `{ version, winner, candidates }`. Each candidate has its `verdict`: `won`, `scored`, or why it was disqualified. `version` and `winner` are null when no candidate won. Otherwise the build ends `rejected`, as [How a run ends](#how-a-run-ends) lists: unanswered, cancelled, or with an answer that fails its check. A build whose baseline is already perfect ends sooner: it is refused `baseline_perfect` as it starts, before it asks its trainer, since every candidate would be `not_better`.
 
 The first version a function builds activates under its rule on its holdout alone. When the function's dataset is a projection, a later version first runs a shadow beside the active version:
 
@@ -564,7 +570,7 @@ A build finishes later, so `run_definition` returns it `started` and `get_run` s
 | Ending                                     | When                                                                                                                                                                                |
 | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `succeeded`                                | It scored every candidate its answer named; its output is `{ version, winner, candidates }`, `version` and `winner` null when none won or none was named                            |
-| The refusals of [A build](#a-build)        | It was refused as it started: `build_in_flight`, `builds_full`, `requests_full`, `dataset_not_ready`, `dataset_too_large` or `unworkable`                                           |
+| The refusals of [A build](#a-build)        | It was refused as it started, with one of the kinds listed there                                                                                                                    |
 | `rejected` as `unanswered`, kind `expired` | Nobody answered its request before `source.expires`                                                                                                                                 |
 | `rejected` as `unanswered`                 | Through `source.through`, the function's run ended without an answer. The kind is that run's own if it ended `unanswered`, and `undelivered` if it ended otherwise or never started |
 | `rejected` as `invalid_input`              | Through `source.through`, the answer named a candidate not uploaded to the build, or a `recipe` or `limitations` past 8 KiB; its errors are under `/answer`                         |
@@ -677,7 +683,7 @@ A run that does not succeed raises the error of its rejection:
 
 - A build nobody answered raises the [problem type](http.md#responses-and-errors) `https://on.auto/problems/unanswered`, status 410, with the kind `expired`. Only a `catch` that names that type or status 410, or catches every error, takes it. So a workflow handles an unanswered build only on purpose.
 - A refusal raises status 503 for `unavailable` and 409 for `conflict`, with its `kind` and `because`.
-- `model_process_busy`, and a dataset still being built, pass with time. So a retry on status 503 suits a question.
+- `model_process_busy`, and a dataset still being built, pass with time. So a retry on status 503 suits a build as it suits a question.
 - These do not change when tried again: `builds_full` with `because` `builds_of_the_day`, a `stalled` dataset, and a `not_finite` or `not_in_order` result. Neither do `no_active_version` and `data_changed`, until a build makes a version. So leave 409 out of a retry policy, and read `$error.because` in a `when` to leave out the rest.
 
 A workflow on a [schedule](workflow-format.md#triggers) can ask for a build on that schedule, within the builds a function may ask for in a day.

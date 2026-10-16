@@ -15,6 +15,8 @@ export const ConflictKindSchema = Schema.Literals([
   'data_changed',
   'build_in_flight',
   'dataset_too_large',
+  'baseline_perfect',
+  'unscorable',
   'not_a_build',
   'build_ended',
   'already_active',

@@ -144,7 +144,10 @@ function shadowWaits(settingsOf: SettingsOf): void {
   });
 
   it('waits while every model process is taken, grades with no truth while its dataset is not made, and decides only at a later close that has one', async () => {
-    const projected = await challenged(settingsOf, { ...visits, deadlines: { check: 3000, run: 10_000, walk: 1500 } });
+    const projected = await challenged(settingsOf, {
+      ...visits,
+      deadlines: { check: 3000, run: 10_000, walk: 1500, baselines: 30_000 },
+    });
     const { models } = projected.playbook.test.ports;
     projected.scripted.next('sleeps');
     for (const held of ['first', 'second', 'third', 'fourth']) {
