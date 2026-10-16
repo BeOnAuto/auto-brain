@@ -1,0 +1,68 @@
+# @on.auto/connections
+
+The connections of an org: tool servers a person adds to the org through their agent, which the org owns, which every playbook of the org may use or the playbooks its entry names, and which are kept as facts, added and removed rather than run. A connection's entry is the non-secret part of a tool server entry; its credential, when it has one, is a row of the ledger's secret store, referred to by id and never held in a fact. The agent never carries a secret: `add_connection` answers a one-time link to Studio's page, where the person who added the connection approves it and gives its credential. This package keeps connections and manages them; functions do not call through them yet. The operations are defined on the application layer, [`@on.auto/operations`](../operations), and `docs/self-host/connections.md` is the operator's guide.
+
+## A connection
+
+| Field          | What it holds                                                                                                                                                                                                                             |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `id`           | A UUIDv7, `randomUUIDv7` of `@on.auto/operations`, chosen when it is added                                                                                                                                                                |
+| `name`         | The name a function gives it, checked by `serverNameProblems` of `@on.auto/tool-servers` as a tool server's name is; unique among the connections of the org that are not removed, and never the name of an entry of `TOOL_SERVERS`       |
+| `kind`         | `mcp` or `openapi`                                                                                                                                                                                                                        |
+| `entry`        | `url`, `document`, `base_url`, `headers`, `query_params`, `allowed`, `playbooks`, `record_content` and `request_id`, the fields of `ServerEntrySchema` of `@on.auto/tool-servers` that hold no credential, with descriptions of their own |
+| `credential`   | `none`; `reference` with `name`; `secret` with `placed`, `{ header }`, `{ query }` or `{ security }`; `client_credentials` with `issuer`, `client_id` and `scope`; or `authorization`, which `add_connection` refuses                     |
+| `status`       | `pending`, `connected`, `broken` or `removed`                                                                                                                                                                                             |
+| `added_by`     | The id of the caller who added it, such as `person:<subject>`                                                                                                                                                                             |
+| `added_at`     | When it was added                                                                                                                                                                                                                         |
+| `connected_at` | When it was connected, or `null`                                                                                                                                                                                                          |
+| `broken`       | The sentence of why it is broken while it is, else `null`                                                                                                                                                                                 |
+
+`ConnectionSchema` is the schema of the record. Times are ISO 8601 UTC strings read from Effect's `Clock`.
+
+## The facts and the fold
+
+The connections of an org live in one stream, `connections` relative to the org, `org/<org>/connections` (`connectionsStreamOfOrg`). Every fact carries `by` and `at` in its metadata, the `ActedContext` of `@on.auto/operations`, and none holds a secret, a token or a value derived from either but the link's digest:
+
+| Fact                     | Data                                                                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connection_added`       | `connection`, `name`, `kind`, `entry` and `credential`, as given                                                                                                              |
+| `connection_link_issued` | `connection`, `token_sha256`, the SHA-256 of the link's token in hex, and `expires_at`, ten minutes on; appended with `connection_added`, in one decision                     |
+| `connection_approved`    | `connection`                                                                                                                                                                  |
+| `connection_connected`   | `connection`, and for a credential of the kind `secret` or `client_credentials` `secret_id`, the id the secret store keeps the value under, and `algorithm` for a private key |
+| `connection_broken`      | `connection` and `reason`, the sentence of why                                                                                                                                |
+| `connection_removed`     | `connection`                                                                                                                                                                  |
+
+There is no read model: each call folds the stream (`connectionsFold`, the fold of `registryDecider`). The fold keeps, by id, the record, the open link, whether the connection was approved and the id of its secret, which it keeps after a removal so the store can forget it. It answers the connections newest first. `connection_connected` closes the link, and so does `connection_removed`. A pure decider holds the rules, and the handlers pass it who and when in the command:
+
+- `add` refuses a name a connection of the org holds that is not removed, `conflict` of the kind `taken`, and records the connection and its link.
+- `approve` and `give` look the connection up, `not_found`, then the link: open while the connection is pending, its digest the token's and `expires_at` later than now, else `not_found`, `There is no open link of this token: it is unknown, used up or expired`. Where people sign in, the caller must be `added_by`, else `forbidden`. `approve` connects a connection of the credential `none` or `reference`, recording `connection_approved` and `connection_connected`, and refuses one that takes a value with `conflict`; `give` records the two with the secret's id, and refuses a connection that takes none with `conflict`.
+- `remove` records `connection_removed`, and nothing for a connection already removed.
+- `break` records `connection_broken` with its reason, and nothing for a removed connection or one broken for that reason already. No operation of this package breaks a connection: the change that calls through connections records it when it cannot read a credential.
+
+## The operations
+
+`makeConnectionOperations(services)` makes the seven operations, all org operations, so their routes are relative to the org. `operations` holds the four that are also MCP tools, and `pageRoutes` the three of Studio's page, defined with `defineHttpOperation` and so served over HTTP alone. The services are what the server composes: `secrets`, the `keep` and `forget` of the ledger's `SecretStore`; `policy`; `fileEntries`, the names of the entries of `TOOL_SERVERS`; `providers`, the names of the model providers and gateways; `pages`, Studio's origin and the runtime's, read when a link is made; and `signIn`, whether the runtime signs people in.
+
+| Operation           | Kind    | Route                                | Permission  | Answer                          | Rejections of the handler                             |
+| ------------------- | ------- | ------------------------------------ | ----------- | ------------------------------- | ----------------------------------------------------- |
+| `add_connection`    | command | `POST /connections`                  | `org:write` | the record and `connect`, `201` | `invalid_input`, `forbidden`, `conflict`              |
+| `list_connections`  | query   | `GET /connections`                   | `org:read`  | `{ connections }`, newest first | none                                                  |
+| `get_connection`    | query   | `GET /connections/{id}`              | `org:read`  | the record                      | `not_found`                                           |
+| `remove_connection` | command | `DELETE /connections/{id}`           | `org:write` | the record, removed             | `not_found`, `conflict`                               |
+| `read_link`         | query   | `GET /connections/{id}/link/{token}` | any         | the record                      | `not_found`                                           |
+| `approve`           | command | `POST /connections/{id}/approve`     | any         | the record                      | `not_found`, `forbidden`, `conflict`                  |
+| `give_credential`   | command | `POST /connections/{id}/credential`  | any         | the record                      | `not_found`, `forbidden`, `conflict`, `invalid_input` |
+
+- `add_connection` checks the entry first, every problem at its pointer in one `invalid_input`: the name with `serverNameProblems`; the entry with `credentialProblems` of `@on.auto/config`, so a value that looks like a credential is refused, and with `substituted` of the same package against an empty environment, so any `${…}` is refused as a reference; a `document` that is not a URL, which would be a file on the runtime's disk; then `checkedEntry` of `@on.auto/tool-servers`, as the entry of a file is checked, given the kind as `type` and the org as `org`; `playbooks` both beside the entry and in it; and the credential: `authorization` refused with the sentence that it is not available yet, a secret's header that is no header name or one the entry sends already, a query parameter or a security scheme for an `mcp` connection, a query parameter the entry sends already, and an issuer that is neither https nor on a loopback address (`isPinnableUrl`). It then applies the policy, `forbidden` with the sentence of the rule, refuses the name of an entry of the file, `conflict` of the kind `taken`, and records the connection with a link: a token of 32 random bytes in base64url, of which the fact keeps the SHA-256 alone. `connect.url` is `<studio>/connect?server=<runtime>&org=<org>&connection=<id>&token=<token>` (`connectPageOf`). Its definition gives `linkToOpen`, the page and a message saying what to do there, which the MCP tool asks a client to open (`@on.auto/api`).
+- `read_link` matches the token as `approve` does, never binding a person, and answers the record so the page can show it.
+- `give_credential` checks the link and the fields the credential's kind takes, `value` alone for a `secret`, `client_secret` alone or `private_key` with `algorithm` for `client_credentials`, else `invalid_input`; keeps exactly the value in the secret store, a value the store refuses being `invalid_input` at its pointer with the store's sentence; and records the credential's id. A decision that fails after the value was kept, as when the connection was removed meanwhile, forgets it.
+- `remove_connection` forgets the connection's secret once its removal is appended, and forgetting twice is forgetting once.
+- The three operations of the page are permitted by every permission, since the token binds them and, where people sign in, the person: their caller must still belong to the org of the route.
+
+## The policy
+
+`readConnectionPolicy(environment)` reads `CONNECTIONS`, a JSON object, `connections` of the configuration file through `ConnectionPolicySchema`: `people_may_add`, `true` when left out; `allowed_hosts`, each a host or `*.` and a host, every host when left out; and `credential_kinds`, every kind when left out. A pattern `*.example.com` takes every host under `example.com` and not `example.com` itself, and an `openapi` connection's `document` and `base_url` are each checked. A malformed value is `ConnectionPolicyInvalid`, naming each problem at its pointer.
+
+## Source
+
+`src/index.ts` is the only entry point. `src/registry` holds the record, its entry and credential, the facts and commands of the stream, the fold, the decider and its rules, and the lookups; `src/links` the token and Studio's page; `src/policy` the policy and its rules; `src/entries` the checks of an entry and a credential; `src/operations` the four operations that are also tools, with the fields, words and services the seven share, how they load and record the stream, and `makeConnectionOperations`; `src/page` the three operations of Studio's page; `src/testing` what the tests share. `operations` and `page` depend on the others, and `registry` on none of them.
