@@ -24,7 +24,7 @@ What each function type is for:
 | Reasoning   | Use a prompt and a language model, with tools where configured, to interpret information or produce a response. |
 | Interaction | Exchange information with people or systems.                                                                    |
 | Prediction  | Predict a quantity from the playbook's history or an uploaded dataset, with a model a trainer builds.           |
-| Recall      | Answer from what the playbook keeps of its own history.                                                         |
+| Recall      | Answer from what the playbook keeps of its own history: its memory, not an agent's own notes.                   |
 | Computation | Run a TypeScript program to calculate or transform data exactly.                                                |
 
 Skill references and a separately managed tool library are still planned.
