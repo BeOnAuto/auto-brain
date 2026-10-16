@@ -7,6 +7,7 @@ import type { PostgreSQLLedgerSettings } from '../settings/ledger-settings.ts';
 import { readSettings } from '../settings/settings.ts';
 import { aFakePostgreSQL } from '../testing/databases/fake-postgresql.ts';
 import { aCertificateOfTheLoopback, trustedForTheTest } from '../testing/databases/loopback-certificate.ts';
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { databasePoolsOf, type DatabaseTokenSignerOf } from './database-pools.ts';
 
 interface Asked {
@@ -39,7 +40,7 @@ function aRecordingSigner(): RecordingSigner {
 const proxied = { NODE_USE_ENV_PROXY: '1', HTTPS_PROXY: 'http://proxy.internal:3128' };
 
 function postgresqlLedgerOf(environment: Environment): PostgreSQLLedgerSettings {
-  const { ledger } = readSettings(environment);
+  const { ledger } = readSettings({ SECRETS_KEY: secretsKey, ...environment });
   if (ledger.store === 'sqlite') {
     throw new Error('Expected a ledger in PostgreSQL');
   }

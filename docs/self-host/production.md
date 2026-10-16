@@ -13,6 +13,7 @@ A deployment for a team is the container from [Run with Docker](docker.md), with
 | HTTPS in front, and `PUBLIC_URL`       | [Put HTTPS in front](#put-https-in-front)                                                   |
 | A key for each machine                 | [Give every client its own key](#give-every-client-its-own-key)                             |
 | A durable ledger                       | [Keep the ledger durable](#keep-the-ledger-durable)                                         |
+| A key that seals the secrets           | [Keep the secrets key](#keep-the-secrets-key)                                               |
 | An always-on service                   | [Run it as an always-on service](#run-it-as-an-always-on-service)                           |
 | Enough memory                          | [Plan memory](#plan-memory)                                                                 |
 | One server, or a standby               | [Choose one server or a standby](#run-several-servers)                                      |
@@ -52,6 +53,19 @@ Whoever can read the database can read what the runtime recorded:
 - the arguments and results of tool calls, unless a tool server's entry sets `record_content: false`.
 
 Restrict access to the database, and to its backups, accordingly.
+
+## Keep the secrets key
+
+The runtime seals the secrets it keeps in the ledger's database under `SECRETS_KEY`, as [Secrets at rest](security.md#secrets-at-rest) describes. A container sets it from your platform's secret store, as it does the other secrets, so the key is on no disk the ledger is on and in no backup of it; a ledger in PostgreSQL cannot start without it, and every server that shares the database takes the same key. Make one with either command, and keep a copy where your other secrets are kept, since a secret sealed under a lost key cannot be read again:
+
+```bash
+openssl rand -base64 32
+docker run --rm onauto/runtime:0.9.1 node --print "require('node:crypto').randomBytes(32).toString('base64')"
+```
+
+### Rotate the secrets key
+
+To replace the key, give its value to `SECRETS_KEY_PREVIOUS`, a new key to `SECRETS_KEY`, and restart the server. At start it reads with the old key what the old key sealed, seals it again under the new one, and logs `Secrets are kept sealed under the key <id>, and <count> sealed under the previous key were sealed again under it`, where the id is the new key's, the first 16 hex characters of its SHA-256. Then remove `SECRETS_KEY_PREVIOUS` and restart it again: nothing is sealed under the old key any more. With several servers, stop them all and start them with both keys, as for an [upgrade](#upgrades), since a server that still runs with the old key alone cannot read what the new key seals.
 
 ## Run it as an always-on service
 
@@ -108,7 +122,7 @@ In the image, the server writes one JSON object per line to stderr. Each has a `
 
 What to look for:
 
-- At start, the server logs where the ledger and content are kept, which model providers are configured, and the limits it runs with. It warns about anything missing.
+- At start, the server logs where the ledger and content are kept, the id of the key its secrets are sealed under, which model providers are configured, and the limits it runs with. It warns about anything missing.
 - A setting it cannot read stops it at start, naming the setting and never its value.
 - An error response with status `500` carries an incident id. The server logs that id with the error and the request's `x-request-id`, so either id finds the line; see [Troubleshooting](troubleshooting.md#error-responses).
 - Workflow trouble is logged as warnings, each saying what failed and what happens next; [What the logs say](workflows.md#what-the-logs-say) lists them.

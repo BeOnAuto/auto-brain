@@ -36,7 +36,7 @@ The URL holds the database's password, so it is a secret:
 - Put it with the other secrets in the container's environment, such as `auto-runtime.env`.
 - Never put it in the configuration file, which refuses a `database_url` key.
 
-Each `docker run` on this page starts a container named `auto-runtime` and is an alternative to the others. Run them in the folder from [Run with Docker](docker.md#start-the-server). Its `.env` names the release to run, such as `IMAGE=onauto/runtime:0.9.1`, and its `auto-runtime.env` holds `PUBLIC_URL`, without which the container stops at start. If a container named `auto-runtime` exists, stop and remove it first with `docker stop auto-runtime && docker rm auto-runtime`. Then:
+Each `docker run` on this page starts a container named `auto-runtime` and is an alternative to the others. Run them in the folder from [Run with Docker](docker.md#start-the-server). Its `.env` names the release to run, such as `IMAGE=onauto/runtime:0.9.1`, and its `auto-runtime.env` holds `PUBLIC_URL`, without which the container stops at start, and `SECRETS_KEY`, which a ledger in PostgreSQL needs. If a container named `auto-runtime` exists, stop and remove it first with `docker stop auto-runtime && docker rm auto-runtime`. Then:
 
 ```bash
 echo 'DATABASE_URL=postgresql://auto_runtime:<password>@db.example.com:5432/auto_runtime?sslmode=verify-full' >> auto-runtime.env
@@ -52,6 +52,9 @@ With `DATABASE_URL` the container needs no volume. At start:
 - The server logs that the ledger is kept in PostgreSQL, naming the database and its host, never the URL.
 - A database it cannot reach stops it, naming the host and port.
 - Setting `LEDGER_FILE` as well stops it, since the ledger can be in only one place.
+- Without `SECRETS_KEY` it stops, naming the setting.
+
+`SECRETS_KEY` is the key the secrets kept in the database are sealed under. Every server that shares the database takes the same key, as [Keep the secrets key](production.md#keep-the-secrets-key) describes.
 
 ### TLS
 

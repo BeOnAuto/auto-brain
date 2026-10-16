@@ -5,6 +5,7 @@ import { uploadedWeeklyOrders } from '@on.auto/prediction/testing';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { answeredBeforeTheBody, keptText, sha256Of, uploaded } from './dataset-uploads.ts';
@@ -40,7 +41,7 @@ async function onPostgreSQL(): Promise<Environment> {
   onTestFinished(() => administer(`DROP DATABASE ${name} WITH (FORCE)`));
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
-  return { LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href, SECRETS_KEY: secretsKey };
 }
 
 interface Store {

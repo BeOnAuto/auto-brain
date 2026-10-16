@@ -4,6 +4,7 @@ import { Effect, Schema } from 'effect';
 import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
+import { secretsKey } from '../testing/databases/secrets-key.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
@@ -31,7 +32,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(postgresql);
   database.pathname = `/${name}`;
-  return { LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href, SECRETS_KEY: secretsKey };
 }
 
 interface Store {

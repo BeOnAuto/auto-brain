@@ -14,6 +14,11 @@ export {
   type PostgreSQLPools,
   type PostgreSQLStoreOptions,
 } from './postgresql-event-store.ts';
+export {
+  postgresqlSecretStore,
+  type PostgreSQLSecretStoreOptions,
+  type SecretConnections,
+} from '../secrets/postgresql-secret-store.ts';
 
 export interface PostgreSQLLedgerOptions extends PostgreSQLOptions {
   readonly appends?: AppendSignal;

@@ -12,7 +12,7 @@ import {
   type CredentialSettings,
 } from './access-settings.ts';
 import { readContentSettings, type ContentSettings } from './content-settings.ts';
-import { readLedgerSettings, type LedgerSettings } from './ledger-settings.ts';
+import { readLedgerAndSecrets, type LedgerAndSecrets } from './secrets-settings.ts';
 import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
 
 interface ConfigFileSources {
@@ -21,10 +21,9 @@ interface ConfigFileSources {
   readonly overridden: readonly string[];
 }
 
-export interface Settings extends FunctionSettings, AccessSettings, CredentialSettings {
+export interface Settings extends FunctionSettings, AccessSettings, CredentialSettings, LedgerAndSecrets {
   readonly host: string;
   readonly port: number;
-  readonly ledger: LedgerSettings;
   readonly content: ContentSettings;
   readonly proxy: ProxySettings;
   readonly workflows: WorkflowSettings;
@@ -42,7 +41,7 @@ export function readSettings(given: Environment): Settings {
   const { host, port } = readServerConfig(environment);
   const { allowedOrigins, logFormat, logLevel } = Effect.runSync(readAccessSettings(environment));
   const { apiKeys, identityIssuer, signIn } = readCredentialSettings(environment);
-  const ledger = Effect.runSync(readLedgerSettings(environment));
+  const { ledger, secrets } = Effect.runSync(readLedgerAndSecrets(environment));
   const content = Effect.runSync(readContentSettings(environment));
   const functions = readFunctionSettings(environment, file);
   const workflows = Effect.runSync(readWorkflowSettings(environment));
@@ -55,6 +54,7 @@ export function readSettings(given: Environment): Settings {
     identityIssuer,
     signIn,
     ledger,
+    secrets,
     content,
     proxy: proxySettingsOf(environment),
     logFormat,

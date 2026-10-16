@@ -65,7 +65,13 @@ const functionsRun: readonly unknown[] = [
 ];
 
 const ledgerKept = `The ledger is kept in the file ${ledger.fileName}`;
-const keptIn: readonly string[] = [ledgerKept, "Content is kept in the ledger's database"];
+const keptIn: readonly unknown[] = [
+  ledgerKept,
+  "Content is kept in the ledger's database",
+  expect.stringMatching(
+    /^Secrets are kept sealed under the key [\da-f]{16}, and 0 sealed under the previous key were sealed again under it$/u,
+  ),
+];
 
 function startInLocalMode(...after: readonly string[]): readonly unknown[] {
   return [expect.stringMatching(/^Local mode is on: /u), ...keptIn, noModelProvider, ...functionsRun, ...after];

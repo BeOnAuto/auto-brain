@@ -48,10 +48,11 @@ echo 'IMAGE=onauto/runtime:0.9.1' > .env
 
 Replace `0.9.1` with the newest version on the [releases page](https://github.com/BeOnAuto/runtime/releases). Every command below takes the image from this line, so an upgrade changes only this line.
 
-People sign in through the Auto identity service. Auto needs only the address at which people reach it, `PUBLIC_URL`. Put it in `auto-runtime.env`, the file that holds Auto's own settings, one `NAME=value` per line. Later steps add to it. A container needs `PUBLIC_URL` or `API_KEYS`: it listens on every interface, so without either it stops at start ([Who can call a server](security.md#who-can-call-a-server)). Then create a volume for the ledger:
+People sign in through the Auto identity service. Auto needs the address at which people reach it, `PUBLIC_URL`, and a key to seal the secrets it keeps under, `SECRETS_KEY`, 32 random bytes in base64. Put both in `auto-runtime.env`, the file that holds Auto's own settings, one `NAME=value` per line. Later steps add to it. A container needs `PUBLIC_URL` or `API_KEYS`: it listens on every interface, so without either it stops at start ([Who can call a server](security.md#who-can-call-a-server)). Then create a volume for the ledger:
 
 ```bash
 echo 'PUBLIC_URL=http://localhost:5555' > auto-runtime.env
+echo "SECRETS_KEY=$(openssl rand -base64 32)" >> auto-runtime.env
 docker volume create auto-runtime-data
 ```
 
@@ -79,6 +80,8 @@ What the script does:
 - `--publish 127.0.0.1:5555:5555` makes port `5555` reachable from this machine only. It publishes the port on the loopback address `127.0.0.1`, the machine's own address, which other machines cannot reach. That suits an `http` `PUBLIC_URL` ([Let people sign in](security.md#let-people-sign-in) says why). To reach Auto from other machines, follow [Put HTTPS in front](production.md#put-https-in-front).
 - `--volume auto-runtime-data:/data` keeps the ledger on the named volume when the container is replaced. Without it, Docker gives each container an empty anonymous volume, and its playbooks last only as long as that container.
 - `--env-file auto-runtime.env` passes the settings and secrets. Docker reads the file when it creates the container, so `docker restart auto-runtime` does not pick up a change to it. Run `./start-runtime.sh` instead.
+
+`SECRETS_KEY` stays out of the volume, so a copy of the volume holds no secret anyone can read without it. Without `SECRETS_KEY`, Auto would make a key itself, in `secrets.key` on the volume beside the ledger, where a copy of the volume would carry it. Keep a copy of the key with your other secrets: a secret sealed under a lost key cannot be read again. Where there is no `openssl`, `. ./.env && docker run --rm "$IMAGE" node --print "require('node:crypto').randomBytes(32).toString('base64')"` makes one too.
 
 ## 2. Check that it responds {#check-that-it-answers}
 
@@ -150,7 +153,10 @@ In this variant the database holds the ledger, and Auto's container keeps nothin
    mkdir auto-runtime && cd auto-runtime
    echo 'IMAGE=onauto/runtime:0.9.1' > .env
    echo 'PUBLIC_URL=http://localhost:5555' > auto-runtime.env
+   echo "SECRETS_KEY=$(openssl rand -base64 32)" >> auto-runtime.env
    ```
+
+   Auto takes `SECRETS_KEY` from `auto-runtime.env`, as in [step 1](#start-the-server). A ledger in PostgreSQL needs it, and Auto stops at start without it.
 
 3. Save this as `compose.yaml` beside `auto-runtime.env`:
 
@@ -276,6 +282,18 @@ After the upgrade:
 - Calls cut off by the stop run again, as [Stop](#stop) describes.
 - When several servers share a database, follow [Upgrade several servers](workflows.md#upgrade-several-servers).
 
+## Rotate the secrets key {#rotate-the-secrets-key}
+
+To replace `SECRETS_KEY`, move its value to `SECRETS_KEY_PREVIOUS` and add a new key:
+
+```bash
+sed 's/^SECRETS_KEY=/SECRETS_KEY_PREVIOUS=/' auto-runtime.env > auto-runtime.env.next
+echo "SECRETS_KEY=$(openssl rand -base64 32)" >> auto-runtime.env.next
+mv auto-runtime.env.next auto-runtime.env
+```
+
+Then replace the container: `./start-runtime.sh` for the single container, or `docker compose up --detach --force-recreate runtime` with Compose. At start Auto seals again under the new key what the old one sealed, and `docker logs auto-runtime`, or `docker compose logs runtime`, says how many: `Secrets are kept sealed under the key <id>, and <count> sealed under the previous key were sealed again under it`. Then delete the `SECRETS_KEY_PREVIOUS` line from `auto-runtime.env` and replace the container once more. [Rotate the secrets key](production.md#rotate-the-secrets-key) covers several servers.
+
 ## Back up and restore {#back-up-and-restore}
 
 For the single container, the ledger on the volume is three files that belong together: `ledger.db`, `ledger.db-wal` and `ledger.db-shm`. Stop Auto, copy the whole volume, and start it again:
@@ -302,6 +320,8 @@ With PostgreSQL, use your database's own backups, or `pg_dump`. The workflows ar
 ```bash
 docker compose exec -T postgres pg_dump --username auto_runtime --format custom auto_runtime > ledger.dump
 ```
+
+The secrets in a backup open only under the `SECRETS_KEY` that sealed them, so a restored ledger starts with that key, which you keep apart from the backups.
 
 ## Stop
 

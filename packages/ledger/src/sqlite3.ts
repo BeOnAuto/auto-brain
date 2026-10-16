@@ -7,6 +7,7 @@ import type { Layer } from 'effect';
 
 import type { AppendSignal } from './appends/append-signal.ts';
 import type { AppendObserver } from './event-store.ts';
+import { sqliteSecretStoreOn, type SecretStoreOptions } from './secrets/sqlite-secret-store.ts';
 import { sqliteLedgerLayer } from './sqlite-event-store.ts';
 
 export interface LedgerOptions {
@@ -34,6 +35,11 @@ function prepareDirectoryOf(fileName: string): void {
   }
 }
 
+function sqlite3OptionsOf(fileName: string) {
+  prepareDirectoryOf(fileName);
+  return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
+}
+
 export function ledgerLayer({
   fileName,
   runOutcomes,
@@ -42,11 +48,9 @@ export function ledgerLayer({
   content,
   observer,
 }: LedgerOptions): Layer.Layer<Ledger> {
-  return sqliteLedgerLayer(
-    () => {
-      prepareDirectoryOf(fileName);
-      return { driver: sqlite3EventStoreDriver, fileName, connectionOptions: modestConnections };
-    },
-    { runOutcomes, projections, appends, content, observer },
-  );
+  return sqliteLedgerLayer(() => sqlite3OptionsOf(fileName), { runOutcomes, projections, appends, content, observer });
+}
+
+export function sqliteSecretStore({ fileName, keys }: SecretStoreOptions) {
+  return sqliteSecretStoreOn(() => sqlite3OptionsOf(fileName), keys);
 }

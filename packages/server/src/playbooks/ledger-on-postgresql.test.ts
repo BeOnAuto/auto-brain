@@ -17,6 +17,8 @@ const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
 const skipped = server === '';
 
+const secretsKey = Buffer.alloc(32, 7).toString('base64');
+
 const notice = skipped ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
 
 async function administer(statement: string): Promise<void> {
@@ -37,7 +39,7 @@ async function onADatabaseOfItsOwn(): Promise<Readonly<Record<string, string>>> 
   });
   const database = new URL(server);
   database.pathname = `/${name}`;
-  return { LEDGER_FILE: '', DATABASE_URL: database.href };
+  return { LEDGER_FILE: '', DATABASE_URL: database.href, SECRETS_KEY: secretsKey };
 }
 
 const playbook = '/v1/orgs/acme/playbooks/alpha';
