@@ -70,7 +70,11 @@ export const topicRows: KeyedProjection = {
   ],
   indexes: [{ name: 'due', columns: ['due_at'], acrossPlaybooks: true, whereSet: 'due_at' }],
   keyOf: (message) => Option.getOrUndefined(Option.map(decodeFact(message), (fact) => fact.data.topic)),
-  advanced: { columns: ['open', 'next_at', 'due_at'], setBy: ['topic_opened'] },
+  advanced: [
+    { column: 'open', setBy: ['topic_opened'] },
+    { column: 'next_at', setBy: ['topic_opened'] },
+    { column: 'due_at', setBy: ['topic_opened'] },
+  ],
   rowAfter: (row, message) =>
     Option.getOrUndefined(Option.flatMapNullishOr(decodeFact(message), (fact) => rowAfterFact(row, fact, message))),
 };

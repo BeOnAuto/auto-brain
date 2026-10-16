@@ -197,6 +197,9 @@ export const predictionBuilds: KeyedProjection = {
     { name: 'builds_scoring', columns: ['scoring_since'], acrossPlaybooks: true, whereSet: 'scoring_since' },
   ],
   keyOf,
-  advanced: { columns: ['next_due_at', 'staged'], setBy: types },
+  advanced: [
+    { column: 'next_due_at', setBy: types },
+    { column: 'staged', setBy: types },
+  ],
   rowAfter,
 };

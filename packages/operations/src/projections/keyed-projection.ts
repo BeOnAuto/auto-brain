@@ -35,8 +35,8 @@ export interface ProjectedStream {
   readonly id: string;
 }
 
-export interface AdvancedColumns {
-  readonly columns: readonly string[];
+export interface AdvancedColumn {
+  readonly column: string;
   readonly setBy: readonly string[];
 }
 
@@ -48,7 +48,7 @@ export interface KeyedProjection {
   readonly columns: readonly ProjectedColumn[];
   readonly indexes: readonly ProjectedIndex[];
   readonly keyOf?: (message: ProjectedMessage, stream: ProjectedStream) => string | undefined;
-  readonly advanced?: AdvancedColumns;
+  readonly advanced?: readonly AdvancedColumn[];
   readonly rowAfter: (row: ProjectedRow | undefined, message: ProjectedMessage) => ProjectedRow | undefined;
 }
 
@@ -152,12 +152,12 @@ export function rowKeyOf(
   return projection.keyOf === undefined ? stream.id : projection.keyOf(message, stream);
 }
 
-export function advancedColumnsOf({ advanced }: KeyedProjection): readonly string[] {
-  return advanced?.columns ?? [];
+export function advancedColumnsOf({ advanced = [] }: KeyedProjection): readonly string[] {
+  return advanced.map(({ column }) => column);
 }
 
-export function setsAdvancedColumns({ advanced }: KeyedProjection, type: string): boolean {
-  return advanced?.setBy.includes(type) ?? false;
+export function advancedColumnsLeftBy({ advanced = [] }: KeyedProjection, type: string): readonly string[] {
+  return advanced.filter(({ setBy }) => !setBy.includes(type)).map(({ column }) => column);
 }
 
 function requireNamed(what: string, name: string, pattern: Readonly<RegExp>): void {
@@ -179,12 +179,19 @@ function requireIndexedColumns(projection: KeyedProjection, { columns, whereSet 
   requireKnownColumns(projection, [...ordered, ...(whereSet === undefined ? [] : [whereSet])]);
 }
 
-function requireAdvancedSetByItsTypes(projection: KeyedProjection, { setBy }: AdvancedColumns): void {
+function requireAdvancedSetByItsTypes(projection: KeyedProjection, { column, setBy }: AdvancedColumn): void {
   const unknown = setBy.find((type) => !projection.types.includes(type));
   if (unknown !== undefined) {
     throw new Error(
-      `The projection ${projection.name} does not fold ${unknown}, which it says sets its advanced columns`,
+      `The projection ${projection.name} does not fold ${unknown}, which it says sets its advanced column ${column}`,
     );
+  }
+}
+
+function requireAdvancedOnce(projection: KeyedProjection, columns: readonly string[]): void {
+  const repeated = columns.find((column, at) => columns.indexOf(column) < at);
+  if (repeated !== undefined) {
+    throw new Error(`The projection ${projection.name} declares its advanced column ${repeated} more than once`);
   }
 }
 
@@ -209,9 +216,11 @@ export function checkedProjection(projection: KeyedProjection): KeyedProjection 
     requireNamed('index', index.name, columnName);
     requireIndexedColumns(projection, index);
   }
-  if (projection.advanced !== undefined) {
-    requireKnownColumns(projection, projection.advanced.columns);
-    requireAdvancedSetByItsTypes(projection, projection.advanced);
+  const advanced = advancedColumnsOf(projection);
+  requireKnownColumns(projection, advanced);
+  requireAdvancedOnce(projection, advanced);
+  for (const column of projection.advanced ?? []) {
+    requireAdvancedSetByItsTypes(projection, column);
   }
   return projection;
 }

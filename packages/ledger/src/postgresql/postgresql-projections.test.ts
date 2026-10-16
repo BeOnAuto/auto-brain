@@ -261,4 +261,25 @@ describe('the fold of a projection keyed by its mapping on PostgreSQL', () => {
       'DO UPDATE SET topic = excluded.topic, note = excluded.note, last_message = excluded.last_message, open = excluded.open, next_at = excluded.next_at, due_at = excluded.due_at',
     ]);
   });
+
+  it('writes, of the columns its reader advances, each one the fact sets and none other', async () => {
+    const fold = recordedAnswering(topicAnswering);
+    const noteOpens = {
+      ...topicRows,
+      advanced: [
+        { column: 'open', setBy: ['topic_opened', 'topic_noted'] },
+        { column: 'next_at', setBy: ['topic_opened'] },
+        { column: 'due_at', setBy: ['topic_opened'] },
+      ],
+    };
+    const [registration] = postgresqlProjectionsOf({ projections: [noteOpens] }).registrations;
+
+    await registration?.projection.handle([appendedNote('topic_noted', { topic: 'spring', note: 'later' })], {
+      execute: fold.execute,
+    });
+
+    expect(fold.commands.map((command) => command.slice(command.indexOf('DO UPDATE SET')))).toEqual([
+      'DO UPDATE SET topic = excluded.topic, note = excluded.note, last_message = excluded.last_message, open = excluded.open',
+    ]);
+  });
 });
