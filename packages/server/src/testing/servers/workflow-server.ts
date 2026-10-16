@@ -1,12 +1,10 @@
-import { setTimeout } from 'node:timers/promises';
-
 import type { McpSession, ToolResult } from '@on.auto/api/testing';
 import type { ScriptedReply } from '@on.auto/reasoning/testing';
 import type { HostClock } from '@on.auto/workflow-host';
 import { Option, Schema } from 'effect';
 
 import type { ProgramPoolOf } from '../../composition/served-computation.ts';
-import type { RequestOptions, TestResponse } from './http-client.ts';
+import { until, type RequestOptions, type TestResponse } from './http-client.ts';
 import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
 
 export const workflowTestTimeoutMs = 60_000;
@@ -39,24 +37,16 @@ export function isStarted(body: unknown): boolean {
   return Option.getOrUndefined(statusOf(body))?.status === 'started';
 }
 
-export async function settledRun(
-  server: ReasoningServer,
-  path: string,
-  options: RequestOptions = {},
-): Promise<TestResponse> {
-  const response = await server.call('GET', path, options);
-  if (!isStarted(response.body)) {
-    return response;
-  }
-  await setTimeout(100);
-  return settledRun(server, path, options);
+export function settledRun(server: ReasoningServer, path: string, options: RequestOptions = {}): Promise<TestResponse> {
+  return until(
+    () => server.call('GET', path, options),
+    (response) => !isStarted(response.body),
+  );
 }
 
-export async function settledOverMcp(session: McpSession, runId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_run', { run_id: runId });
-  if (!isStarted(reading.structuredContent)) {
-    return reading;
-  }
-  await setTimeout(100);
-  return settledOverMcp(session, runId);
+export function settledOverMcp(session: McpSession, runId: string): Promise<ToolResult> {
+  return until(
+    () => session.callTool('get_run', { run_id: runId }),
+    (reading) => !isStarted(reading.structuredContent),
+  );
 }

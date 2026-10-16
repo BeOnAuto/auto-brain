@@ -14,9 +14,9 @@ import {
   threadReading,
   toldReading,
 } from '../testing/servers/chat-readings.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 
 const threaded = [...chatDelivery, ...threadReading];
 

@@ -2,18 +2,15 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { serverHoldingARequest, untilRefusingConnections } from '../testing/processes/held-requests.ts';
-import {
-  shortShutdownTimeoutMs,
-  shutdownLongerThanATestMs,
-  shutdownTimeoutVariable,
-} from '../testing/processes/shutdown-timeouts.ts';
-import { spawnServer } from '../testing/processes/spawned-server.ts';
+import { untilRefusingConnections } from '../testing/processes/accepting-connections.ts';
+import { shortShutdownTimeoutMs, shutdownTimeoutVariable } from '../testing/processes/shutdown-timeouts.ts';
+import { serverHoldingARequest, spawnServer } from '../testing/processes/spawned-server.ts';
+import { longerThanTheTestMs } from '../testing/servers/http-client.ts';
 import { defaultServerOptions } from './lifecycle.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
-const shuttingDownPatiently = { [shutdownTimeoutVariable]: String(shutdownLongerThanATestMs) };
+const shuttingDownPatiently = { [shutdownTimeoutVariable]: String(longerThanTheTestMs) };
 
 describe('shutting down the server process', () => {
   it('lets a request in flight finish after SIGTERM and exits 0 once it has, without waiting for the shutdown timeout', async () => {

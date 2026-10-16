@@ -1,8 +1,9 @@
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { ended, runsOf, servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
+import { ended, runsOf, servingCalls, startedRunOf } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
 
 let server: ReasoningServer;

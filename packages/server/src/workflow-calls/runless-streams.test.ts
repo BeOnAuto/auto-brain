@@ -5,8 +5,9 @@ import { Client } from 'pg';
 import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { secretsKey } from '../testing/databases/secrets-key.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingCalls, startedRunOf, until } from '../testing/servers/workflow-calls.ts';
+import { servingCalls, startedRunOf } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';

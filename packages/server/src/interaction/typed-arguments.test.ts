@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
 import { chatEnvironment, chatServer } from '../testing/servers/chat-deliveries.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 
 const limitApproval = [
   '---',

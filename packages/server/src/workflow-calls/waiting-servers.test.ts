@@ -6,7 +6,8 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import type { SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { requestTo, settledOver, workflowProcess, type Answer } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { until, workflows } from '../testing/servers/workflow-calls.ts';
+import { until } from '../testing/servers/http-client.ts';
+import { workflows } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const Listed = Schema.Struct({ runs: Schema.Array(Schema.Struct({ run_id: Schema.String })) });

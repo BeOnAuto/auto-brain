@@ -4,8 +4,7 @@ import type { SignInSettings } from '@on.auto/identity';
 import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { serverHoldingARequest } from '../testing/processes/held-requests.ts';
-import { spawnServer } from '../testing/processes/spawned-server.ts';
+import { serverHoldingARequest, spawnServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import {
   logAccessMode,

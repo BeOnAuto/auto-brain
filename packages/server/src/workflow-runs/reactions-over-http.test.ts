@@ -1,10 +1,8 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ListedRuns = Schema.Struct({
@@ -60,14 +58,11 @@ async function servingWith(...definitions: readonly (readonly [string, string])[
   );
 }
 
-async function runsOf(name: string, attempts = 300): Promise<readonly ListedRun[]> {
-  const response = await server.call('GET', `${alpha}/runs?type=workflow&name=${name}`);
-  const { runs } = runsIn(response.body);
-  if (runs.some(({ status }) => status !== 'started') || attempts <= 1) {
-    return runs;
-  }
-  await setTimeout(100);
-  return runsOf(name, attempts - 1);
+function runsOf(name: string): Promise<readonly ListedRun[]> {
+  return until(
+    async () => runsIn((await server.call('GET', `${alpha}/runs?type=workflow&name=${name}`)).body).runs,
+    (runs) => runs.some(({ status }) => status !== 'started'),
+  );
 }
 
 async function historyOf(path: string): Promise<readonly string[]> {

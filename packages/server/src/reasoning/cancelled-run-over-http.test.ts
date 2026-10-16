@@ -1,8 +1,8 @@
 import { Effect, Option, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 
@@ -35,7 +35,7 @@ describe('a run whose client goes away while the model answers', () => {
       signal: givingUp.signal,
     }).catch((error: unknown) => error);
     await until(
-      () => Promise.resolve(server.modelCalls()),
+      () => server.modelCalls(),
       (calls) => calls > 0,
     );
     givingUp.abort();

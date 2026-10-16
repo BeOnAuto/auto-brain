@@ -3,6 +3,7 @@ import { setTimeout } from 'node:timers/promises';
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
+import { shutdownTimeoutMs } from '../lifecycle/shutdown.ts';
 import {
   logLinesOf,
   requestTo,
@@ -11,7 +12,7 @@ import {
   type Answer,
 } from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
@@ -65,7 +66,7 @@ describe('main with workflows', () => {
       .map(({ message, level }) => `${level} ${message}`);
 
     expect(exitCode).toBe(0);
-    expect(performance.now() - stopping).toBeLessThan(3000);
+    expect(performance.now() - stopping).toBeLessThan(shutdownTimeoutMs);
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
     expect(startUpLines.slice(1)).toEqual([
       `INFO The ledger is kept in the file ${ledger.fileName}`,

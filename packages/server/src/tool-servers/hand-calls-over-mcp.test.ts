@@ -4,8 +4,8 @@ import { allPermissions } from '@on.auto/operations';
 import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -144,7 +144,7 @@ describe('a call made by hand whose caller goes away over MCP while the tool is 
       signal: leaving.signal,
     }).catch((error: unknown) => error);
     await until(
-      () => Promise.resolve(graph.received().length),
+      () => graph.received().length,
       (received) => received === 1,
     );
     leaving.abort();
@@ -152,7 +152,7 @@ describe('a call made by hand whose caller goes away over MCP while the tool is 
 
     expect(
       await until(
-        () => Promise.resolve(graph.endedSessions()),
+        () => graph.endedSessions(),
         (ended) => ended === 1,
       ),
     ).toBe(1);

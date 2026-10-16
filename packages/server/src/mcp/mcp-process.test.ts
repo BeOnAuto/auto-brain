@@ -5,8 +5,7 @@ import { connectMcp, problemIn, withMcpSession, type McpClientKind, type McpSess
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { callInFlightFileVariable } from '../testing/entries/calls-in-flight.ts';
-import { untilCallInFlight } from '../testing/processes/held-requests.ts';
-import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { spawnServer, untilCallInFlight, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const serveWithWaitingTool = fileURLToPath(new URL('../testing/entries/serve-with-waiting-tool.ts', import.meta.url));

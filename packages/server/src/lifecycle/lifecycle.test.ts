@@ -8,12 +8,12 @@ import { describe, expect, it } from 'vitest';
 import { optionsComposing, optionsServing } from '../testing/entries/serving-options.ts';
 import { heldRequests } from '../testing/entries/test-routes.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
-import { shutdownLongerThanATestMs } from '../testing/processes/shutdown-timeouts.ts';
+import { longerThanTheTestMs } from '../testing/servers/http-client.ts';
 import { startServer, defaultServerOptions, servedBy, type Served, type ServerOptions } from './lifecycle.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };
 
-function serving(routes: RegisterRoutes, shutdownTimeoutMs = shutdownLongerThanATestMs): ServerOptions<never> {
+function serving(routes: RegisterRoutes, shutdownTimeoutMs = longerThanTheTestMs): ServerOptions<never> {
   return { ...optionsServing(() => servedBy([routes])), shutdownTimeoutMs };
 }
 
@@ -254,7 +254,7 @@ describe('the work a stopping server does besides answering requests', () => {
           return Promise.resolve();
         },
       })),
-      shutdownTimeoutMs: shutdownLongerThanATestMs,
+      shutdownTimeoutMs: longerThanTheTestMs,
     });
     const inFlight = heldAt(server.port);
     await held.arrived;
@@ -272,7 +272,7 @@ describe('stopping a started server with connections still open', () => {
   it('closes a keep-alive connection that is idle, instead of waiting for it until the shutdown timeout', async () => {
     const server = await startServer(loopback, {
       ...defaultServerOptions,
-      shutdownTimeoutMs: shutdownLongerThanATestMs,
+      shutdownTimeoutMs: longerThanTheTestMs,
     });
     await (await fetch(`http://127.0.0.1:${server.port}/health`)).text();
 

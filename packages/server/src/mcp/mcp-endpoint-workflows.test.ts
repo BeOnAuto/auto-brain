@@ -1,9 +1,8 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
@@ -37,13 +36,11 @@ function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, use);
 }
 
-async function settled(session: McpSession, runId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_run', { playbook: 'sales', run_id: runId });
-  if (reading.structuredContent?.['status'] !== 'started') {
-    return reading;
-  }
-  await setTimeout(100);
-  return settled(session, runId);
+function settled(session: McpSession, runId: string): Promise<ToolResult> {
+  return until(
+    () => session.callTool('get_run', { playbook: 'sales', run_id: runId }),
+    (reading) => reading.structuredContent?.['status'] !== 'started',
+  );
 }
 
 async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {

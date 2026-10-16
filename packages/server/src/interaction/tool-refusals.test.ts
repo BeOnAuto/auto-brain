@@ -3,9 +3,9 @@ import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { brief, servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 
 const decodeHistory = Schema.decodeUnknownSync(
   Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),

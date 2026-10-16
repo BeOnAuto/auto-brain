@@ -2,9 +2,9 @@ import { threadReplies } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { askingASystem } from '../testing/servers/system-calls.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 import { workflowSource } from '../testing/servers/workflow-server.ts';
 
 const paging = {

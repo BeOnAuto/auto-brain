@@ -8,8 +8,8 @@ import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { secretsKey } from '../testing/databases/secrets-key.ts';
 import type { TestResponse } from '../testing/servers/http-client.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 

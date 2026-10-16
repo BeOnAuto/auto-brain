@@ -3,11 +3,12 @@ import { once } from 'node:events';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { homedir, tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { Option, Schema } from 'effect';
 import { onTestFinished } from 'vitest';
+
+import { until } from '../servers/http-client.ts';
 
 export const developmentTestTimeoutMs = 60_000;
 
@@ -119,25 +120,9 @@ export function pidsOf({ files }: Development): readonly number[] {
     .map((line) => Number(pidLine(line).pid));
 }
 
-const goneWithinMs = 30_000;
-
-export async function untilGone({ outputClosed }: Development): Promise<boolean> {
-  const givingUp = new AbortController();
-  const gone = await Promise.race([
-    outputClosed.then(() => true),
-    setTimeout(goneWithinMs, false, { signal: givingUp.signal }).catch(() => false),
-  ]);
-  givingUp.abort();
-  return gone;
-}
-
 export async function untilWritten(read: () => string, wanted: Readonly<RegExp>): Promise<RegExpExecArray> {
-  const found = wanted.exec(read());
-  if (found !== null) {
-    return found;
-  }
-  await setTimeout(50);
-  return untilWritten(read, wanted);
+  const written = await until(read, (text) => wanted.test(text));
+  return Option.getOrThrow(Option.fromNullishOr(wanted.exec(written)));
 }
 
 const logLineOf = Schema.decodeUnknownOption(
@@ -179,10 +164,9 @@ function listeningPorts({ stdout }: Development): readonly number[] {
 }
 
 export async function untilListening(development: Development, times = 1): Promise<number> {
-  const ports = listeningPorts(development);
-  if (ports.length >= times) {
-    return Number(ports.at(times - 1));
-  }
-  await setTimeout(50);
-  return untilListening(development, times);
+  const ports = await until(
+    () => listeningPorts(development),
+    (listening) => listening.length >= times,
+  );
+  return Number(ports.at(times - 1));
 }

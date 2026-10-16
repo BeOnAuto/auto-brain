@@ -1,9 +1,9 @@
 import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 import { workflowSource } from '../testing/servers/workflow-server.ts';
 
 const decodeRuns = Schema.decodeUnknownSync(

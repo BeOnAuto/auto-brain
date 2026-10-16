@@ -5,9 +5,9 @@ import { ManagedRuntime, Schema, type Layer } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { chatEnvironment, chatKey } from './chat-deliveries.ts';
+import { until } from './http-client.ts';
 import { interactionServerOn, servingInteractions, type InteractionServer } from './interaction-server.ts';
 import { alpha } from './reasoning-server.ts';
-import { until } from './workflow-calls.ts';
 
 export interface ProjectionStore {
   readonly environment: Readonly<Record<string, string>>;

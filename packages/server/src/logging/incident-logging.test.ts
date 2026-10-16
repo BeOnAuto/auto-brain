@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
+import { until } from '../testing/servers/http-client.ts';
 import { logIncident } from './logging.ts';
 
 const serveWithSelfCausedError = fileURLToPath(
@@ -16,7 +16,7 @@ selfCaused.cause = selfCaused;
 
 function stderrOnceItContains(child: SpawnedServer, text: string): Promise<string> {
   return until(
-    () => Promise.resolve(child.output().stderr),
+    () => child.output().stderr,
     (stderr) => stderr.includes(text),
   );
 }

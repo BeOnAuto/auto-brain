@@ -1,10 +1,9 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { answers, callingTools, textResult } from '@on.auto/reasoning/testing';
 import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
 
@@ -53,13 +52,11 @@ async function serving(fake: FakeMcpServer): Promise<ReasoningServer> {
 
 type Seen = ReturnType<FakeMcpServer['seen']>;
 
-async function untilCancelled(fake: FakeMcpServer): Promise<Seen> {
-  const seen = fake.seen().filter(({ rpc }) => rpc === 'tools/call' || rpc === 'notifications/cancelled');
-  if (seen.some(({ rpc }) => rpc === 'notifications/cancelled')) {
-    return seen;
-  }
-  await setTimeout(50);
-  return untilCancelled(fake);
+function untilCancelled(fake: FakeMcpServer): Promise<Seen> {
+  return until(
+    (): Seen => fake.seen().filter(({ rpc }) => rpc === 'tools/call' || rpc === 'notifications/cancelled'),
+    (seen) => seen.some(({ rpc }) => rpc === 'notifications/cancelled'),
+  );
 }
 
 describe('a workflow step that times out while its reasoning function calls a tool', () => {

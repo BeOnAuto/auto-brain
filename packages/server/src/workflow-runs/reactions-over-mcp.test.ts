@@ -1,9 +1,8 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/servers/http-client.ts';
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
 
@@ -40,15 +39,12 @@ async function onAlpha<T>(use: (session: McpSession) => Promise<T>): Promise<T> 
   );
 }
 
-async function endedRuns(session: McpSession, attempts = 300): Promise<typeof ListedRuns.Type> {
-  const listed = runsIn(
-    (await session.callTool('list_runs', { type: 'workflow', name: 'close-the-month' })).structuredContent,
+function endedRuns(session: McpSession): Promise<typeof ListedRuns.Type> {
+  return until(
+    async () =>
+      runsIn((await session.callTool('list_runs', { type: 'workflow', name: 'close-the-month' })).structuredContent),
+    (listed) => listed.runs.some(({ status }) => status !== 'started'),
   );
-  if (listed.runs.some(({ status }) => status !== 'started') || attempts <= 1) {
-    return listed;
-  }
-  await setTimeout(100);
-  return endedRuns(session, attempts - 1);
 }
 
 describe('a workflow whose trigger is an event, over MCP', () => {
