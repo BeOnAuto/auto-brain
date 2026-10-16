@@ -55,13 +55,18 @@ export function performedOnce(works: readonly DueWork[], now: number): Promise<n
   );
 }
 
-async function performedFrom(works: readonly DueWork[], ahead: number, roundsLeft: number): Promise<number> {
-  const performed = await performedOnce(works, Date.now() + ahead);
-  return performed === 0 || roundsLeft <= 1
-    ? performed
-    : performed + (await performedFrom(works, ahead, roundsLeft - 1));
+interface DueDriven {
+  readonly due: readonly DueWork[];
+  readonly now: () => number;
 }
 
-export function performedUntilQuiet(works: readonly DueWork[], ahead = 1000, most = 64): Promise<number> {
-  return performedFrom(works, ahead, most);
+async function performedFrom(driven: DueDriven, ahead: number, roundsLeft: number): Promise<number> {
+  const performed = await performedOnce(driven.due, driven.now() + ahead);
+  return performed === 0 || roundsLeft <= 1
+    ? performed
+    : performed + (await performedFrom(driven, ahead, roundsLeft - 1));
+}
+
+export function performedUntilQuiet(driven: DueDriven, ahead = 1000, most = 64): Promise<number> {
+  return performedFrom(driven, ahead, most);
 }

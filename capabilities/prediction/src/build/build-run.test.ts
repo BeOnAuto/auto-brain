@@ -145,7 +145,7 @@ describe('the builds a server takes', () => {
     await uploaded(playbook, scored, ['visits-mean']);
     await answered(playbook, scored, { candidates: [candidateSha256('visits-mean')] });
     const whileScored = await buildAsked(playbook, 'third-visits');
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect([waiting, whileScored, await buildAsked(playbook, 'third-visits')]).toMatchObject([
       { status: 'succeeded' },
