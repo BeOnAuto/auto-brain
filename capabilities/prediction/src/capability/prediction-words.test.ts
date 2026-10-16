@@ -33,6 +33,19 @@ describe('the words of what a run of a prediction function answers', () => {
     ).toBe('From 2026-W41, it predicts 7 in 2026-W42 (6 to 8), its range holding the truth eight times in ten.');
   });
 
+  it('say a total by the end of the period it sums to, in its unit, from the period the record names', () => {
+    const total = { name: 'total', points: [{ at: '2026-11-01', value: 78, low: 70, high: 85 }] };
+    const answer = { ...prediction, unit: 'visits', origin: '2026-10-25', lines: [observed, total] };
+
+    expect([
+      describeOutput(answer, { version: 1, coverage: 0.8, total_to: '2026-W44' }),
+      describeOutput(answer, { coverage: 0.8 }),
+    ]).toEqual([
+      'From 2026-10-25, it predicts 78 visits by the end of 2026-W44 (70 to 85 visits), its range holding the truth eight times in ten, from version 1 of its model.',
+      'From 2026-10-25, it predicts 78 visits by the end of 2026-11-01 (70 to 85 visits), its range holding the truth eight times in ten.',
+    ]);
+  });
+
   it('say what a build kept, and that it kept nothing when no candidate won or none was uploaded', () => {
     const sha256 = 'ab'.repeat(32);
 

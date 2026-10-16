@@ -125,14 +125,14 @@ A run's input has one of two shapes:
 
 A question's output is the **prediction**, a [series](output-shapes.md#series) of the function's grain:
 
-| Field      | Value                                                                                                                                          |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `unit`     | `predicts.unit`                                                                                                                                |
-| `period`   | `predicts.period`                                                                                                                              |
-| `origin`   | The last observed period                                                                                                                       |
-| `lines[0]` | `observed`: the last `predicts.history` periods up to the origin, each value as the dataset's rows hold it; a period with no value is left out |
-| `lines[1]` | `predicted`: one point for each horizon asked, the nearest first, each with its `value`, `low` and `high`                                      |
-| `marks`    | The question's marks, when it gives them                                                                                                       |
+| Field      | Value                                                                                                                                           |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unit`     | `predicts.unit`                                                                                                                                 |
+| `period`   | `predicts.period`                                                                                                                               |
+| `origin`   | The last observed period                                                                                                                        |
+| `lines[0]` | `observed`: the last `predicts.history` periods up to the origin, each value as the dataset's rows hold it; a period with no value is left out  |
+| `lines[1]` | `predicted`: one point for each horizon asked, the nearest first, each with its `value`, `low` and `high`; `total` with `accumulates`, as below |
+| `marks`    | The question's marks, when it gives them                                                                                                        |
 
 - Each `at` and the `origin` are in the ISO 8601 form of the grain: `YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn` or `YYYY`.
 - `value` is the 50th percentile, `low` the 10th and `high` the 90th.
@@ -153,10 +153,11 @@ A day sums to a week, a month or a quarter; a week to a quarter or a year; and a
 
 For the holdout, the window and the history, the longest horizon is then the most periods the enclosing period holds: 7, 31 or 92 days, 14 or 53 weeks, or 3 or 12 months.
 
-Such a question is `{ series, given?, marks? }`, with no horizon. Its `given` holds each given feature's value for the periods summed. Its prediction's `predicted` line holds one point, the total:
+Such a question is `{ series, given?, marks? }`, with no horizon. Its `given` holds each given feature's value for the periods summed. Its prediction's second line is named `total`, in place of `predicted`, and holds one point, the total:
 
-- its `at` is the last period the enclosing period holds, in the grain's form, since every point of a series is of its grain: `2026-10-18` for the week 2026-W42 of a daily function;
-- its `value`, `low` and `high` are the total from the period after the origin to that one.
+- its `at` is the last period the enclosing period holds, in the grain's form, since a series holds one grain: `2026-10-18` for the week 2026-W42 of a daily function;
+- its `value`, `low` and `high` are the total from the period after the origin to that one;
+- the run's record names the enclosing period as `total_to`, such as `2026-W42`, and the run's words say the total by its end, such as "78 visits by the end of 2026-W42".
 
 The dataset and its files are the same as for horizons. The trainer fits a model of the total. [The signature](#the-signature-of-a-candidate) feeds the model the number of periods it sums, as `h`. The brief reads the enclosing period as `dataset.accumulates`.
 

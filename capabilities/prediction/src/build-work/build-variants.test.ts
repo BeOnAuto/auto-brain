@@ -30,9 +30,9 @@ describe('a build of a function that predicts a total to the end of the week', (
           unit: 'sales',
           period: 'day',
           origin: '2026-10-25',
-          lines: [{ name: 'observed' }, { name: 'predicted', points: [{ at: '2026-11-01', value: 78 }] }],
+          lines: [{ name: 'observed' }, { name: 'total', points: [{ at: '2026-11-01', value: 78 }] }],
         },
-        record: { version: 1 },
+        record: { version: 1, total_to: '2026-W44' },
       },
     });
   });

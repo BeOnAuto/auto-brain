@@ -12,14 +12,21 @@ const PredictedPointSchema = Schema.Struct({
 });
 
 const PredictionSchema = Schema.Struct({
+  unit: Schema.String,
   origin: Schema.String,
   lines: Schema.Tuple([
     Schema.Struct({ name: Schema.Literal('observed') }),
-    Schema.Struct({ name: Schema.Literal('predicted'), points: Schema.NonEmptyArray(PredictedPointSchema) }),
+    Schema.Struct({
+      name: Schema.Literals(['predicted', 'total']),
+      points: Schema.NonEmptyArray(PredictedPointSchema),
+    }),
   ]),
 });
 
-const VersionSchema = Schema.Struct({ version: Schema.Number });
+const RecordSchema = Schema.Struct({
+  version: Schema.optionalKey(Schema.Number),
+  total_to: Schema.optionalKey(Schema.String),
+});
 
 const BuildSchema = Schema.Struct({
   version: Schema.NullOr(Schema.Number),
@@ -29,7 +36,7 @@ const BuildSchema = Schema.Struct({
 
 const decodePrediction = Schema.decodeUnknownOption(PredictionSchema);
 
-const decodeVersion = Schema.decodeUnknownOption(VersionSchema);
+const decodeRecord = Schema.decodeUnknownOption(RecordSchema);
 
 const decodeBuild = Schema.decodeUnknownOption(BuildSchema);
 
@@ -37,21 +44,31 @@ const asAResult = outputInWords('result');
 
 type PredictedPoint = typeof PredictedPointSchema.Type;
 
+type Recorded = typeof RecordSchema.Type;
+
+function rangeWords({ low, high }: PredictedPoint, unit: string): string {
+  return `(${figure(low)} to ${figure(high)} ${unit})`;
+}
+
 function pointWords({ at, value, low, high }: PredictedPoint): string {
   return `${figure(value)} in ${at} (${figure(low)} to ${figure(high)})`;
 }
 
-function versionWords(record: unknown): string {
-  return Option.match(decodeVersion(record), {
-    onSome: ({ version }) => `, from version ${version} of its model`,
-    onNone: () => '',
-  });
+function totalWords(point: PredictedPoint, unit: string, { total_to: to }: Recorded): string {
+  return `${figure(point.value)} ${unit} by the end of ${to ?? point.at} ${rangeWords(point, unit)}`;
 }
 
-function predictionWords({ origin, lines }: typeof PredictionSchema.Type, record: unknown): string {
-  const [, { points }] = lines;
+function versionWords({ version }: Recorded): string {
+  return version === undefined ? '' : `, from version ${version} of its model`;
+}
+
+function predictionWords({ unit, origin, lines }: typeof PredictionSchema.Type, record: unknown): string {
+  const [, { name, points }] = lines;
+  const recorded = Option.getOrElse(decodeRecord(record), () => ({}));
+  const said =
+    name === 'total' ? totalWords(points[0], unit, recorded) : listed(points.map((point) => pointWords(point)));
   const each = points.length === 1 ? 'its range holding' : 'each range holding';
-  return `From ${origin}, it predicts ${listed(points.map((point) => pointWords(point)))}, ${each} the truth eight times in ten${versionWords(record)}.`;
+  return `From ${origin}, it predicts ${said}, ${each} the truth eight times in ten${versionWords(recorded)}.`;
 }
 
 function buildWords({ version, winner, candidates }: typeof BuildSchema.Type): string {

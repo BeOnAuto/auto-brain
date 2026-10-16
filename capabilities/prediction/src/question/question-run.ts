@@ -10,7 +10,7 @@ import { Clock, Effect, Option, Schema } from 'effect';
 
 import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import type { PredictionFunctionDefinitionDocument, Predicts } from '../document/prediction-document.ts';
-import { periodsToTheEnd } from '../periods/enclosing.ts';
+import { enclosingOf, periodsToTheEnd } from '../periods/enclosing.ts';
 import { periodForm } from '../periods/grains.ts';
 import { activeVersionOf } from './active-version.ts';
 import { seriesWindow, type SeriesWindow } from './series-window.ts';
@@ -71,6 +71,12 @@ function askedOf({ period: grain, horizons, accumulates }: Predicts, origin: num
   }
   const remaining = periodsToTheEnd(grain, accumulates, origin);
   return { steps: remaining, summed: remaining, points: [{ step: 0, period: origin + remaining }] };
+}
+
+function aheadOf({ period: grain, accumulates }: Predicts, origin: number) {
+  return accumulates === undefined
+    ? { line: 'predicted', record: {} }
+    : { line: 'total', record: { total_to: periodForm(accumulates, enclosingOf(grain, accumulates, origin + 1)) } };
 }
 
 function givenOf(
@@ -174,13 +180,14 @@ export function questionRun(
     const window = yield* seriesWindow(ports, { playbook, document, series: question.series, now });
     const { predicted, milliseconds } = yield* answered({ ports, playbook, document, question }, active, window);
     const origin = periodForm(predicts.period, window.origin);
+    const ahead = aheadOf(predicts, window.origin);
     const output = {
       unit: predicts.unit,
       period: predicts.period,
       origin,
       lines: [
         { name: 'observed', points: observedOf(window, predicts) },
-        { name: 'predicted', points: predicted },
+        { name: ahead.line, points: predicted },
       ],
       ...(question.marks === undefined ? {} : { marks: question.marks }),
     };
@@ -193,6 +200,7 @@ export function questionRun(
       record: {
         version: active.version,
         coverage,
+        ...ahead.record,
         origin,
         dataset_checkpoint: window.checkpoint,
         duration_ms: Math.round(milliseconds),

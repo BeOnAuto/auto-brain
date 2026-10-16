@@ -6,7 +6,7 @@ A shape is a JSON Schema that the runtime owns, for what a definition produces: 
 
 A reasoning function, a computation function and a workflow can declare one with `output.shape`. The shape's schema is then the definition's output schema, and the runtime checks each output against it, together with the rules a schema cannot state.
 
-A prediction function answers a `series` without declaring it: each question's answer is the observed periods and the periods ahead of its series, as [The input and the output](prediction-format.md#the-input-and-the-output) sets out, and the function shows the shape as a definition that declares it does.
+A prediction function answers a `series` without declaring it: each question's answer is the observed periods and the periods ahead of its series, as [The input and the output](prediction-format.md#the-input-and-the-output) sets out, and the function shows the shape as a definition that declares it does. A function that predicts a total to the end of a period answers its total as one point of a line named `total`, at the last period of the grain that the enclosing period holds, since a series holds one grain; its run's record names the enclosing period.
 
 ## Declaring a shape
 
