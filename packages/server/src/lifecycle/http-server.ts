@@ -25,12 +25,7 @@ function closeIdleConnectionsOnceClosing(server: Server): void {
   }
 }
 
-const everyInterface: ReadonlySet<string> = new Set(['0.0.0.0', '::']);
-
 export function ownOriginOf(host: string, port: number): string {
-  if (everyInterface.has(host)) {
-    return `http://localhost:${port}`;
-  }
   return isIP(host) === 6 ? `http://[${host}]:${port}` : `http://${host}:${port}`;
 }
 

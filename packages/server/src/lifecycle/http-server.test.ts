@@ -49,17 +49,9 @@ describe('tcpPort', () => {
 });
 
 describe('the origin of the server on its own machine', () => {
-  it('names the host it listens on, localhost when it listens on every interface, and an IPv6 host in brackets', () => {
-    expect([
-      ownOriginOf('127.0.0.1', 5555),
-      ownOriginOf('0.0.0.0', 5555),
-      ownOriginOf('::', 5555),
-      ownOriginOf('::1', 5555),
-      ownOriginOf('localhost', 3000),
-    ]).toEqual([
+  it('names the loopback host it listens on, an IPv6 host in brackets', () => {
+    expect([ownOriginOf('127.0.0.1', 5555), ownOriginOf('::1', 5555), ownOriginOf('localhost', 3000)]).toEqual([
       'http://127.0.0.1:5555',
-      'http://localhost:5555',
-      'http://localhost:5555',
       'http://[::1]:5555',
       'http://localhost:3000',
     ]);
