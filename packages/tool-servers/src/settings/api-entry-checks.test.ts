@@ -30,7 +30,9 @@ function serversOf(servers: unknown): readonly ServerSettings[] {
 }
 
 function problemsOf(servers: unknown): readonly string[] {
-  return Effect.runSync(Effect.flip(read(servers, directory))).problems.map(({ detail }) => detail);
+  return Effect.runSync(Effect.flip(read(servers, directory))).problems.map(
+    ({ pointer = '', detail }) => `${pointer}: ${detail}`,
+  );
 }
 
 function plain(values: ReadonlyMap<string, Redacted.Redacted>): Readonly<Record<string, string>> {

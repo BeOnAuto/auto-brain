@@ -80,6 +80,14 @@ model_aliases:
 #     org: [acme, globex]
 #     allowed: [listInvoices, getInvoice]
 
+# What people may add as connections, the tool servers they add to an org
+# through their agents and approve in Studio. Every rule has a default, so
+# leaving the section out lets people add any connection.
+# connections:
+#   people_may_add: true
+#   allowed_hosts: ['*.example.com', 'crm.example.com']
+#   credential_kinds: [none, reference, secret, client_credentials]
+
 # The origins a page in a browser may call the API from.
 allowed_origins:
   - http://localhost:5173

@@ -20,6 +20,19 @@ export interface EntraIdentity {
 
 export type EntraIdentityLoader = () => Promise<EntraIdentity | undefined>;
 
+export const entraIdVariables: readonly string[] = [
+  'AZURE_TENANT_ID',
+  'AZURE_CLIENT_ID',
+  'AZURE_CLIENT_SECRET',
+  'AZURE_CLIENT_CERTIFICATE_PATH',
+  'AZURE_CLIENT_CERTIFICATE_PASSWORD',
+  'AZURE_CLIENT_SEND_CERTIFICATE_CHAIN',
+  'AZURE_USERNAME',
+  'AZURE_PASSWORD',
+  'AZURE_ADDITIONALLY_ALLOWED_TENANTS',
+  'AZURE_FEDERATED_TOKEN_FILE',
+];
+
 export const cognitiveServicesScope = 'https://cognitiveservices.azure.com/.default';
 
 function isMissingModule(error: unknown): boolean {

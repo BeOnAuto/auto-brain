@@ -2,13 +2,11 @@ import { unsuccessfulWords } from '@on.auto/operations';
 import { Effect, Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { defineDryRun, defineIntrospect, defineValidate } from '../index.ts';
+import { defineDryRun, defineIntrospect } from '../index.ts';
 
 const lookup = { named: () => Result.void, listServers: () => Effect.succeed([]) };
 
 const introspectWords = defineIntrospect(lookup).registration.plainLanguage;
-
-const validateWords = defineValidate(lookup).registration.plainLanguage;
 
 const dryRunWords = defineDryRun(lookup).registration.plainLanguage;
 
@@ -56,22 +54,6 @@ describe('the plain words of introspect', () => {
     ).toEqual([
       ' This can be put right on your side: search shows the tools this playbook may use, which whoever runs the server allows, so naming one of those can work.',
       ' This can be put right on your side: search shows the tools each tool server has, so naming one of those can work.',
-    ]);
-  });
-});
-
-describe('the plain words of validate', () => {
-  it('say whether the arguments are what the tool takes, or that they could not be checked', () => {
-    expect(validateWords?.attempt({ ...asked, arguments: {} })).toBe('check arguments for the search tool of graph');
-    expect(validateWords?.attempt(asked)).toBe('check the arguments of a tool of a tool server');
-    expect([
-      validateWords?.outcome({ valid: true, issues: [] }, { ...asked, arguments: {} }),
-      validateWords?.outcome({ valid: false, issues: [{ path: '/query', message: 'x' }] }, { ...asked, arguments: {} }),
-      validateWords?.outcome({ valid: null, issues: [{ path: '', message: 'x' }] }, { ...asked, arguments: {} }),
-    ]).toEqual([
-      'The arguments are what the search tool of graph takes.',
-      'The arguments are not what the search tool of graph takes; the details say where and why.',
-      'The arguments of the search tool of graph could not be checked on this server; the details say why.',
     ]);
   });
 });

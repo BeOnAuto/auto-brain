@@ -16,16 +16,14 @@ import {
   type HandedOff,
   type OrgCall,
 } from '../hand-off/caller-hand-off.ts';
-import type { ReportThrown } from '../problem/error-boundary.ts';
+import { toolCallbackOf, type AnsweringServing } from '../tools/linked-answers.ts';
 import { playbookArgumentOf, withoutPlaybook } from '../tools/playbook-argument.ts';
-import { callbackFor, type Arguments, type CalledTool, type Dispatch } from '../tools/tool-callback.ts';
+import type { Arguments, CalledTool, Dispatch } from '../tools/tool-callback.ts';
 import { toolDefinitionOf, toolDefinitionTakingPlaybookOf, type ToolDefinition } from '../tools/tool-definition.ts';
 import type { ServedTools } from './instructions.ts';
 import { connectionOf, serverOf, type Connection, type EveryTool, type McpServing } from './mcp-connection.ts';
 
-export interface ToolServing extends McpServing {
-  readonly reportThrown: ReportThrown;
-}
+export type ToolServing = McpServing & AnsweringServing;
 
 export type McpServerFactory = (context: HandedOff) => McpServer;
 
@@ -113,6 +111,7 @@ function toolsOf<R extends Registration>(
     plainLanguage,
     dispatch: dispatchOf(registration),
     operationInputOf,
+    ...(registration.linkToOpen === undefined ? {} : { linkToOpen: registration.linkToOpen }),
   }));
 }
 
@@ -122,14 +121,10 @@ interface ConnectedCall {
   readonly call: OrgCall;
 }
 
-function serverWithTools(
-  { connection, serving, call }: ConnectedCall,
-  served: ServedTools,
-  tools: readonly Tool[],
-): McpServer {
-  return serverOf(connection, served, (server) => {
+function serverWithTools(connected: ConnectedCall, served: ServedTools, tools: readonly Tool[]): McpServer {
+  return serverOf(connected.connection, served, connected.serving.linkedAnswers.states, (server) => {
     for (const tool of tools) {
-      server.registerTool(tool.name, tool.definition, callbackFor(serving, call, tool));
+      server.registerTool(tool.name, tool.definition, toolCallbackOf(connected.serving, connected.call, tool));
     }
   });
 }

@@ -1,3 +1,4 @@
+import { settingProblemText } from '@on.auto/config';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -23,8 +24,8 @@ function listsOf(servers: unknown) {
 }
 
 function problemsOf(servers: unknown): readonly string[] {
-  return Effect.runSync(Effect.flip(readToolServerSettings(environmentOf(servers), context))).problems.map(
-    ({ setting, detail }) => `${setting} ${detail}`,
+  return Effect.runSync(Effect.flip(readToolServerSettings(environmentOf(servers), context))).problems.map((problem) =>
+    settingProblemText(problem),
   );
 }
 
@@ -51,33 +52,33 @@ describe('the tools of a server, refused at start', () => {
     const problems = problemsOf({ graph: { ...graph, allowed: ['graph/search', ''] } });
 
     expect(problems).toEqual([
-      'TOOL_SERVERS /graph/allowed/0: Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots',
-      'TOOL_SERVERS /graph/allowed/1: Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots',
+      'TOOL_SERVERS: /graph/allowed/0: Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots',
+      'TOOL_SERVERS: /graph/allowed/1: Expected a tool name of 1 to 128 letters, digits, underscores, hyphens and dots',
     ]);
     expect(problems.join(' ')).not.toContain(key);
   });
 
   it('refuses *, with what to write instead', () => {
     expect(problemsOf({ graph: { ...graph, allowed: ['search', '*'] } })).toEqual([
-      'TOOL_SERVERS /graph/allowed/1: Every tool of the server is allowed when allowed is left out; name the tools to allow, or leave it out',
+      'TOOL_SERVERS: /graph/allowed/1: Every tool of the server is allowed when allowed is left out; name the tools to allow, or leave it out',
     ]);
   });
 
   it('refuses a tool listed twice', () => {
     expect(problemsOf({ graph: { ...graph, allowed: ['search', 'execute', 'search'] } })).toEqual([
-      'TOOL_SERVERS /graph/allowed/2: search is listed twice',
+      'TOOL_SERVERS: /graph/allowed/2: search is listed twice',
     ]);
   });
 
   it('refuses an empty list, saying what leaving it out means', () => {
     expect(problemsOf({ graph: { ...graph, allowed: [] } })).toEqual([
-      'TOOL_SERVERS /graph/allowed: Expected at least one tool; leave allowed out to allow every tool',
+      'TOOL_SERVERS: /graph/allowed: Expected at least one tool; leave allowed out to allow every tool',
     ]);
   });
 
   it('refuses a list that is not a list of names', () => {
     expect(problemsOf({ graph: { ...graph, allowed: 'search' } })).toEqual([
-      'TOOL_SERVERS /graph/allowed: Expected array',
+      'TOOL_SERVERS: /graph/allowed: Expected array',
     ]);
   });
 });

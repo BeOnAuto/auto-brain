@@ -262,7 +262,7 @@ Each call adds two events to the run's history, appended as they happen:
    - `tool_call_answered`, when the tool answered: `is_error`, the size of the result and its digest when it is kept, `shown_bytes` when the model read less than all of it, the duration and the JSON-RPC id.
    - `tool_call_failed`, when it did not: `because` (`arguments_refused`, `server_failure`, `timed_out`, `too_large` for a result larger than the transport reads, or `cancelled`), the failure message, the duration and the JSON-RPC id.
 
-Either event carries the server's own request id when the server's `request_id` setting says where to find it. The arguments and the result are kept in full, scrubbed of secrets, unless the operator sets `record_content: false` for the server. `get_run_history` shows each one when it is at most 2 KiB, and its size otherwise. `get_event` reads them in full.
+Either event carries the server's own request id when the server's `request_id` setting says where to find it. The arguments and the result are kept in full, scrubbed of secrets, unless the operator sets `record_content: false` for the server. A run's history, from `list_playbook_events` given its `run_id`, shows each one when it is at most 2 KiB, and its size otherwise. `get_event` reads them in full.
 
 ### When a tool-calling run cannot finish
 
@@ -359,7 +359,7 @@ More rules:
 1. The `description`, or that the function has none yet.
 2. What the function needs: each field of `input.schema`, with its type, its bounds and the value `input.default` gives it.
 3. What it produces: text, each field of `output.schema`, or the shape `output.shape` names, in a sentence.
-4. The model, and each tool it may call.
+4. The model, and each tool it may call. When the function names any tools, a diagram draws the function, its model and those tools.
 5. What the model is told: the instructions and the message, as a person reads them.
 6. **Used by**: the active definitions of the playbook that use this function, read each time it is returned, and left out when there are none.
 

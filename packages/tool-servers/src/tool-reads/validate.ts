@@ -1,11 +1,9 @@
-import { defineQuery } from '@on.auto/operations';
+import { defineHttpOperation } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { ArgumentsField, ServerField, ToolField } from '../names/tool-fields.ts';
 import { ArgumentCheckSchema, checkedArguments } from './argument-checks.ts';
 import { namedToolOf, type ToolLookup } from './named-tool.ts';
-import { readingTask, toolRead, validated } from './read-words.ts';
-import { toolRemedies } from './tool-refusals.ts';
 
 const description = [
   'Checks arguments against the input schema of one tool of a tool server, without calling the tool, and answers whether they match and where they do not.',
@@ -18,24 +16,18 @@ const description = [
 const ValidateInputSchema = Schema.Struct({ server: ServerField, tool: ToolField, arguments: ArgumentsField });
 
 export function defineValidate(access: ToolLookup) {
-  return defineQuery('playbook', {
+  return defineHttpOperation('playbook', 'query', {
     name: 'validate',
     title: 'Validate arguments',
     description,
     route: { method: 'POST', path: '/tool-servers/{server}/tools/{tool}/validate' },
-    reachesOutside: true,
+    body: { kind: 'json' },
     inputSchema: ValidateInputSchema,
-    outputSchema: ArgumentCheckSchema,
+    answer: { kind: 'json', outputSchema: ArgumentCheckSchema },
     reasons: ['unavailable'],
     handle: Effect.fnUntraced(function* ({ server, tool, arguments: input }) {
       const { input_schema } = yield* namedToolOf(access, { server, tool });
       return checkedArguments(input_schema, input);
     }),
-    plainLanguage: {
-      task: readingTask.validate,
-      attempt: (asked) => toolRead('check arguments for', asked),
-      outcome: (check, asked) => validated(check, asked),
-      remedies: toolRemedies,
-    },
   });
 }

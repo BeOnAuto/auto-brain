@@ -44,7 +44,11 @@ describe('a configuration file', () => {
       ]),
       EXAMPLE_ORIGINS: 'https://app.example.com,https://admin.example.com',
     });
-    expect(file).toMatchObject({ fromFile: ['EXAMPLE_GATEWAYS', 'EXAMPLE_ORIGINS'], overridden: [] });
+    expect(file).toMatchObject({
+      fromFile: ['EXAMPLE_GATEWAYS', 'EXAMPLE_ORIGINS'],
+      overridden: [],
+      referenced: ['GATEWAY_KEY'],
+    });
   });
 
   it('gives way to an environment variable that sets the same setting, whole', () => {
@@ -78,13 +82,15 @@ describe('the place of a setting the file holds', () => {
       `${path}:4:26 example_gateways[0].headers.x-tenant`,
     );
     expect(file?.place('EXAMPLE_GATEWAYS', '/0/missing')).toBe(`${path}:2:5 example_gateways[0].missing`);
-    expect(file?.placed('EXAMPLE_GATEWAYS', '/0/name: gateway is used twice')).toBe(
+    expect(file?.placed({ setting: 'EXAMPLE_GATEWAYS', pointer: '/0/name', detail: 'gateway is used twice' })).toBe(
       `${path}:2:11 example_gateways[0].name: gateway is used twice`,
     );
-    expect(file?.placed('EXAMPLE_GATEWAYS', '/: Expected a list')).toBe(
+    expect(file?.placed({ setting: 'EXAMPLE_GATEWAYS', pointer: '', detail: 'Expected a list' })).toBe(
       `${path}:2:3 example_gateways: Expected a list`,
     );
-    expect(file?.placed('EXAMPLE_ORIGINS', 'Expected text')).toBe(`${path}:6:3 example_origins: Expected text`);
+    expect(file?.placed({ setting: 'EXAMPLE_ORIGINS', detail: 'Expected text' })).toBe(
+      `${path}:6:3 example_origins: Expected text`,
+    );
     expect(file?.place('EXAMPLE_GATEWAYS', '/0/headers/a~1b')).toBe(`${path}:4:14 example_gateways[0].headers["a/b"]`);
   });
 });
@@ -210,10 +216,9 @@ describe('a credential written in a URL or an argument', () => {
     expect(message).not.toContain('sk-live-x');
   });
 
-  it('judges the values of a URL and an argument, never the names they give them', () => {
+  it('judges the values of an argument and of a URL, never the names of an argument', () => {
     const plain = {
       link: 'https://a.example/v1?api-version=2026-01-01',
-      tokenType: 'https://a.example/v1?token_type=bearer',
       mode: '--mode=read',
       tokenFile: '--token-file=/run/secrets/notes',
       keyEnv: '--api-key-env=NOTES_API_KEY',
@@ -270,7 +275,7 @@ describe('a configuration file that is not one the server reads', () => {
         'auto-runtime.yaml:1:19 example_origins[0]: Expected a string matching the RegExp ^https:\\/\\/; ' +
         'auto-runtime.yaml:2:28 example_gateways[0].name: Expected string; ' +
         'auto-runtime.yaml:2:39 example_gateways[0].colour: Expected no excess property; ' +
-        'auto-runtime.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers',
+        'auto-runtime.yaml:3:7 port: Not a setting this file holds; it holds example_gateways, example_origins, example_servers, example_rules',
     );
   });
 });

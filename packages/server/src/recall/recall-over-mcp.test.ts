@@ -1,10 +1,10 @@
 import { listedTools, plainTextIn, textOf, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { internalTermsIn } from '@on.auto/operations/testing';
 import { campaignReviews, foldOf, recallDocument } from '@on.auto/recall/testing';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { anyReview, recallTestTimeoutMs, servingRecall, verdicts } from '../testing/servers/recall-server.ts';
+import { anyReview, liveOverMcp, servingRecall, verdicts } from '../testing/servers/recall-server.ts';
 
 const closing: (() => Promise<void>)[] = [];
 
@@ -28,17 +28,6 @@ const counting = recallDocument(
   'language: typescript\nsource:\n  events:\n    - type: run_succeeded\nview:\n  initial: 0',
 );
 
-function liveOverMcp(session: McpSession, folded: number, name = 'reviews'): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const read = await session.callTool('get_definition', { type: 'recall', name });
-      expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded } });
-      return read.structuredContent;
-    },
-    { timeout: recallTestTimeoutMs - 10_000, interval: 50 },
-  );
-}
-
 describe('a recall function over MCP, on the endpoint of its playbook', () => {
   it('is saved, stands live once it has folded the runs it names, and answers from its view in plain words', async () => {
     const server = await servingRecall(verdicts({ campaign: 'spring', verdict: 'approve' }));
@@ -57,8 +46,8 @@ describe('a recall function over MCP, on the endpoint of its playbook', () => {
         name: 'review-brief',
         input: { brief: 'spring' },
       });
-      const live = await liveOverMcp(session, 1);
-      await liveOverMcp(session, 1, 'count');
+      const live = await liveOverMcp(session, { name: 'reviews' }, 1);
+      await liveOverMcp(session, { name: 'count' }, 1);
       const counted = await session.callTool('run_definition', { type: 'recall', name: 'count', input: {} });
       const recalling = await session.callTool('run_definition', {
         type: 'recall',
@@ -101,7 +90,7 @@ describe('the definition tools an agent sees', () => {
 
     const guide = await onAlpha(server, (session) => session.callTool('get_guide', { guide: 'recall-function' }));
 
-    expect(listedTools(everyTool)).toHaveLength(29);
+    expect(listedTools(everyTool)).toHaveLength(28);
     expect(createDefinition?.description).toContain('recall, a recall function;');
     expect(getGuide?.inputSchema).toMatchObject({
       properties: { guide: { enum: listingTheRecallGuide } },

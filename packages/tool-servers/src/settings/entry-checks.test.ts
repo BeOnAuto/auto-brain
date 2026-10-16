@@ -1,8 +1,8 @@
-import { servesPlaybook } from '@on.auto/config';
+import { servesPlaybook, settingProblemText } from '@on.auto/config';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { readToolServerSettings, type Environment, type ServerSettings } from '../index.ts';
+import { readToolServerSettings, serverNameProblems, type Environment, type ServerSettings } from '../index.ts';
 
 const context = { modelProviders: ['openai'] };
 
@@ -19,8 +19,8 @@ function settingsOf(servers: unknown) {
 }
 
 function problemsOf(servers: unknown): readonly string[] {
-  return Effect.runSync(Effect.flip(readToolServerSettings(environmentOf(servers), context))).problems.map(
-    ({ setting, detail }) => `${setting} ${detail}`,
+  return Effect.runSync(Effect.flip(readToolServerSettings(environmentOf(servers), context))).problems.map((problem) =>
+    settingProblemText(problem),
   );
 }
 
@@ -70,9 +70,9 @@ describe('an auth block', () => {
         other: { ...graph, auth: { ...auth, issuer: 'not a url' } },
       }),
     ).toEqual([
-      'TOOL_SERVERS /graph/auth/issuer: Expected an https URL, or an http URL on a loopback address',
-      'TOOL_SERVERS /graph/auth: Set an Authorization header or an auth block, not both',
-      'TOOL_SERVERS /other/auth/issuer: Expected an https URL, or an http URL on a loopback address',
+      'TOOL_SERVERS: /graph/auth/issuer: Expected an https URL, or an http URL on a loopback address',
+      'TOOL_SERVERS: /graph/auth: Set an Authorization header or an auth block, not both',
+      'TOOL_SERVERS: /other/auth/issuer: Expected an https URL, or an http URL on a loopback address',
     ]);
   });
 });
@@ -90,9 +90,9 @@ describe('the credential of an auth block', () => {
         bare: { ...graph, auth: { ...issued, ...key } },
       }),
     ).toEqual([
-      `TOOL_SERVERS /graph/auth: ${neither}`,
-      `TOOL_SERVERS /keyed/auth: ${neither}`,
-      `TOOL_SERVERS /bare/auth: ${neither}`,
+      `TOOL_SERVERS: /graph/auth: ${neither}`,
+      `TOOL_SERVERS: /keyed/auth: ${neither}`,
+      `TOOL_SERVERS: /bare/auth: ${neither}`,
     ]);
   });
 });
@@ -135,9 +135,27 @@ describe('the orgs a server serves', () => {
         wiki: { ...graph, org: '*', playbooks: ['sales'] },
       }),
     ).toEqual([
-      'TOOL_SERVERS /graph/org: Expected at least one org id',
-      'TOOL_SERVERS /crm/org/1: Expected an org id; * stands alone, for every org',
-      'TOOL_SERVERS /wiki/playbooks: Expected no playbooks beside every org, since a playbook id belongs to one org',
+      'TOOL_SERVERS: /graph/org: Expected at least one org id',
+      'TOOL_SERVERS: /crm/org/1: Expected an org id; * stands alone, for every org',
+      'TOOL_SERVERS: /wiki/playbooks: Expected no playbooks beside every org, since a playbook id belongs to one org',
+    ]);
+  });
+});
+
+describe('the name of a server, checked alone', () => {
+  it('passes a name a function can give, and refuses one of the wrong shape or of a model provider', () => {
+    expect(serverNameProblems('crm', ['openai'])).toEqual([]);
+    expect([...serverNameProblems('Crm', ['openai']), ...serverNameProblems('openai', ['openai'])]).toEqual([
+      {
+        setting: 'TOOL_SERVERS',
+        pointer: '/Crm',
+        detail: 'Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+      },
+      {
+        setting: 'TOOL_SERVERS',
+        pointer: '/openai',
+        detail: 'The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      },
     ]);
   });
 });

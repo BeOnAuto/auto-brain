@@ -21,7 +21,7 @@ Your agent can read where a run stands, the history of one run, the events of th
 
 A run's record holds its result. What the run was given is on the first event of its history. The history keeps each event small, so a large value appears as its size until you read that one event in full.
 
-[Inspecting a run](workflows.md#inspecting-a-run) says what a workflow run's history shows. [Run history and playbook events](../reference/http.md#run-history-and-playbook-events) lists the reads and every event field, and the [MCP reference](../reference/mcp.md#events-history-and-analytics) lists the tools your agent uses.
+[Inspecting a run](workflows.md#inspecting-a-run) says what a workflow run's history shows. [Run history and playbook events](../reference/http.md#run-history-and-playbook-events) lists the reads and every event field, and the [MCP reference](../reference/mcp.md#events-and-history) lists the tools your agent uses.
 
 ## Publishing events
 

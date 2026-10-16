@@ -17,9 +17,10 @@ import type {
   RelativePath,
 } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
-import { answeringOf, bodyArgumentsOf, requireMostBytes } from './http-body.ts';
+import { answeringOf, bodyArgumentsFor, requireMostBytes } from './http-body.ts';
 import { registeredAnswerOf, registeredFieldsOf, settledOf } from './registration-parts.ts';
 import type { HttpRegistrationOf } from './registration.ts';
+import type { MethodOf } from './route.ts';
 
 export interface HttpOperation<S extends OperationScope, K extends OperationKind> {
   readonly registration: HttpRegistrationOf<S, K>;
@@ -27,15 +28,16 @@ export interface HttpOperation<S extends OperationScope, K extends OperationKind
 
 type AnsweringDefinition<
   K extends OperationKind,
+  M extends MethodOf<K>,
   P extends string,
-  B extends HttpBodyOf<K>,
+  B extends HttpBodyOf<K, M>,
   A extends AnswerKind,
   In extends ObjectSchema,
   Out extends ObjectSchema,
   R extends DeclarableReason,
   Services,
 > = {
-  readonly [Kind in A]: HttpFields<K, P, B, In, R> &
+  readonly [Kind in A]: HttpFields<K, M, P, B, In, R> &
     HttpHandlerOf<In, B, AnswerValues<Out>[Kind], R, Services> & {
       readonly answer: AnswerDeclarations<Out>[Kind] & { readonly kind: Kind };
     };
@@ -44,8 +46,9 @@ type AnsweringDefinition<
 export function defineHttpOperation<
   const S extends OperationScope,
   const K extends OperationKind,
+  const M extends MethodOf<K>,
   const P extends RelativePath,
-  const B extends HttpBodyOf<K>,
+  const B extends HttpBodyOf<K, M>,
   const A extends AnswerKind,
   In extends InputSchemaFor<S, P>,
   Out extends ObjectSchema,
@@ -54,19 +57,20 @@ export function defineHttpOperation<
 >(
   scope: S,
   kind: K,
-  definition: HttpDefinition<K, P, B, A, In, Out, R, Services> & OfOneAnswerKind<A>,
+  definition: HttpDefinition<K, M, P, B, A, In, Out, R, Services> & OfOneAnswerKind<A>,
 ): HttpOperation<S, K>;
 export function defineHttpOperation<
   S extends OperationScope,
   K extends OperationKind,
+  M extends MethodOf<K>,
   P extends RelativePath,
-  B extends HttpBodyOf<K>,
+  B extends HttpBodyOf<K, M>,
   A extends AnswerKind,
   In extends InputSchemaFor<S, P>,
   Out extends ObjectSchema,
   R extends DeclarableReason,
   Services extends HandlerServices<S, K>,
->(scope: S, kind: K, definition: AnsweringDefinition<K, P, B, A, In, Out, R, Services>): HttpOperation<S, K> {
+>(scope: S, kind: K, definition: AnsweringDefinition<K, M, P, B, A, In, Out, R, Services>): HttpOperation<S, K> {
   const { name, body, inputSchema, handle } = definition;
   const fields = registeredFieldsOf(scope, kind, definition);
   requireMostBytes(name, body);
@@ -75,7 +79,7 @@ export function defineHttpOperation<
   const answered = answeringOf<Out>(name)[answer](definition.answer);
   const run: HttpRegistrationOf<S, K>['run'] = (input, encoding, given) =>
     Effect.flatMap(decodeInput(input, encoding), (decoded) =>
-      Effect.flatMap(bodyArgumentsOf[body.kind](name, given), (bodyArguments) =>
+      Effect.flatMap(bodyArgumentsFor(body.kind, name, given), (bodyArguments) =>
         settledOf(handle(decoded, ...bodyArguments), answered, fields.reasons),
       ),
     );

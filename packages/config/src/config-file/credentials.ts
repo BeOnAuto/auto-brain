@@ -42,9 +42,21 @@ function namesCredential(name: string): boolean {
   );
 }
 
+function namedAsCredential(name: string, value: string): boolean {
+  return namesCredential(name) && !holdsReference(value);
+}
+
 function looksLikeCredential(text: string): boolean {
   const literal = literalTextOf(text).trim();
   return credentialShapes.some((shape: Readonly<RegExp>) => shape.test(literal));
+}
+
+function queryHoldsCredential(text: string): boolean {
+  const url = URL.parse(text.trim());
+  return (
+    url !== null &&
+    [...url.searchParams].some(([name, value]: readonly [string, string]) => namedAsCredential(name, value))
+  );
 }
 
 function urlHoldsCredential(text: string): boolean {
@@ -55,7 +67,8 @@ function urlHoldsCredential(text: string): boolean {
   return (
     url.password !== '' ||
     looksLikeCredential(url.username) ||
-    [...url.searchParams.values()].some((value) => looksLikeCredential(value))
+    [...url.searchParams.values()].some((value) => looksLikeCredential(value)) ||
+    queryHoldsCredential(text)
   );
 }
 
@@ -64,19 +77,26 @@ function assignsCredential(text: string): boolean {
   return equals >= 0 && looksLikeCredential(text.slice(equals + 1));
 }
 
-function textProblems(name: string, text: string, pointer: string): readonly FileProblem[] {
+function textProblems(name: string, text: string, pointer: string, sorts: readonly string[]): readonly FileProblem[] {
   const refused =
-    (namesCredential(name) && !holdsReference(text)) ||
+    (!sorts.includes(name) && namedAsCredential(name, text)) ||
     looksLikeCredential(text) ||
     urlHoldsCredential(text) ||
     assignsCredential(text);
   return refused ? [{ pointer, detail: advice }] : [];
 }
 
-export function credentialProblems(name: string, value: Schema.Json, pointer: string): readonly FileProblem[] {
+export function credentialProblems(
+  name: string,
+  value: Schema.Json,
+  pointer: string,
+  sortsOfCredential: readonly string[] = [],
+): readonly FileProblem[] {
   if (typeof value === 'string') {
-    return textProblems(name, value, pointer);
+    return textProblems(name, value, pointer, sortsOfCredential);
   }
   const isList = Array.isArray(value);
-  return entriesOf(value).flatMap(([key, item]) => credentialProblems(isList ? name : key, item, below(pointer, key)));
+  return entriesOf(value).flatMap(([key, item]) =>
+    credentialProblems(isList ? name : key, item, below(pointer, key), sortsOfCredential),
+  );
 }

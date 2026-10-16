@@ -23,6 +23,8 @@ const defaultFile = 'data/ledger.db';
 
 const postgresqlSchemes: ReadonlySet<string> = new Set(['postgres:', 'postgresql:']);
 
+export const ledgerVariables: readonly string[] = ['LEDGER_FILE', 'DATABASE_URL', 'DATABASE_CREDENTIALS', 'AWS_REGION'];
+
 const sources = Config.all({
   file: Config.option(Config.String('LEDGER_FILE')),
   url: Config.option(Config.Redacted('DATABASE_URL')),
