@@ -118,3 +118,15 @@ export const CredentialSchema = CredentialFieldsSchema.annotate({
 );
 
 export type Credential = typeof CredentialSchema.Type;
+
+export const HeldCredentialSchema = Schema.Struct({
+  ...CredentialFieldsSchema.fields,
+  ends_with: Schema.optionalKey(
+    Schema.String.annotate({
+      description:
+        'The last four characters of the secret or client secret the person gave, where it holds twelve or more',
+    }),
+  ),
+}).annotate({ description: 'How the server is credentialled, never its value, which the person gives on the page' });
+
+export type HeldCredential = typeof HeldCredentialSchema.Type;

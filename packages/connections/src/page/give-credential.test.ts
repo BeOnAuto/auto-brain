@@ -19,7 +19,7 @@ describe('giving the credential of a connection', () => {
     const facts = await h.facts();
     expect(facts.slice(2).map(({ type, data }) => [type, data])).toEqual([
       ['connection_approved', { connection: id }],
-      ['connection_connected', { connection: id, secret_id: 'secret-1' }],
+      ['connection_connected', { connection: id, secret_id: 'secret-1', ends_with: '0f3c' }],
     ]);
     expect(JSON.stringify(facts)).not.toContain('crm-0f3c');
     expect(await giving(h, { id, token, value: 'Bearer crm-again' })).toMatchObject({ reason: 'not_found' });

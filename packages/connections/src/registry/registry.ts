@@ -6,6 +6,7 @@ import type {
   RecordedConnectionEvent,
 } from './connection-events.ts';
 import type { Connection } from './connection.ts';
+import type { HeldCredential } from './credential.ts';
 
 export interface OpenLink {
   readonly token_sha256: string;
@@ -46,9 +47,15 @@ function withLink(kept: KeptConnection, { data }: LinkIssued): KeptConnection {
   return { ...kept, link: { token_sha256: data.token_sha256, expires_at: data.expires_at } };
 }
 
+function endingWith(credential: HeldCredential, endsWith: string | undefined): HeldCredential {
+  const { ends_with: _replaced, ...given } = credential;
+  return endsWith === undefined ? given : { ...given, ends_with: endsWith };
+}
+
 function connected(kept: KeptConnection, { data, context }: ConnectionConnected): KeptConnection {
+  const credential = endingWith(kept.connection.credential, data.ends_with);
   return {
-    connection: { ...kept.connection, status: 'connected', connected_at: context.at, broken: null },
+    connection: { ...kept.connection, credential, status: 'connected', connected_at: context.at, broken: null },
     link: undefined,
     secretId: data.secret_id,
   };

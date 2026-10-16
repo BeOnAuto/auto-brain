@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 
 import { ConnectionEntrySchema, ConnectionKindSchema } from './connection-entry.ts';
-import { CredentialSchema } from './credential.ts';
+import { HeldCredentialSchema } from './credential.ts';
 
 const ConnectionStatusSchema = Schema.Literals(['pending', 'connected', 'broken', 'removed']);
 
@@ -10,7 +10,7 @@ export const ConnectionSchema = Schema.Struct({
   name: Schema.String.annotate({ description: 'The name a function gives the connection in server/tool' }),
   kind: ConnectionKindSchema,
   entry: ConnectionEntrySchema,
-  credential: CredentialSchema,
+  credential: HeldCredentialSchema,
   status: ConnectionStatusSchema.annotate({
     description: 'pending until it is approved and its credential given, connected, broken or removed',
   }),

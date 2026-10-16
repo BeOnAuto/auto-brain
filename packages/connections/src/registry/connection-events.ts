@@ -30,6 +30,7 @@ export const ConnectionEventSchema = Schema.Union([
       ...ofTheConnection,
       secret_id: Schema.optionalKey(Schema.String),
       algorithm: Schema.optionalKey(Schema.String),
+      ends_with: Schema.optionalKey(Schema.String),
     }),
     ActedContextSchema,
   ),
