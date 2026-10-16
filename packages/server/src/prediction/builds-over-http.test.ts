@@ -76,7 +76,7 @@ describe('the version a build over HTTP builds', { timeout: testTimeoutMs }, () 
     await builtFrom(server, 'visits-mean');
     const standing = await standingWhen(server, 'daily-visits', { models: { active: { version: 1 } }, build: null });
     const asked = await server.call('POST', `${alpha}/definitions/prediction/daily-visits/run`, {
-      body: { input: { series: 'south', horizon: 2 } },
+      body: { input: { series: 'south' } },
     });
     const activated = await server.call('POST', `${alpha}/definitions/prediction/daily-visits/activate`, {
       body: { version: 1 },
@@ -88,7 +88,30 @@ describe('the version a build over HTTP builds', { timeout: testTimeoutMs }, () 
     expect(standing).toMatchObject({ standing: { dataset: { kind: 'uploaded' } } });
     expect(asked).toMatchObject({
       status: 200,
-      body: { status: 'succeeded', output: { series: 'south', horizon: 2, value: 21, low: 19, high: 23, version: 1 } },
+      body: { status: 'succeeded', record: { version: 1, coverage: 0.8, origin: '2026-10-09' } },
+    });
+    expect(asked.body).toHaveProperty('output', {
+      unit: 'visits',
+      period: 'day',
+      origin: '2026-10-09',
+      lines: [
+        {
+          name: 'observed',
+          points: [
+            { at: '2026-10-06', value: 20 },
+            { at: '2026-10-07', value: 21 },
+            { at: '2026-10-08', value: 22 },
+            { at: '2026-10-09', value: 20 },
+          ],
+        },
+        {
+          name: 'predicted',
+          points: [
+            { at: '2026-10-10', value: 21, low: 19, high: 23 },
+            { at: '2026-10-11', value: 21, low: 19, high: 23 },
+          ],
+        },
+      ],
     });
     expect([activated.status, activated.body]).toEqual([409, expect.objectContaining({ kind: 'already_active' })]);
     expect(unbuilt.status).toBe(404);

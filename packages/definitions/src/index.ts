@@ -234,6 +234,7 @@ export type { OutputShape, OutputShapeName } from './shapes/output-shape.ts';
 export { outputShapeNamed, outputShapeNames, shapeMismatchOf } from './shapes/output-shapes.ts';
 export { declaredShape, type ShapeRefusal } from './shapes/shape-declarations.ts';
 export { publishedOutputOf } from './shapes/published-output.ts';
+export { seriesBounds, seriesMarksSchema, seriesShape } from './shapes/series-shape.ts';
 export {
   inputSection,
   outputSection,

@@ -23,7 +23,13 @@ describe('a build of a function that predicts a total to the end of the week', (
     expect(await asked(playbook, { series: 'north' }, { name: 'weekly-sales' })).toMatchObject({
       output: {
         status: 'succeeded',
-        output: { series: 'north', origin: '2026-10-25', period: '2026-W44', horizon: 7, value: 78, version: 1 },
+        output: {
+          unit: 'sales',
+          period: 'day',
+          origin: '2026-10-25',
+          lines: [{ name: 'observed' }, { name: 'predicted', points: [{ at: '2026-11-01', value: 78 }] }],
+        },
+        record: { version: 1 },
       },
     });
   });
@@ -48,7 +54,10 @@ describe('a build of a function whose data has features and given features', () 
     ).toMatchObject({
       output: {
         status: 'succeeded',
-        output: { origin: '2026-W40', period: '2026-W44', horizon: 4, value: 5, low: 3, high: 7 },
+        output: {
+          origin: '2026-W40',
+          lines: [{ name: 'observed' }, { name: 'predicted', points: [{ at: '2026-W44', value: 5, low: 3, high: 7 }] }],
+        },
       },
     });
   });

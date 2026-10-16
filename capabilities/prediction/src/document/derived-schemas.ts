@@ -1,13 +1,12 @@
+import { seriesMarksSchema } from '@on.auto/definitions';
 import { compileJsonSchema, type CompiledSchema } from '@on.auto/json-schema';
 import { Result, type Schema } from 'effect';
 
 import { predictionBounds } from '../capability/prediction-bounds.ts';
 import type { DataPart, DerivedSchemas, Predicts } from './prediction-document.ts';
 
-const periodWords = 'in the ISO 8601 form of the grain: YYYY-MM-DD, YYYY-Www, YYYY-MM, YYYY-Qn or YYYY';
-
 function givenSchema(given: readonly string[], { accumulates }: Predicts): Schema.JsonObject {
-  const periods = accumulates === undefined ? 'the periods up to the one predicted' : 'the periods summed';
+  const periods = accumulates === undefined ? 'the periods ahead' : 'the periods summed';
   return {
     type: 'object',
     description: `The value of each given feature for ${periods}, by its name`,
@@ -19,23 +18,28 @@ function givenSchema(given: readonly string[], { accumulates }: Predicts): Schem
 
 function horizonOf({ horizons, accumulates }: Predicts): { readonly horizon?: Schema.JsonObject } {
   return accumulates === undefined
-    ? { horizon: { type: 'integer', enum: [...horizons], description: 'How many periods ahead of the last observed' } }
+    ? {
+        horizon: {
+          type: 'integer',
+          enum: [...horizons],
+          description: 'How many periods ahead of the last observed to predict; every horizon when left out',
+        },
+      }
     : {};
 }
 
 function questionWords({ target, unit, period, accumulates }: Predicts): string {
   return accumulates === undefined
-    ? `A question: the series and the horizon to predict its ${target} at, in ${unit}`
+    ? `A question: the series to predict its ${target} for, in ${unit}, at one horizon or at every horizon`
     : `A question: the series to predict the total of its ${target} for, in ${unit}, from the ${period} after its last observed one to the end of that ${accumulates}`;
 }
 
 function questionSchema(predicts: Predicts, { given }: Pick<DataPart, 'given'>): Schema.JsonObject {
-  const asked = predicts.accumulates === undefined ? ['series', 'horizon'] : ['series'];
   return {
     type: 'object',
     title: 'question',
     description: questionWords(predicts),
-    required: given.length === 0 ? asked : [...asked, 'given'],
+    required: given.length === 0 ? ['series'] : ['series', 'given'],
     additionalProperties: false,
     properties: {
       series: {
@@ -46,6 +50,7 @@ function questionSchema(predicts: Predicts, { given }: Pick<DataPart, 'given'>):
       },
       ...horizonOf(predicts),
       ...(given.length === 0 ? {} : { given: givenSchema(given, predicts) }),
+      marks: { ...seriesMarksSchema, description: 'Values the answer carries as its marks, for display alone' },
     },
   };
 }
@@ -59,57 +64,6 @@ const buildInputSchema: Schema.JsonObject = {
   properties: { build: { type: 'object', additionalProperties: false, properties: {} } },
 };
 
-function predictedWords({ accumulates }: Predicts) {
-  return accumulates === undefined
-    ? { period: 'The period predicted', horizon: 'How many periods ahead of the origin', value: 'The likely value' }
-    : {
-        period: `The ${accumulates} whose total is predicted`,
-        horizon: 'How many periods the total sums, from the one after the origin to the end of that period',
-        value: 'The likely total',
-      };
-}
-
-function predictionSchemaOf(predicts: Predicts): Schema.JsonObject {
-  const words = predictedWords(predicts);
-  return {
-    type: 'object',
-    title: 'prediction',
-    required: ['series', 'origin', 'period', 'horizon', 'value', 'low', 'high', 'coverage', 'version'],
-    additionalProperties: false,
-    properties: {
-      series: { type: 'string' },
-      origin: { type: 'string', description: `The last observed period, ${periodWords}` },
-      period: { type: 'string', description: `${words.period}, ${periodWords}` },
-      horizon: { type: 'integer', minimum: 1, description: words.horizon },
-      value: { type: 'number', description: `${words.value}, the 50th percentile` },
-      low: { type: 'number', description: 'The 10th percentile' },
-      high: { type: 'number', description: 'The 90th percentile' },
-      coverage: { const: 0.8, description: 'The share of truths low and high are meant to hold' },
-      version: { type: 'integer', minimum: 1, description: 'The version of the model that answered' },
-    },
-  };
-}
-
-const buildOutputSchema: Schema.JsonObject = {
-  type: 'object',
-  title: 'build',
-  required: ['version', 'winner', 'candidates'],
-  additionalProperties: false,
-  properties: {
-    version: { anyOf: [{ type: 'integer', minimum: 1 }, { type: 'null' }], description: 'The version built, if any' },
-    winner: { anyOf: [{ type: 'string' }, { type: 'null' }], description: 'The SHA-256 of the winning candidate' },
-    candidates: {
-      type: 'array',
-      items: {
-        type: 'object',
-        required: ['sha256', 'verdict'],
-        additionalProperties: false,
-        properties: { sha256: { type: 'string' }, verdict: { type: 'string' } },
-      },
-    },
-  },
-};
-
 function compiled(document: Schema.JsonObject, what: string): CompiledSchema {
   return Result.getOrThrow(compileJsonSchema(document, { what, nesting: 16 }));
 }
@@ -120,7 +74,6 @@ export function derivedSchemasOf(predicts: Predicts, data: Pick<DataPart, 'given
   const question = questionSchema(predicts, data);
   return {
     input: { oneOf: [question, buildInputSchema] },
-    output: { oneOf: [predictionSchemaOf(predicts), buildOutputSchema] },
     question: compiled(question, 'input'),
     build: buildInput,
   };

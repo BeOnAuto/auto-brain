@@ -14,7 +14,7 @@ import type { DatasetFilesRefused } from '../files/files-refusals.ts';
 import { periodsOfSeries } from '../files/window-reads.ts';
 
 export interface SeriesWindow {
-  readonly y: Readonly<Float32Array>;
+  readonly y: Readonly<Float64Array>;
   readonly x: Readonly<Float32Array> | null;
   readonly origin: number;
   readonly checkpoint: string | null;
@@ -50,7 +50,7 @@ function projectedWindow(ports: PredictionPorts, asking: Asking, data: Projected
         const periods = Array.from({ length: span.last - span.first + 1 }, (_, at) => byPeriod.get(span.first + at));
         const width = data.features.length;
         return {
-          y: Float32Array.from(periods, (period) => cellOf(period?.target, data.target.as) ?? Number.NaN),
+          y: Float64Array.from(periods, (period) => cellOf(period?.target, data.target.as) ?? Number.NaN),
           x:
             width === 0
               ? null

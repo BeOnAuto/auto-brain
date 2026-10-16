@@ -55,8 +55,6 @@ function documentOf(source: string) {
   return Result.getOrThrow(parsePredictionDocument(source));
 }
 
-const weekWhoseTotal: unknown = expect.stringMatching(/^The week whose total is predicted/u);
-
 describe('a prediction function that sums its target to the end of an enclosing period', () => {
   it('reads the enclosing period in place of horizons', () => {
     expect(documentOf(dailyTotals).predicts).toEqual({
@@ -94,26 +92,8 @@ describe('a prediction function that sums its target to the end of an enclosing 
   });
 });
 
-describe('the answer of a prediction function that sums its target', () => {
-  it('answers the enclosing period and the periods its total sums', () => {
-    expect(documentOf(dailyTotals).schemas.output).toMatchObject({
-      oneOf: [
-        {
-          title: 'prediction',
-          properties: {
-            period: { description: weekWhoseTotal },
-            horizon: {
-              description: 'How many periods the total sums, from the one after the origin to the end of that period',
-            },
-            value: { description: 'The likely total, the 50th percentile' },
-          },
-        },
-        { title: 'build' },
-      ],
-    });
-  });
-
-  it('parses whole, its brief reading the enclosing period', () => {
+describe('the brief of a prediction function that sums its target', () => {
+  it('parses whole, reading the enclosing period', () => {
     expect(problemsOf(dailyTotals)).toEqual([]);
   });
 });

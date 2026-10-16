@@ -1,4 +1,11 @@
-import type { CalledDefinition, DefinitionSummary, SavedDefinitions, StrippedForms } from '@on.auto/definitions';
+import {
+  publishedOutputOf,
+  seriesShape,
+  type CalledDefinition,
+  type DefinitionSummary,
+  type SavedDefinitions,
+  type StrippedForms,
+} from '@on.auto/definitions';
 import { issueText, type DocumentIssue } from '@on.auto/definitions/document';
 import { InvalidInput, type Unavailable } from '@on.auto/operations';
 import { Effect, Result, type Schema } from 'effect';
@@ -53,7 +60,9 @@ export function summarize(document: PredictionFunctionDefinitionDocument): Defin
   return {
     ...(description === undefined ? {} : { description }),
     inputSchema: schemas.input,
-    outputSchema: schemas.output,
-    details: { ...datasetDetailsOf(document), ...(calls.length === 0 ? {} : { calls }) },
+    ...publishedOutputOf({
+      shape: seriesShape,
+      details: { ...datasetDetailsOf(document), ...(calls.length === 0 ? {} : { calls }) },
+    }),
   };
 }

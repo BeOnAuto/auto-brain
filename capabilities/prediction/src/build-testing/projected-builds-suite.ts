@@ -182,7 +182,17 @@ function shadowGaps(settingsOf: SettingsOf): void {
     await performedUntilQuiet(projected.playbook, 4 * day);
     const graded = (await modelFactsOf(projected.playbook)).filter(({ type }) => type === 'shadow_graded');
 
-    expect(east).toMatchObject({ output: { status: 'succeeded', output: { value: 30, low: 28, high: 32 } } });
+    expect(east).toMatchObject({
+      output: {
+        status: 'succeeded',
+        output: {
+          lines: [
+            { name: 'observed', points: [{ value: 30 }, { value: 30 }] },
+            { name: 'predicted', points: [{ value: 30, low: 28, high: 32 }] },
+          ],
+        },
+      },
+    });
     expect(graded.length).toBeGreaterThanOrEqual(4);
     expect(graded[0]).toMatchObject({ data: { graded: 3, missing: 1 } });
   });

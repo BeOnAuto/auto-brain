@@ -4,7 +4,7 @@ import type { WindowJob } from './model-feeds.ts';
 
 export type SeriesWindowAnswer =
   | { readonly unknown: true }
-  | { readonly y: Float32Array; readonly x: Float32Array | null; readonly origin: number };
+  | { readonly y: Float64Array; readonly x: Float32Array | null; readonly origin: number };
 
 function cellAt(index: number | undefined, value: (position: number) => number): number {
   return index === undefined ? Number.NaN : value(index);
@@ -14,7 +14,7 @@ function windowOf(found: SeriesRows, job: WindowJob, last: number): SeriesWindow
   const at = new Map(found.periods.map((form, index) => [Number(periodOfForm(job.grain, form)), index]));
   const positions = Array.from({ length: job.window }, (_, offset) => at.get(last - job.window + 1 + offset));
   return {
-    y: Float32Array.from(positions, (index) => cellAt(index, (position) => Number(found.values[position]))),
+    y: Float64Array.from(positions, (index) => cellAt(index, (position) => Number(found.values[position]))),
     x:
       job.features === 0
         ? null

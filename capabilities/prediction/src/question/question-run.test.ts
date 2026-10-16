@@ -4,7 +4,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook, type BuildPlaybook } from '../build-testing/build-playbook.ts';
-import { asked, builtFrom, savedFunction } from '../build-testing/built-versions.ts';
+import { activeVisitsOn, asked } from '../build-testing/built-versions.ts';
 import { scriptedModels, type ScriptedModels } from '../build-testing/scripted-models.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { dailyRows, steadyVisits } from '../testing/daily-rows.ts';
@@ -13,13 +13,11 @@ import { uploadDataset } from '../upload/upload-dataset.ts';
 
 const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
 
-const someMilliseconds: unknown = expect.any(Number);
+const badly =
+  'The model answered something other than a low, a likely value and a high in that order, as finite numbers in the shape its signature gives';
 
-async function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
-  const playbook = buildPlaybook(options);
-  await savedFunction(playbook);
-  await builtFrom(playbook, ['visits-mean']);
-  return playbook;
+function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
+  return activeVisitsOn(buildPlaybook(options));
 }
 
 type Deadlines = NonNullable<PortOptions['deadlines']>;
@@ -33,29 +31,6 @@ async function scriptedVisits(deadlines: Deadlines = ordinaryDeadlines, processe
 }
 
 describe('a question to a prediction function', () => {
-  it('is answered by the active version for the step it asks, from the last period of its dataset', async () => {
-    const playbook = await activeVisits();
-
-    expect(await asked(playbook, { series: 'south', horizon: 2 })).toMatchObject({
-      status: 'succeeded',
-      output: {
-        status: 'succeeded',
-        output: {
-          series: 'south',
-          origin: '2026-10-09',
-          period: '2026-10-11',
-          horizon: 2,
-          value: 21,
-          low: 19,
-          high: 23,
-          coverage: 0.8,
-          version: 1,
-        },
-        record: { version: 1, origin: '2026-10-09', dataset_checkpoint: null, duration_ms: someMilliseconds },
-      },
-    });
-  });
-
   it('is refused for a series its dataset does not hold, and once the data part changed since its version was built', async () => {
     const playbook = await activeVisits();
     const unknown = await asked(playbook, { series: 'east', horizon: 1 });
@@ -81,7 +56,7 @@ describe('a question to a prediction function', () => {
 });
 
 describe('a question whose model process does not answer', () => {
-  it('fails as the model process failing when it ends, runs out of memory or answers numbers that are not finite', async () => {
+  it('fails as the model process failing when it ends, runs out of memory, or answers numbers that are not finite or not in order', async () => {
     const { scripted, playbook } = await scriptedVisits();
     scripted.next('exits');
     const exited = await asked(playbook, { series: 'north', horizon: 1 });
@@ -89,6 +64,8 @@ describe('a question whose model process does not answer', () => {
     const exhausted = await asked(playbook, { series: 'north', horizon: 1 });
     scripted.next('not-finite');
     const notFinite = await asked(playbook, { series: 'north', horizon: 1 });
+    scripted.next('crossed');
+    const crossed = await asked(playbook, { series: 'north' });
     scripted.next('unreadable');
     const unread = await asked(playbook, { series: 'north', horizon: 1 });
 
@@ -98,7 +75,7 @@ describe('a question whose model process does not answer', () => {
       kind: 'model_process_failed',
       detail: 'The model process ended before it read the dataset',
     });
-    expect([exited, exhausted, notFinite]).toMatchObject([
+    expect([exited, exhausted, notFinite, crossed]).toMatchObject([
       {
         status: 'rejected',
         reason: 'unavailable',
@@ -111,12 +88,8 @@ describe('a question whose model process does not answer', () => {
         kind: 'model_process_failed',
         detail: 'The model process ended before it answered',
       },
-      {
-        status: 'rejected',
-        reason: 'unavailable',
-        kind: 'model_process_failed',
-        detail: 'The model answered something other than finite numbers in the shape its signature gives',
-      },
+      { status: 'rejected', reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite', detail: badly },
+      { status: 'rejected', reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite', detail: badly },
     ]);
   });
 });

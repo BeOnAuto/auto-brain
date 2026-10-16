@@ -22,6 +22,8 @@ export const visits: Sales = {
   valueOf: (level, each) => level + (each % 3),
 };
 
+export const tenthVisits: Sales = { ...visits, valueOf: (level, each) => level + (each % 3) / 10 };
+
 export const totals: Sales = {
   name: 'weekly-sales',
   source: dailyTotalsWith(

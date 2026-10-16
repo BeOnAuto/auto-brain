@@ -32,7 +32,7 @@ describe('a question after its function was edited', () => {
     await updated(playbook, 'Fit a model', 'Fit one model');
 
     expect(await asked(playbook, { series: 'north', horizon: 1 })).toMatchObject({
-      output: { status: 'succeeded', output: { version: 1 } },
+      output: { status: 'succeeded', record: { version: 1 } },
     });
   });
 

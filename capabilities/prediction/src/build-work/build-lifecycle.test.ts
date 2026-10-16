@@ -61,7 +61,8 @@ describe('a build of a prediction function over an uploaded dataset, answered th
     expect(await asked(playbook, { series: 'north', horizon: 1 })).toMatchObject({
       output: {
         status: 'succeeded',
-        output: { series: 'north', horizon: 1, value: 11, low: 9, high: 13, version: 1 },
+        output: { lines: [{ name: 'observed' }, { name: 'predicted', points: [{ value: 11, low: 9, high: 13 }] }] },
+        record: { version: 1 },
       },
     });
     expect(await playbook.send(activateVersion, { name: 'daily-visits', version: 1 })).toMatchObject({

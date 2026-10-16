@@ -14,6 +14,7 @@ export type Script =
   | 'garbage'
   | 'badly'
   | 'not-finite'
+  | 'crossed'
   | 'unreadable';
 
 export interface ScriptedModels {
@@ -52,6 +53,7 @@ function sourceOf(scriptFile: string): string {
     '    const answer = await real.walk(payload);',
     '    return { series: answer.series, q: answer.q.map((q) => q.map(() => Number.NaN)) };',
     '  },',
+    '  crossed: () => ({ q: Float32Array.of(9, 11, 13, 12, 11, 13), dims: [1, 2, 3] }),',
     '};',
     `const scriptOf = () => readFileSync(${JSON.stringify(scriptFile)}, 'utf8');`,
     'const scripted = (kind) => (payload) => scripts[scriptOf()](kind, payload);',

@@ -37,6 +37,12 @@ const line = closedRecord({ name: label, points: { type: 'array', items: point, 
 
 const mark = closedRecord({ label, value: amount }, ['label', 'value']);
 
+export const seriesMarksSchema = {
+  type: 'array',
+  items: mark,
+  maxItems: seriesBounds.mostMarks,
+} satisfies Schema.JsonObject;
+
 function orderIssues(points: readonly Schema.Json[], path: Path, timeline: Timeline): readonly SchemaIssue[] {
   let last: number | undefined;
   return points.flatMap((entry, index) => {
@@ -103,7 +109,7 @@ export const seriesShape: OutputShape = shapeOf({
     },
     origin: { type: 'string', description: 'The at of the last point observed, in the form of at' },
     lines: { type: 'array', items: line, minItems: 1, maxItems: seriesBounds.mostLines },
-    marks: { type: 'array', items: mark, maxItems: seriesBounds.mostMarks },
+    marks: seriesMarksSchema,
   },
   required: ['lines'],
   further: seriesIssues,

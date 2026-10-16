@@ -78,7 +78,6 @@ export interface DataExpression {
 
 export interface DerivedSchemas {
   readonly input: Schema.JsonObject;
-  readonly output: Schema.JsonObject;
   readonly question: CompiledSchema;
   readonly build: CompiledSchema;
 }

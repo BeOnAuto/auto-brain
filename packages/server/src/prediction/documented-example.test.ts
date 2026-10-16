@@ -67,7 +67,17 @@ describe('the workflow of the prediction function format, through the server', {
     expect(before).toMatchObject({ status: 'succeeded', output: { forecast: null } });
     expect(after).toMatchObject({
       status: 'succeeded',
-      output: { forecast: { series: 'north', horizon: 1, value: 1, low: -1, high: 3, coverage: 0.8, version: 1 } },
+      output: {
+        forecast: {
+          unit: 'orders',
+          period: 'week',
+          origin: '2026-W40',
+          lines: [
+            { name: 'observed' },
+            { name: 'predicted', points: [{ at: '2026-W41', value: 1, low: -1, high: 3 }] },
+          ],
+        },
+      },
     });
   });
 });
