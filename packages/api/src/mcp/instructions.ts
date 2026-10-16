@@ -30,14 +30,18 @@ type Sentences = (serving: Serving) => readonly string[];
 
 const reasoningFunctionType = 'reasoning';
 
-const purposeByType: Readonly<Record<string, string>> = {
-  reasoning: 'A reasoning function has a prompt and calls a language model.',
-  interaction: 'An interaction function asks a system and answers at once, or asks a person and answers started.',
-  computation: 'A computation function runs a program on its input and gives the same output every time.',
-  recall: 'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.',
-  prediction:
+const purposesByType: Readonly<Record<string, readonly string[]>> = {
+  reasoning: ['A reasoning function has a prompt and calls a language model.'],
+  interaction: ['An interaction function asks a system and answers at once, or asks a person and answers started.'],
+  computation: ['A computation function runs a program on its input and gives the same output every time.'],
+  recall: [
+    'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.',
+    'What the person wants kept goes in a recall function, for anyone or a workflow to ask later, not your own notes.',
+  ],
+  prediction: [
     "A prediction function answers a question from a model a trainer built on the playbook's history, and a build, the input { build: {} }, answers started.",
-  workflow: 'A workflow runs functions in steps, waits for input and can start on a schedule or on an event.',
+  ],
+  workflow: ['A workflow runs functions in steps, waits for input and can start on a schedule or on an event.'],
 };
 
 export const whatAPlaybookIs = [
@@ -48,9 +52,8 @@ export const whatAPlaybookIs = [
 const pagedReads = ['list_runs', 'get_run_history', 'list_playbook_events', 'list_interactions'];
 
 const howToAnswer = [
-  'When you tell the person what happened, say what was done and what they can do next,',
-  "in the words of playbooks, functions, workflows and runs, not in the tools' names, fields or rules;",
-  'give an id or a status only when the person needs it to act.',
+  'Say what was done and what the person can do next in the words of playbooks, functions, workflows and runs,',
+  "not the tools' names, fields or rules, and an id or status only when they need it to act.",
 ].join(' ');
 
 const whenAToolCannot = 'A tool that cannot do what was asked says why and what to change.';
@@ -81,11 +84,7 @@ const whatTheConnectionDoes: Readonly<Record<McpEndpoint, (serving: Serving) => 
   playbook: () => 'This connection acts inside one playbook.',
 };
 
-const purposes: Sentences = ({ definitionTypes }) =>
-  definitionTypes.flatMap(({ type }) => {
-    const purpose = purposeByType[type];
-    return purpose === undefined ? [] : [purpose];
-  });
+const purposes: Sentences = ({ definitionTypes }) => definitionTypes.flatMap(({ type }) => purposesByType[type] ?? []);
 
 const connection: Sentences = (serving) => [whatTheConnectionDoes[serving.endpoint](serving)];
 
@@ -141,7 +140,7 @@ const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
 const answeringWhatRunsWaitOn: Sentences = ({ listed }) =>
   listed('answer_interaction')
     ? [
-        "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.",
+        'When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction and start no new run for it.',
       ]
     : [];
 

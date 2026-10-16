@@ -4,7 +4,7 @@ description: Write a recall function that keeps what earlier runs of a playbook 
 
 # Make a playbook remember
 
-Give later runs what your playbook decided before. A recall function keeps a view, a running summary of the playbook's history, and returns part of it on each run.
+Give later runs what your playbook decided before. A recall function keeps a view, a running summary of the playbook's history, and returns part of it on each run. The playbook remembers, not your agent: what you want kept goes into a recall function rather than your agent's own notes, so you, anyone else and the playbook's workflows can ask for it later.
 
 ## Before you start
 

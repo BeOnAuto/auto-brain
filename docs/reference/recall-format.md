@@ -2,7 +2,7 @@
 
 # Recall function format
 
-A recall function keeps a view: a JSON value that its module folds from the playbook's events, one event at a time. The fold starts from the first event of the playbook's history. A run returns what the view holds as it stands. So the playbook can tell what it decided before, such as the reviews of each campaign, the latest verdict per region or the refusals of a quarter. The API stores a recall function as a definition of the type `recall`.
+A recall function keeps a view: a JSON value that its module folds from the playbook's events, one event at a time. The fold starts from the first event of the playbook's history. A run returns what the view holds as it stands. So the playbook can tell what it decided before, such as the reviews of each campaign, the latest verdict per region or the refusals of a quarter. A recall function is the playbook's memory: what a person wants kept so that the playbook can be asked about it again, shared by everyone who asks the playbook and by its workflows, and distinct from whatever notes an agent keeps for itself. The API stores a recall function as a definition of the type `recall`.
 
 The view depends on the playbook's events alone:
 
