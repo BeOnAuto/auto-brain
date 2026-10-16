@@ -35,6 +35,14 @@ describe('the models an operator allows', () => {
     ]);
   });
 
+  it('narrow the list, which says so, whereas a setting left empty narrows nothing', async () => {
+    const narrowed = await catalogFor(offering(['gateway/anthropic/*']), answering);
+    const open = await catalogFor({ ...offering(['gateway/anthropic/*']), ALLOWED_MODELS: '' }, answering);
+
+    expect([(await narrowed.list()).narrowed, (await open.list()).narrowed]).toEqual([true, false]);
+    expect((await narrowed.list('anthropic')).narrowed).toBe(true);
+  });
+
   it('list an alias when its name or its target is allowed, a wildcard one only when every model it stands for is', async () => {
     const aliases = {
       'openai/*': 'gateway/openai/*',
