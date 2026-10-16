@@ -13,7 +13,7 @@ import {
 } from '@on.auto/interaction/testing';
 import { plainPoolsOn, postgresqlLedgerLayer } from '@on.auto/ledger/postgresql';
 import { ledgerLayer } from '@on.auto/ledger/sqlite3';
-import { Ledger, projectedTableOf } from '@on.auto/operations';
+import { advancedColumnsOf, Ledger, projectedTableOf } from '@on.auto/operations';
 import { Effect, Layer, ManagedRuntime, Schema } from 'effect';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -101,7 +101,7 @@ const stores: readonly Store[] = [
   { store: `PostgreSQL${notice}`, skipped: postgresql === '', aPlace: onPostgreSQL },
 ];
 
-const advancedByTheReader = new Set(conversations.advanced?.columns);
+const advancedByTheReader = new Set(advancedColumnsOf(conversations));
 
 function foldedColumnsOf(row: Readonly<Record<string, unknown>>) {
   return Object.fromEntries(

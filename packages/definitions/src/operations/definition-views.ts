@@ -5,14 +5,15 @@ import type { Capability, DefinitionSummary } from '../capability/capability.ts'
 import type { StrippedForms } from '../capability/stripped-forms.ts';
 import type { DefinitionContent } from '../registry/definition-events.ts';
 import type { ListedDefinition, Definition, StoredDefinition } from '../registry/definition.ts';
+import { shapeNameIn } from '../shapes/published-output.ts';
 import { rejectionOfSource, type Rejection } from './issue-pointers.ts';
 import { savedDefinitions } from './saved-definitions.ts';
 
 export const byName = Order.mapInput(Order.String, ({ name }: StoredDefinition) => name);
 
 function publishedDetails({ details }: StoredDefinition): Pick<Definition, 'details'> {
-  const shape = details?.['shape'];
-  return typeof shape === 'string' ? { details: { shape } } : {};
+  const shape = shapeNameIn(details);
+  return shape === undefined ? {} : { details: { shape } };
 }
 
 export function definitionOf({ type, mediaType }: Capability, stored: StoredDefinition): Definition {

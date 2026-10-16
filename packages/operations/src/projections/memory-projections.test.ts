@@ -148,39 +148,46 @@ describe('the table of a projection', () => {
   });
 });
 
-describe('a projection declared with names a table cannot hold', () => {
-  const malformed: readonly (readonly [string, KeyedProjection])[] = [
-    ['The projection name Tallies is malformed', { ...runTallyRows, name: 'Tallies' }],
-    ['The projection run_tallies has a version that is not a whole number from 1', { ...runTallyRows, version: 0 }],
-    ['The column name Fn is malformed', { ...runTallyRows, columns: [{ name: 'Fn', kind: 'text' }] }],
-    [
-      'The projection run_tallies may not name a column row_key, which keys every row',
-      { ...runTallyRows, columns: [{ name: 'row_key', kind: 'text' }] },
-    ],
-    [
-      'The index name By-status is malformed',
-      { ...runTallyRows, indexes: [{ name: 'By-status', columns: ['status'] }] },
-    ],
-    [
-      'The projection run_tallies has no column state',
-      { ...runTallyRows, indexes: [{ name: 'by_state', columns: ['state'] }] },
-    ],
-    [
-      'The projection run_tallies has no column due',
-      { ...runTallyRows, indexes: [{ name: 'due', columns: ['due_at'], whereSet: 'due' }] },
-    ],
-    ['The projection run_tallies names no stream kind it folds', { ...runTallyRows, kinds: [] }],
-    ['The stream kind name Runs is malformed', { ...runTallyRows, kinds: ['Runs'] }],
-    [
-      'The projection topics has no column closed',
-      { ...topicRows, advanced: { columns: ['closed'], setBy: ['topic_opened'] } },
-    ],
-    [
-      'The projection topics does not fold topic_closed, which it says sets its advanced columns',
-      { ...topicRows, advanced: { columns: ['open'], setBy: ['topic_closed'] } },
-    ],
-  ];
+const malformed: readonly (readonly [string, KeyedProjection])[] = [
+  ['The projection name Tallies is malformed', { ...runTallyRows, name: 'Tallies' }],
+  ['The projection run_tallies has a version that is not a whole number from 1', { ...runTallyRows, version: 0 }],
+  ['The column name Fn is malformed', { ...runTallyRows, columns: [{ name: 'Fn', kind: 'text' }] }],
+  [
+    'The projection run_tallies may not name a column row_key, which keys every row',
+    { ...runTallyRows, columns: [{ name: 'row_key', kind: 'text' }] },
+  ],
+  ['The index name By-status is malformed', { ...runTallyRows, indexes: [{ name: 'By-status', columns: ['status'] }] }],
+  [
+    'The projection run_tallies has no column state',
+    { ...runTallyRows, indexes: [{ name: 'by_state', columns: ['state'] }] },
+  ],
+  [
+    'The projection run_tallies has no column due',
+    { ...runTallyRows, indexes: [{ name: 'due', columns: ['due_at'], whereSet: 'due' }] },
+  ],
+  ['The projection run_tallies names no stream kind it folds', { ...runTallyRows, kinds: [] }],
+  ['The stream kind name Runs is malformed', { ...runTallyRows, kinds: ['Runs'] }],
+  [
+    'The projection topics has no column closed',
+    { ...topicRows, advanced: [{ column: 'closed', setBy: ['topic_opened'] }] },
+  ],
+  [
+    'The projection topics does not fold topic_closed, which it says sets its advanced column open',
+    { ...topicRows, advanced: [{ column: 'open', setBy: ['topic_closed'] }] },
+  ],
+  [
+    'The projection topics declares its advanced column open more than once',
+    {
+      ...topicRows,
+      advanced: [
+        { column: 'open', setBy: ['topic_opened'] },
+        { column: 'open', setBy: ['topic_noted'] },
+      ],
+    },
+  ],
+];
 
+describe('a projection declared with names a table cannot hold', () => {
   it.each(malformed)('is refused: %s', (message, projection) => {
     expect(() => memoryLedger(undefined, [projection])).toThrow(message);
   });

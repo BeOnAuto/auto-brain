@@ -8,9 +8,11 @@ It predicts **orders**, counted in orders, for each series a week at a time, 1 a
 
 A season is 52 weeks long.
 
-A question names a series and how many weeks ahead, with the value of **promotion** planned for the weeks ahead.
+A question names a series, and one horizon when it asks for that one alone, with the value of **promotion** planned for the weeks ahead.
 
-It answers with a likely value, a low and a high: the 50th, 10th and 90th percentiles of its model.
+It answers the last 8 observed weeks and 1 and 4 weeks ahead, each with a likely value, a low and a high.
+
+The likely value is the 50th percentile of its model, the low the 10th and the high the 90th.
 
 ## What it learns from
 

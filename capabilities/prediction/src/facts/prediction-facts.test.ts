@@ -152,7 +152,7 @@ const modelFacts: readonly (readonly [string, Schema.JsonObject, string])[] = [
       predictions_sha256: sha256,
       predictions_bytes: 90,
     },
-    'Version 1 predicted 3 series from 2026-10-11 in the shadow of version 2, and 1 with no finite answer',
+    'Version 1 predicted 3 series from 2026-10-11 in the shadow of version 2, and 1 whose answer was not finite or had a low above its likely value or a high below it',
   ],
   [
     'shadow_graded',

@@ -7,7 +7,7 @@ import { checkedFrom, isWhole, nameIssues, refusedAt, type Checked } from './che
 import type { WrittenData, WrittenPredicts } from './front-matter.ts';
 import type { Predicts } from './prediction-document.ts';
 
-const { mostHorizons, mostHorizon, leastSeason, mostSeason, mostUnitCharacters } = predictionBounds;
+const { mostHorizons, mostHorizon, leastSeason, mostSeason, mostUnitCharacters, mostHistory } = predictionBounds;
 
 const summedPairs =
   'a day sums to a week, a month or a quarter, a week to a quarter or a year, and a month to a quarter or a year';
@@ -80,28 +80,50 @@ function unitIssues(unit: string, lines: SourceLines): readonly DocumentIssue[] 
     : [];
 }
 
-export function predictsOf(
-  written: WrittenPredicts,
-  target: WrittenData['target'],
-  lines: SourceLines,
-): Checked<Predicts> {
-  const { target: name, period, season, horizons = [], accumulates, unit } = written;
+function historyIssues(history: number | undefined, window: number, lines: SourceLines): readonly DocumentIssue[] {
+  const at = '/predicts/history';
+  if (history === undefined) {
+    return [];
+  }
+  if (!isWhole(history, 0, mostHistory)) {
+    return refusedAt(
+      lines,
+      at,
+      `The history is a whole number of periods from 0 to ${mostHistory}, not ${figure(history)}; leave it out for twice the longest horizon`,
+    );
+  }
+  return history > window
+    ? refusedAt(
+        lines,
+        at,
+        `The history of ${figure(history)} periods is more than the window of ${figure(window)}, which a question reads it from`,
+      )
+    : [];
+}
+
+type Reach = Pick<Predicts, 'period' | 'horizons' | 'accumulates'>;
+
+export function longestHorizonOf({ period, horizons, accumulates }: Reach): number {
+  return accumulates === undefined ? Math.max(...horizons) : Number(longestSpanOf(period, accumulates));
+}
+
+export function predictsOf(written: WrittenPredicts, data: WrittenData, lines: SourceLines): Checked<Predicts> {
+  const { target: name, period, season, horizons = [], accumulates, unit, history } = written;
   const issues = [
     ...nameIssues(name, lines, '/predicts/target'),
     ...seasonIssues(season, lines),
-    ...accumulationIssues(written, target, lines),
+    ...accumulationIssues(written, data.target, lines),
     ...unitIssues(unit, lines),
+    ...historyIssues(history, data.window, lines),
   ];
-  return checkedFrom(issues, () => ({
-    target: name,
-    period,
-    ...(season === undefined ? {} : { season }),
-    horizons,
-    ...(accumulates === undefined ? {} : { accumulates }),
-    unit: unit.trim(),
-  }));
-}
-
-export function longestHorizonOf({ period, horizons, accumulates }: Predicts): number {
-  return accumulates === undefined ? Math.max(...horizons) : Number(longestSpanOf(period, accumulates));
+  return checkedFrom(issues, () => {
+    const reach: Reach = { period, horizons, ...(accumulates === undefined ? {} : { accumulates }) };
+    return {
+      target: name,
+      ...(season === undefined ? {} : { season }),
+      ...reach,
+      unit: unit.trim(),
+      history: history ?? 2 * longestHorizonOf(reach),
+    };
+  });
 }

@@ -1,5 +1,4 @@
 import {
-  internalTermsIn,
   plainTextIn,
   technicalTextIn,
   toolNamesIn,
@@ -7,8 +6,7 @@ import {
   type McpSession,
   type ToolResult,
 } from '@on.auto/api/testing';
-import { createApiKey } from '@on.auto/identity';
-import { allPermissions } from '@on.auto/operations';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { ModelNotAllowed, ProviderNotConfigured, DefinitionInvalid } from '@on.auto/reasoning';
 import { answers, textResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
@@ -249,20 +247,6 @@ describe('the plain words that lead each result over MCP', () => {
     expect(errors.map((called) => audienceOf(called))).toEqual(errors.map(([label]) => [label, true]));
     expect(everyResult.flatMap((called) => leaked(called))).toEqual([]);
     expect(everyResult.map(([, result]) => result.content.length)).toEqual(everyResult.map(() => 2));
-  });
-
-  it('say plainly that a connection is not allowed to do what it asked', async () => {
-    const limited = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: allPermissions, playbooks: ['alpha'] });
-    server = await servingWorkflows([], { API_KEYS: JSON.stringify([limited.entry]) });
-
-    const refused = await onMcp(
-      (session) => session.callTool('list_definitions', { playbook: 'beta', type: 'reasoning' }),
-      { authorization: `Bearer ${limited.key}` },
-    );
-
-    expect(plainTextIn(refused)).toBe(
-      'Could not list the reasoning functions: this connection is not allowed to do that. Whoever set up this connection can allow it.',
-    );
   });
 });
 

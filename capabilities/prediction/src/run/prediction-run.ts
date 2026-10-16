@@ -1,6 +1,6 @@
 import { Buffer } from 'node:buffer';
 
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import { seriesBounds, type CapabilityAnswer, type CapabilityRejection, type RunContext } from '@on.auto/definitions';
 import { InvalidInput } from '@on.auto/operations';
 import { measureOf, mostValueDepth } from '@on.auto/workflow-engine/dsl';
 import { Effect, Predicate, Result, type Schema } from 'effect';
@@ -56,7 +56,7 @@ function checkedInput(
   const words =
     asked === 'build'
       ? 'The input is not a build, which is { build: {} }'
-      : 'The input is not a question this prediction function takes: a series, one of its horizons unless it predicts a total, and the given features it names';
+      : `The input is not a question this prediction function takes: a series, one of its horizons or none for every horizon, and none for a total, the given features it names, and at most ${seriesBounds.mostMarks} marks`;
   const issues = issuesOfInput(document, input, asked);
   return issues.length === 0 ? Effect.succeed(input) : Effect.fail(new InvalidInput({ detail: words, issues }));
 }

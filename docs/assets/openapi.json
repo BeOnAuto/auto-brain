@@ -3548,7 +3548,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -3872,7 +3872,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                          "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                         },
                         "name": {
                           "type": "string",
@@ -4165,7 +4165,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -4495,7 +4495,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -4821,7 +4821,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -5161,7 +5161,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -5170,6 +5170,16 @@
                     "definition_version": {
                       "type": "integer",
                       "description": "The definition version that ran"
+                    },
+                    "output_shape": {
+                      "type": "string",
+                      "enum": [
+                        "series",
+                        "categories",
+                        "table",
+                        "text"
+                      ],
+                      "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                     },
                     "status": {
                       "type": "string",
@@ -5275,7 +5285,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ],
                               "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
@@ -5339,7 +5350,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ],
                               "description": "Why, with effect_unknown: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
@@ -5535,7 +5547,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -5544,6 +5556,16 @@
                     "definition_version": {
                       "type": "integer",
                       "description": "The definition version that ran"
+                    },
+                    "output_shape": {
+                      "type": "string",
+                      "enum": [
+                        "series",
+                        "categories",
+                        "table",
+                        "text"
+                      ],
+                      "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                     },
                     "status": {
                       "type": "string",
@@ -5649,7 +5671,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ],
                               "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
@@ -5713,7 +5736,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ],
                               "description": "Why, with effect_unknown: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
@@ -5924,7 +5948,7 @@
                     },
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -5933,6 +5957,16 @@
                     "definition_version": {
                       "type": "integer",
                       "description": "The definition version that ran"
+                    },
+                    "output_shape": {
+                      "type": "string",
+                      "enum": [
+                        "series",
+                        "categories",
+                        "table",
+                        "text"
+                      ],
+                      "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                     },
                     "status": {
                       "type": "string",
@@ -6038,7 +6072,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ],
                               "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
@@ -6102,7 +6137,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ],
                               "description": "Why, with effect_unknown: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
@@ -6376,7 +6412,7 @@
                         },
                         "type": {
                           "type": "string",
-                          "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                          "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                         },
                         "name": {
                           "type": "string",
@@ -6385,6 +6421,16 @@
                         "definition_version": {
                           "type": "integer",
                           "description": "The definition version that ran"
+                        },
+                        "output_shape": {
+                          "type": "string",
+                          "enum": [
+                            "series",
+                            "categories",
+                            "table",
+                            "text"
+                          ],
+                          "description": "The output shape the output of this run takes, series, categories, table or text, which Auto Studio draws: that of its definition when the definition declares one and this kind of run answers it, as a question to a prediction function answers a series; left out otherwise, as for a build of a prediction function"
                         },
                         "status": {
                           "type": "string",
@@ -6477,7 +6523,8 @@
                                 "only_read",
                                 "builds_of_the_day",
                                 "stalled",
-                                "not_finite"
+                                "not_finite",
+                                "not_in_order"
                               ]
                             }
                           },
@@ -7166,7 +7213,7 @@
                         "properties": {
                           "type": {
                             "type": "string",
-                            "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                            "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                           },
                           "name": {
                             "type": "string",
@@ -10505,7 +10552,8 @@
               "only_read",
               "builds_of_the_day",
               "stalled",
-              "not_finite"
+              "not_finite",
+              "not_in_order"
             ],
             "description": "What the rejection comes from"
           }

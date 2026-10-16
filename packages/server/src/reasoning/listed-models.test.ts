@@ -1,11 +1,5 @@
-import {
-  internalTermsIn,
-  listedTools,
-  plainTextIn,
-  technicalTextIn,
-  withMcpSession,
-  type ToolResult,
-} from '@on.auto/api/testing';
+import { listedTools, plainTextIn, technicalTextIn, withMcpSession, type ToolResult } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { anthropicModels, jsonResponse, recordingFetch, vercelGatewayModels } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -33,12 +33,22 @@ export function issueAt(path: Path, detail: string): SchemaIssue {
   return { pointer: pointerOf(path), detail };
 }
 
-function above(bound: number | undefined, value: number): boolean {
-  return bound !== undefined && bound > value;
+function lowHolds(low: number | undefined, value: number): boolean {
+  return low === undefined || low <= value;
 }
 
-function below(bound: number | undefined, value: number): boolean {
-  return bound !== undefined && bound < value;
+function highHolds(high: number | undefined, value: number): boolean {
+  return high === undefined || high >= value;
+}
+
+interface PointRange {
+  readonly low?: number;
+  readonly value: number;
+  readonly high?: number;
+}
+
+export function rangeHolds({ low, value, high }: PointRange): boolean {
+  return lowHolds(low, value) && highHolds(high, value);
 }
 
 export function rangeIssues(entry: Json, path: Path): readonly SchemaIssue[] {
@@ -48,8 +58,8 @@ export function rangeIssues(entry: Json, path: Path): readonly SchemaIssue[] {
     return [];
   }
   return [
-    ...(above(numberOf(low), middle) ? [issueAt([...path, 'low'], 'Expected a low of at most the value')] : []),
-    ...(below(numberOf(high), middle) ? [issueAt([...path, 'high'], 'Expected a high of at least the value')] : []),
+    ...(lowHolds(numberOf(low), middle) ? [] : [issueAt([...path, 'low'], 'Expected a low of at most the value')]),
+    ...(highHolds(numberOf(high), middle) ? [] : [issueAt([...path, 'high'], 'Expected a high of at least the value')]),
   ];
 }
 

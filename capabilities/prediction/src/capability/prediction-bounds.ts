@@ -11,6 +11,7 @@ export const predictionBounds = {
   mostSeason: 366,
   leastHoldout: 8,
   mostWindow: 1000,
+  mostHistory: 500,
   mostFilters: 8,
   mostFeatures: 40,
   mostNameCharacters: 64,

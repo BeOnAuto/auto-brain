@@ -1,11 +1,5 @@
-import {
-  internalTermsIn,
-  listedTools,
-  plainTextIn,
-  problemIn,
-  withMcpSession,
-  type McpSession,
-} from '@on.auto/api/testing';
+import { listedTools, plainTextIn, problemIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 

@@ -1,4 +1,5 @@
-import { internalTermsIn, plainTextIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { plainTextIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import { chatKey } from '../testing/servers/chat-deliveries.ts';

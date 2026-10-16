@@ -29,6 +29,7 @@ export { Conflict, ConflictKindSchema, type ConflictKind } from './outcome/confl
 export { Forbidden } from './outcome/forbidden.ts';
 export { RunUnanswered, UnansweredKindSchema, type UnansweredKind } from './outcome/unanswered-run.ts';
 export {
+  advancedColumnsLeftBy,
   advancedColumnsOf,
   playbookStreamOf,
   checkedProjection,
@@ -36,8 +37,7 @@ export {
   requireAdvancedColumns,
   rowKeyColumn,
   rowKeyOf,
-  setsAdvancedColumns,
-  type AdvancedColumns,
+  type AdvancedColumn,
   type PlaybookProjectionReader,
   type PlaybookStream,
   type DueRowsQuery,

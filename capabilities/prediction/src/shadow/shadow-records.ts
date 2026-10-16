@@ -4,6 +4,7 @@ import type { PredictionFunctionDefinitionDocument } from '../document/predictio
 import { seriesRowsIn, type SeriesRows } from '../files/series-rows.ts';
 import type { WalkAnswer } from '../model-processes/model-processes.ts';
 import { scaleOf } from '../scoring/baselines.ts';
+import { answeredWhole } from '../scoring/quantile-order.ts';
 import { featureNamesOf } from '../scoring/scoring-inputs.ts';
 import type { ShadowRows } from './shadow-rows.ts';
 import type { ShadowOrigin } from './shadow-schedule.ts';
@@ -39,7 +40,7 @@ export function predictionsText(
               q: [...q],
               scale: scaleOf(grid, values) ?? null,
             }));
-      const series = walked.filter(({ q }) => q.every((value) => Number.isFinite(value)));
+      const series = walked.filter(({ q }) => answeredWhole(q));
       return {
         text: JSON.stringify({ origin: origin.form, series }),
         count: series.length,

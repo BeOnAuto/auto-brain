@@ -1,13 +1,6 @@
-import {
-  internalTermsIn,
-  listedTools,
-  plainTextIn,
-  problemIn,
-  textOf,
-  withMcpSession,
-  type McpSession,
-} from '@on.auto/api/testing';
+import { listedTools, plainTextIn, problemIn, textOf, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { campaignPace, campaignRows } from '@on.auto/computation/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

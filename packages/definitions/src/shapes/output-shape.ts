@@ -2,7 +2,7 @@ import { schemaCheckOf, type FurtherCheck, type SchemaCheck } from '@on.auto/jso
 import { mostValueDepth } from '@on.auto/workflow-engine/worker';
 import type { Schema } from 'effect';
 
-export type OutputShapeName = 'series' | 'categories' | 'table' | 'text';
+import type { OutputShapeName } from './shape-names.ts';
 
 export interface OutputShape {
   readonly name: OutputShapeName;

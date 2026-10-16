@@ -64,6 +64,12 @@ export async function builtFrom(
   return build;
 }
 
+export async function activeVisitsOn(playbook: BuildPlaybook): Promise<BuildPlaybook> {
+  await savedFunction(playbook);
+  await builtFrom(playbook, ['visits-mean']);
+  return playbook;
+}
+
 export function runOf(playbook: BuildPlaybook, id: string): Promise<Outcome> {
   return playbook.call(playbook.operations.getRun, { run_id: id });
 }

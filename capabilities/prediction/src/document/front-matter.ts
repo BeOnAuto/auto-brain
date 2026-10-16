@@ -17,6 +17,7 @@ const PredictsSchema = Schema.Struct({
   horizons: Schema.optionalKey(Schema.Array(Schema.Number)),
   accumulates: Schema.optionalKey(Schema.Literals(enclosings)),
   unit: Schema.String,
+  history: Schema.optionalKey(Schema.Number),
 });
 
 const DataSchema = Schema.Struct({

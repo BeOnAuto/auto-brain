@@ -1,6 +1,5 @@
 import { SQL } from '@event-driven-io/dumbo';
 import {
-  advancedColumnsOf,
   projectedTableOf,
   rowKeyColumn,
   type KeyedProjection,
@@ -105,23 +104,20 @@ function valuesOf(dialect: ProjectionDialect, projection: KeyedProjection, { pla
   return SQL`(${SQL.merge([SQL`${playbookKey}`, SQL`${key}`, ...values], ', ')})`;
 }
 
-export type AdvancedColumnsWritten = 'with_advanced' | 'without_advanced';
-
-function updatedColumns(projection: KeyedProjection, written: AdvancedColumnsWritten): readonly string[] {
-  const advanced = new Set(written === 'with_advanced' ? [] : advancedColumnsOf(projection));
-  return projection.columns.map(({ name }) => name).filter((name) => !advanced.has(name));
+function updatedColumns(projection: KeyedProjection, standing: readonly string[]): readonly string[] {
+  return projection.columns.map(({ name }) => name).filter((name) => !standing.includes(name));
 }
 
 export function rowsWrite(
   dialect: ProjectionDialect,
   projection: KeyedProjection,
   kept: readonly KeptRow[],
-  written: AdvancedColumnsWritten = 'with_advanced',
+  standing: readonly string[] = [],
 ): SQL {
   const names = projection.columns.map(({ name }) => name);
   const columns = SQL.plain([...keyColumns, ...names].join(', '));
   const updates = SQL.plain(
-    updatedColumns(projection, written)
+    updatedColumns(projection, standing)
       .map((name) => `${name} = excluded.${name}`)
       .join(', '),
   );
