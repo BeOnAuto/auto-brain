@@ -5,6 +5,8 @@ import type { Environment } from '../server-config.ts';
 import { readConfigFile, type ConfigFile, type ConfigFileInvalid } from './config-file.ts';
 import type { FileSetting } from './file-setting.ts';
 
+export const configFileVariable = 'CONFIG_FILE';
+
 export interface FileUse {
   readonly path: string;
   readonly fromFile: readonly string[];
@@ -44,7 +46,7 @@ export function configurationOf(
   environment: Environment,
   settings: readonly FileSetting[],
 ): Result.Result<Configuration, ConfigFileInvalid> {
-  const path = environment['CONFIG_FILE'];
+  const path = environment[configFileVariable];
   return isSet(path)
     ? Result.map(readConfigFile(path, settings, environment), (file) => layered(environment, file))
     : Result.succeed({ environment, file: undefined });

@@ -6,6 +6,14 @@ import type { LogFormat, LogLevelSetting } from '../logging/log-formats.ts';
 import { InvalidSettingsError } from './invalid-settings-error.ts';
 import { IssuerOrigin, namesALoopbackHost, Origin, PublicOrigin } from './origin.ts';
 
+export const accessVariables: readonly string[] = [
+  'ALLOWED_ORIGINS',
+  'LOG_FORMAT',
+  'LOG_LEVEL',
+  'PUBLIC_URL',
+  'IDENTITY_ISSUER',
+];
+
 export interface AccessSettings {
   readonly allowedOrigins: readonly string[];
   readonly logFormat: LogFormat;

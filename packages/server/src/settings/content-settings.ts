@@ -13,6 +13,13 @@ export type ContentSettings =
       readonly region: string | undefined;
     };
 
+export const contentVariables: readonly string[] = [
+  'CONTENT_STORE_URL',
+  'AWS_ENDPOINT_URL_S3',
+  'AWS_ENDPOINT_URL',
+  'AWS_REGION',
+];
+
 const sources = Config.all({
   url: Config.option(Config.String('CONTENT_STORE_URL')),
   storageEndpoint: Config.option(Config.String('AWS_ENDPOINT_URL_S3')),

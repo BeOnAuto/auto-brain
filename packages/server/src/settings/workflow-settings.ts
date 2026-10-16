@@ -50,6 +50,10 @@ const openCalls: Bounds = {
   expected: `Expected a whole number from 1 to 9999, such as ${mostOpenCallsOfATree}`,
 };
 
+export const workflowVariables: readonly string[] = [mostDuration, sweepInterval, nestedRuns, openCalls].map(
+  ({ setting }) => setting,
+);
+
 const sources = Config.all({
   mostDuration: Config.String(mostDuration.setting).pipe(Config.withDefault('P30D')),
   nestedRuns: Config.String(nestedRuns.setting).pipe(Config.withDefault('32')),

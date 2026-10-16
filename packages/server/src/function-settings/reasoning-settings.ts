@@ -3,13 +3,19 @@ import { dirname } from 'node:path';
 import type { Environment, FileUse } from '@on.auto/config';
 import {
   defaultMostInputTokens,
+  modelVariables,
   ModelSettingsInvalid,
   providerStatus,
   readModelSettings,
   type ModelSettings,
   type SettingProblem,
 } from '@on.auto/reasoning';
-import { ToolServerSettingsInvalid, readToolServerSettings, type ToolServerSettings } from '@on.auto/tool-servers';
+import {
+  ToolServerSettingsInvalid,
+  readToolServerSettings,
+  toolServersSetting,
+  type ToolServerSettings,
+} from '@on.auto/tool-servers';
 import { Effect } from 'effect';
 
 import { problemsListed } from '../config-file/placed-problems.ts';
@@ -33,6 +39,12 @@ const bounds = {
     example: defaultMostInputTokens,
   },
 };
+
+export const reasoningVariables: readonly string[] = [
+  ...Object.values(bounds).map(({ setting }: { readonly setting: string }) => setting),
+  ...modelVariables,
+  toolServersSetting,
+];
 
 interface Problems {
   readonly problems: readonly SettingProblem[];

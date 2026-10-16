@@ -1,4 +1,4 @@
-export { InvalidPortError, readServerConfig } from './server-config.ts';
+export { InvalidPortError, readServerConfig, serverConfigVariables } from './server-config.ts';
 export type { Environment, ServerConfig } from './server-config.ts';
 export {
   readYaml,
@@ -9,7 +9,7 @@ export {
   type YamlReading,
 } from './yaml/yaml-reading.ts';
 export { ConfigFileInvalid } from './config-file/config-file.ts';
-export { configurationOf, type Configuration, type FileUse } from './config-file/configuration.ts';
+export { configFileVariable, configurationOf, type Configuration, type FileUse } from './config-file/configuration.ts';
 export { fileSetting, type FileSetting, type FileSettingOptions, type References } from './config-file/file-setting.ts';
 export { credentialProblems } from './config-file/credentials.ts';
 export type { FileProblem } from './config-file/file-problem.ts';

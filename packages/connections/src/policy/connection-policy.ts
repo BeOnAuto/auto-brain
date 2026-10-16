@@ -3,7 +3,7 @@ import { Data, Effect, Result, Schema } from 'effect';
 
 import { CredentialKindSchema, type CredentialKind } from '../registry/credential.ts';
 
-const connectionsSetting = 'CONNECTIONS';
+export const connectionsSetting = 'CONNECTIONS';
 
 const hostLabel = '[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?';
 

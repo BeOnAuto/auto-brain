@@ -4,6 +4,7 @@ export type { ConnectPages } from './links/connect-page.ts';
 export {
   ConnectionPolicyInvalid,
   ConnectionPolicySchema,
+  connectionsSetting,
   readConnectionPolicy,
   type ConnectionPolicy,
 } from './policy/connection-policy.ts';

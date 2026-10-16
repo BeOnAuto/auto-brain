@@ -87,3 +87,22 @@ connections:
     );
   });
 });
+
+describe('the variables a connection may never name', () => {
+  it('refuses a variable any settings module reads or a library it uses reads, and a credential of the Azure library', () => {
+    const own = [
+      'AZURE_PASSWORD',
+      'AZURE_CLIENT_CERTIFICATE_PASSWORD',
+      'AWS_SESSION_TOKEN',
+      'OTEL_EXPORTER_OTLP_LOGS_HEADERS',
+      'PREDICTION_CACHE_DIR',
+      'HTTPS_PROXY',
+      'HOST',
+    ];
+    const environment = { CONNECTIONS: JSON.stringify({ variables: [...own, 'CRM_API_KEY'] }) };
+
+    expect(refusalOf(fileOf('connections: {}\n'), environment)).toBe(
+      `connection_policy_invalid: The connection settings are invalid. ${own.map((name, index) => `CONNECTIONS: /variables/${String(index)}: ${name} ${ownVariable}`).join('; ')}`,
+    );
+  });
+});
