@@ -116,6 +116,7 @@ describe('the answer of list_models', () => {
           },
         ],
         catalog_status: 'complete',
+        narrowed: false,
       },
     });
   });

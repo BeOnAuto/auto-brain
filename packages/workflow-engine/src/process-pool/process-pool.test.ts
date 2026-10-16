@@ -1,6 +1,7 @@
 import { Schema } from 'effect';
 import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
+import { until } from '../pool-testing/waiting.ts';
 import { fakeProcesses, isAlive, nudge } from '../process-testing/fake-processes.ts';
 import {
   processPool,
@@ -19,8 +20,6 @@ interface Ran {
 const mebibyte = 1_048_576;
 
 const ordinaryDeadlineMs = 30_000;
-
-const awaitedAtMostMs = 30_000;
 
 const fake = fakeProcesses();
 
@@ -62,15 +61,6 @@ function ranOf(outcome: ProcessOutcome): Ran {
 
 async function echoed(pool: ProcessPool, key = 'a model'): Promise<Ran> {
   return ranOf(await run(pool, 'echo', null, { key }));
-}
-
-function until(event: () => boolean): Promise<void> {
-  return vi.waitFor(
-    () => {
-      expect(event()).toBe(true);
-    },
-    { timeout: awaitedAtMostMs, interval: 10 },
-  );
 }
 
 function namesIn(outcome: ProcessOutcome): readonly unknown[] {

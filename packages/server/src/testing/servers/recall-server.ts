@@ -3,14 +3,11 @@ import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/test
 import { campaignReviews } from '@on.auto/recall/testing';
 import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Option, Schema } from 'effect';
-import { expect, vi } from 'vitest';
+import { expect } from 'vitest';
 
 import { workerPool, type ProgramPoolOf } from '../../composition/served-computation.ts';
+import { until } from '../waiting/until.ts';
 import { alpha, servingReasoning, type ReasoningServer } from './reasoning-server.ts';
-
-export const recallTestTimeoutMs = 60_000;
-
-const untilNearTheTestTimeout = { timeout: recallTestTimeoutMs - 10_000, interval: 50 };
 
 export const anyReview = [
   '---',
@@ -77,9 +74,9 @@ export function foldsHeldUntilOpened(): Gate {
 }
 
 export function foldsHeld(gate: Gate, folds: number): Promise<void> {
-  return vi.waitFor(() => {
+  return until(() => {
     expect(gate.held()).toBe(folds);
-  }, untilNearTheTestTimeout);
+  });
 }
 
 export async function playbookWithReviews(server: ReasoningServer, briefsFirst = 0, playbook = 'alpha'): Promise<void> {
@@ -111,12 +108,12 @@ export function standingUntil(
   name: string,
   holds: (standing: Standing) => boolean,
 ): Promise<unknown> {
-  return vi.waitFor(async () => {
+  return until(async () => {
     const { body } = await server.call('GET', `${alpha}/definitions/recall/${name}`);
     const standing = Option.getOrUndefined(decodeStanding(body))?.standing;
     expect(standing !== undefined && holds(standing)).toBe(true);
     return body;
-  }, untilNearTheTestTimeout);
+  });
 }
 
 interface RecallFunctionNamed {
@@ -125,11 +122,11 @@ interface RecallFunctionNamed {
 }
 
 export function liveOverMcp(session: McpSession, named: RecallFunctionNamed, folded: number): Promise<unknown> {
-  return vi.waitFor(async () => {
+  return until(async () => {
     const read = await session.callTool('get_definition', { ...named, type: 'recall' });
     expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded } });
     return read.structuredContent;
-  }, untilNearTheTestTimeout);
+  });
 }
 
 export function liveWith(folded: number): (standing: Standing) => boolean {

@@ -26,7 +26,6 @@ describe('saving a file under pnpm dev', () => {
 
     await expect(endingOf(development)).resolves.toEqual({
       exitCode: 0,
-      allStopped: true,
       said: [`${join(development.files.sourceDirectory, 'saved.ts')} changed, so the server restarts`],
     });
     expect(pidsOf(development)).toHaveLength(2);
@@ -43,11 +42,10 @@ describe('a broken save under pnpm dev', () => {
     await untilListening(development, 2);
     development.signal('SIGTERM');
 
-    const { exitCode, allStopped, said } = await endingOf(development);
+    const { exitCode, said } = await endingOf(development);
 
-    expect({ exitCode, allStopped, said: said.filter((line) => runnerSays.test(line)) }).toEqual({
+    expect({ exitCode, said: said.filter((line) => runnerSays.test(line)) }).toEqual({
       exitCode: 0,
-      allStopped: true,
       said: [
         `${development.files.serverEntry} changed, so the server restarts`,
         'The server stopped (exit code 1); it starts again when a file changes',
@@ -74,7 +72,6 @@ describe('a server crash under pnpm dev', () => {
     expect(gateway.requests()).toBe(2);
     await expect(endingOf(development)).resolves.toEqual({
       exitCode: 0,
-      allStopped: true,
       said: [
         'The server stopped (signal SIGKILL); it starts again when a file changes',
         `${development.files.envFile} changed, so the server restarts`,

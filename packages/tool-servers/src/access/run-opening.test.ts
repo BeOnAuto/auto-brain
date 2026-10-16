@@ -4,6 +4,7 @@ import { Effect, Fiber } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun, type FakeMcpServer } from '../testing/index.ts';
+import { until } from '../testing/until.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -28,20 +29,9 @@ function accessTo(fake: FakeMcpServer) {
   return access;
 }
 
-async function noSessionOpen(fake: FakeMcpServer, waited = 0): Promise<number> {
-  if (fake.openSessions() === 0 || waited >= 5000) {
-    return fake.openSessions();
-  }
-  await setTimeout(10);
-  return noSessionOpen(fake, waited + 10);
-}
-
-async function initializing(fake: FakeMcpServer): Promise<void> {
-  if (fake.seen().some(({ rpc }) => rpc === 'initialize')) {
-    return;
-  }
-  await setTimeout(1);
-  await initializing(fake);
+async function noSessionOpen(fake: FakeMcpServer): Promise<number> {
+  await until(() => fake.openSessions() === 0);
+  return fake.openSessions();
 }
 
 async function interruptedOpening(fake: FakeMcpServer, interrupting: () => Promise<void>): Promise<number> {
@@ -49,6 +39,17 @@ async function interruptedOpening(fake: FakeMcpServer, interrupting: () => Promi
   const opening = Effect.runFork(access.open(toolRun(recordingCallJournal()), [{ server: 'graph', tool: 'search' }]));
   await interrupting();
   await Effect.runPromise(Fiber.interrupt(opening));
+  return noSessionOpen(fake);
+}
+
+async function interruptedOnceItsSessionOpened(fake: FakeMcpServer): Promise<number> {
+  const release = fake.holdNextOf('notifications/initialized');
+  const access = accessTo(fake);
+  const opening = Effect.runFork(access.open(toolRun(recordingCallJournal()), [{ server: 'graph', tool: 'search' }]));
+  await until(() => fake.seen().some(({ rpc }) => rpc === 'notifications/initialized'));
+  const interrupted = Effect.runPromise(Fiber.interrupt(opening));
+  release();
+  await interrupted;
   return noSessionOpen(fake);
 }
 
@@ -62,7 +63,7 @@ describe('a run interrupted while it opens its tools', () => {
   it('ends the session its server was opening when it was interrupted, which no run holds any more', async () => {
     const fake = await fakeServer();
 
-    expect(await interruptedOpening(fake, () => initializing(fake))).toBe(0);
+    expect(await interruptedOnceItsSessionOpened(fake)).toBe(0);
     expect(fake.endedSessions()).toBe(1);
   });
 });

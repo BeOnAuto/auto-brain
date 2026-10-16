@@ -7,8 +7,17 @@ function model(id: string, owner: string, details: Partial<ModelEntry> = {}): Mo
   return { id, object: 'model', created: 0, owned_by: owner, ...details };
 }
 
-function listOf(data: readonly ModelEntry[], status: ModelList['catalog_status'] = 'complete'): ModelList {
-  return { object: 'list', data, catalog_status: status, listed_at: '2026-10-01T09:00:00.000Z' };
+type ListDetails = Partial<Pick<ModelList, 'catalog_status' | 'narrowed'>>;
+
+function listOf(data: readonly ModelEntry[], details: ListDetails = {}): ModelList {
+  return {
+    object: 'list',
+    data,
+    catalog_status: 'complete',
+    narrowed: false,
+    listed_at: '2026-10-01T09:00:00.000Z',
+    ...details,
+  };
 }
 
 describe('the plain words for the models a server can call', () => {
@@ -82,8 +91,27 @@ describe('the plain words for no model, or a list that may be incomplete', () =>
   });
 
   it('say when a provider could not be asked', () => {
-    expect(modelsListed(listOf([model('gateway/fast', 'gateway')], 'partial'))).toBe(
+    expect(modelsListed(listOf([model('gateway/fast', 'gateway')], { catalog_status: 'partial' }))).toBe(
       'This server can call 1 model through gateway: fast. The list may be incomplete: a provider could not be asked just now.',
+    );
+  });
+});
+
+describe('the plain words for a list an allow list narrows', () => {
+  it('say that it holds only what its operator allows, after the models and before an incomplete list', () => {
+    const narrowed: ListDetails = { narrowed: true };
+
+    expect(modelsListed(listOf([model('gateway/fast', 'gateway')], narrowed))).toBe(
+      'This server can call 1 model through gateway: fast. It lists only the models its operator allows.',
+    );
+    expect(modelsListed(listOf([model('bedrock/*', 'bedrock', { pattern: true })], narrowed))).toBe(
+      'This server can call any bedrock model. It lists only the models its operator allows.',
+    );
+    expect(modelsListed(listOf([], narrowed), 'mistral')).toBe(
+      'This server has no model it can call through mistral. It lists only the models its operator allows.',
+    );
+    expect(modelsListed(listOf([model('gateway/fast', 'gateway')], { ...narrowed, catalog_status: 'partial' }))).toBe(
+      'This server can call 1 model through gateway: fast. It lists only the models its operator allows. The list may be incomplete: a provider could not be asked just now.',
     );
   });
 });

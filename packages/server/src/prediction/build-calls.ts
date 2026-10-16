@@ -4,9 +4,10 @@ import { request } from 'node:http';
 
 import { dailyRows, steadyVisits, uploadedDailyVisits } from '@on.auto/prediction/testing';
 import { Schema } from 'effect';
-import { expect, vi } from 'vitest';
+import { expect } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/waiting/until.ts';
 import { uploaded, type Answer } from './dataset-uploads.ts';
 
 export interface Read {
@@ -90,31 +91,20 @@ export function refusedBeforeTheBody(
   });
 }
 
-export function endedRun(server: ReasoningServer, build: string, timeout = 30_000): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const { body } = await server.call('GET', `${alpha}/runs/${build}`);
-      expect(body).not.toMatchObject({ status: 'started' });
-      return body;
-    },
-    { timeout, interval: 50 },
-  );
+export function endedRun(server: ReasoningServer, build: string): Promise<unknown> {
+  return until(async () => {
+    const { body } = await server.call('GET', `${alpha}/runs/${build}`);
+    expect(body).not.toMatchObject({ status: 'started' });
+    return body;
+  });
 }
 
-export function standingWhen(
-  server: ReasoningServer,
-  name: string,
-  standing: object,
-  timeout = 30_000,
-): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const { body } = await server.call('GET', `${alpha}/definitions/prediction/${name}`);
-      expect(body).toMatchObject({ standing });
-      return body;
-    },
-    { timeout, interval: 50 },
-  );
+export function standingWhen(server: ReasoningServer, name: string, standing: object): Promise<unknown> {
+  return until(async () => {
+    const { body } = await server.call('GET', `${alpha}/definitions/prediction/${name}`);
+    expect(body).toMatchObject({ standing });
+    return body;
+  });
 }
 
 export async function builtFrom(server: ReasoningServer, candidate: string): Promise<string> {

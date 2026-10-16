@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import { askingASystem } from '../testing/servers/system-calls.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 import { workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const paging = {
   tool: 'pages',

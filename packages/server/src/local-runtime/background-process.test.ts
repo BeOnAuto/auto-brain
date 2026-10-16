@@ -18,12 +18,11 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { Function } from 'effect';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
+import { until } from '../testing/waiting/until.ts';
 import { noticesFor, restartMarkIn, startInBackgroundOf, startingLockIn } from './background-process.ts';
 import { restartWaitMs, startWaitMs } from './background-start.ts';
-
-const patiently = { timeout: 30_000, interval: 10 };
 
 const recordingEntry = fileURLToPath(new URL('../testing/entries/record-background-start.ts', import.meta.url));
 
@@ -50,16 +49,16 @@ describe('starting the runtime in the background', () => {
     })();
 
     const runtimeHome = join(home, '.auto-runtime');
-    await vi.waitFor(() => {
+    await until(() => {
       expect(existsSync(join(runtimeHome, 'started.json'))).toBe(true);
-    }, patiently);
+    });
     expect(JSON.parse(readFileSync(join(runtimeHome, 'started.json'), 'utf8'))).toEqual({
       arguments: ['start', '--background'],
       directory: runtimeHome,
     });
-    await vi.waitFor(() => {
+    await until(() => {
       expect(readFileSync(join(runtimeHome, 'runtime.log'), 'utf8')).toBe('started in the background\n');
-    }, patiently);
+    });
   });
 
   it('reports a runtime it could not start', async () => {
@@ -76,9 +75,9 @@ describe('starting the runtime in the background', () => {
       },
     })();
 
-    await vi.waitFor(() => {
+    await until(() => {
       expect(reported).toEqual([expect.stringMatching(/^Auto Runtime could not be started: spawn .*ENOENT$/u)]);
-    }, patiently);
+    });
   });
 });
 

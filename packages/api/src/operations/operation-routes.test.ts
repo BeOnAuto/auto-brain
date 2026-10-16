@@ -1,8 +1,7 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { describe, expect, it } from 'vitest';
 
 import { call } from '../testing/api-calls.ts';
+import { notebookOperationsAnnouncingWaits } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
@@ -212,7 +211,10 @@ describe('an ending that names its kind', () => {
 
 describe('a call the client leaves', () => {
   it('is cancelled when the client goes away, and reports no incident', async () => {
-    const { handler, incidents } = await operationServer();
+    const waiting = Promise.withResolvers<void>();
+    const { handler, incidents } = await operationServer({
+      operations: notebookOperationsAnnouncingWaits(waiting.resolve),
+    });
     const client = new AbortController();
     const request = new Request('http://localhost/v1/orgs/acme/playbooks/alpha/waiting', {
       headers: asAdmin,
@@ -220,7 +222,7 @@ describe('a call the client leaves', () => {
     });
 
     const answering = handler.fetch(request);
-    await setTimeout(50);
+    await waiting.promise;
     client.abort();
     const answer = await answering;
 

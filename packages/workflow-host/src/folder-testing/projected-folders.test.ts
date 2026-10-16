@@ -1,13 +1,13 @@
 import { randomUUID } from 'node:crypto';
 
 import { Effect } from 'effect';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
-import type { HostDatabase } from '../database/host-database.ts';
 import { someFolder } from '../projector/folder.ts';
 import { definitionStreamOf } from '../projector/playbook-definitions.ts';
 import { onSQLite } from '../testing/host-files.ts';
-import { projectedFolders } from '../testing/index.ts';
+import { projectedFolders, type ProjectedFolders } from '../testing/index.ts';
+import { until } from '../testing/until.ts';
 import { alphaKey } from '../views-testing/view-documents.ts';
 import { talliesOf, tallyFolderOf, tallyType } from './tally-folder.ts';
 
@@ -54,8 +54,8 @@ async function projected() {
   return folders;
 }
 
-function untilCounted(database: HostDatabase, counted: number): Promise<unknown> {
-  return vi.waitFor(async () => {
+function untilCounted({ database }: ProjectedFolders, counted: number): Promise<unknown> {
+  return until(async () => {
     const [row] = await Effect.runPromise(talliesOf(database, alphaKey));
     expect([row?.phase, row?.counted]).toEqual(['live', counted]);
   });
@@ -80,13 +80,13 @@ describe('the folders a projector keeps, as a test or a measurement opens them',
         },
       }),
     });
-    await untilCounted(folders.database, 1);
+    await untilCounted(folders, 1);
     await folders.append(
       `${alphaKey}runs/${secondRun}`,
       [{ type: 'run_started', data: { input: {} } }, succeeded(2)],
       ranBy(secondRun),
     );
-    await untilCounted(folders.database, 2);
+    await untilCounted(folders, 2);
     await folders.stop();
 
     expect(read.length).toBeGreaterThan(0);
@@ -96,7 +96,7 @@ describe('the folders a projector keeps, as a test or a measurement opens them',
   it('fold nothing while no projector runs', async () => {
     const folders = await projected();
     folders.start({ sweepEveryMs: 1000, pagesPerWake: 1, playbooksAtOnce: 1 });
-    await untilCounted(folders.database, 0);
+    await untilCounted(folders, 0);
     await folders.stop();
     await folders.append(
       `${alphaKey}runs/${firstRun}`,

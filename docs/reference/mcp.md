@@ -222,7 +222,7 @@ A prompt returns the recipe with the person's words filled in, followed by the f
 
 Its optional `provider` input selects one provider prefix, such as `anthropic`, or a configured gateway name. The server then lists only what that provider serves, and asks no other provider.
 
-The result has the shape of the OpenAI API's list of models, with two extra fields at the top:
+The result has the shape of the OpenAI API's list of models, with fields of its own at the top:
 
 ```json
 {
@@ -264,16 +264,19 @@ The result has the shape of the OpenAI API's list of models, with two extra fiel
     { "id": "bedrock/*", "object": "model", "created": 0, "owned_by": "bedrock", "pattern": true }
   ],
   "catalog_status": "complete",
+  "narrowed": false,
   "listed_at": "2026-10-01T09:30:00.000Z"
 }
 ```
 
-| Field            | Meaning                                                                                                     |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| `object`         | `"list"`                                                                                                    |
-| `data`           | The entries, sorted by `id`, each `id` once                                                                 |
-| `catalog_status` | `complete`, or `partial` when a provider could not be asked, so its models are missing or are its last list |
-| `listed_at`      | When the oldest provider list in the result was read; the time of the response when no provider was queried |
+| Field            | Meaning                                                                                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `object`         | `"list"`                                                                                                                                                                                                   |
+| `data`           | The entries, sorted by `id`, each `id` once                                                                                                                                                                |
+| `catalog_status` | `complete`, or `partial` when a provider could not be asked, so its models are missing or are its last list                                                                                                |
+| `narrowed`       | `true` when `allowed_models` or `ALLOWED_MODELS` is set, so the list holds only what the operator allows; `false` when nothing narrows it, and a definition may name any model of the configured providers |
+| `listed_at`      | When the oldest provider list in the result was read; the time of the response when no provider was queried                                                                                                |
+| `provider_setup` | Only from a runtime started with npx, when no `provider` is given and it lists no model: how the person adds a model provider                                                                              |
 
 Each entry contains `id`, `object: "model"`, `created` and `owned_by`. The last five fields in this table appear only where they apply:
 
@@ -314,6 +317,7 @@ The plain-language summary of the result follows these rules:
 - It names at most 20 models and counts the rest. It names each by the name its provider gives, or else by the last part of its id.
 - A name two providers share gets its provider in brackets. A name one provider repeats is replaced by the last part of the id.
 - It says which providers accept any model id, such as `It can also call any openai model.`
+- When the list is narrowed, it then says `It lists only the models its operator allows.`
 - A `partial` result ends with `The list may be incomplete: a provider could not be asked just now.`
 
 A server with six models, for example, says: `This server can call 6 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5 (gateway), and fast.`

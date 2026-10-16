@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { TimedOut, ToolsStopped, type ToolsStoppedBecause } from '@on.auto/reasoning';
 import { answers, callingTools, textResult, type ScriptedCall, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { serveFakeMcp, type FakeHints } from '@on.auto/tool-servers/testing';
@@ -8,6 +6,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -69,13 +68,6 @@ describe('a reasoning run that called only tools that read and could not finish,
   });
 });
 
-async function untilCalled(calledAny: () => boolean): Promise<void> {
-  if (!calledAny()) {
-    await setTimeout(10);
-    await untilCalled(calledAny);
-  }
-}
-
 const unanswered: ScriptedReply = (request) =>
   Effect.promise(async () => {
     const sleeping = request.tools?.offered.find(({ name }) => name === 'graph__sleep');
@@ -83,7 +75,7 @@ const unanswered: ScriptedReply = (request) =>
       { callId: 'call-1', input: { ms: 5000 } },
       { signal: AbortSignal.timeout(10_000), cancelled: new AbortController().signal },
     );
-    await untilCalled(() => request.tools?.calledAny() !== false);
+    await until(() => request.tools?.calledAny() !== false, Boolean);
   }).pipe(Effect.andThen(stoppedBy('run_bound')(request)));
 
 const mayChange: ReadonlyArray<readonly [string, ScriptedReply, string, FakeHints]> = [

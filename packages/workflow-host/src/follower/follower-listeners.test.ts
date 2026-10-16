@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { statement } from '../database/statement.ts';
 import { emittedContext, published, publishedInTurn } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
+import { until } from '../testing/until.ts';
 
 const waiting = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 

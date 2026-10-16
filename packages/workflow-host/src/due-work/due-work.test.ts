@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { skippingClock, systemClock } from '../loop/host-clock.ts';
-import { eventually } from '../testing/eventually.ts';
+import { until } from '../testing/until.ts';
 import { dueLooping, keysOf } from './due-looping.ts';
 import { dueAwaitedMs, dueInOneTick, duePerformedAtOnce } from './due-work.ts';
 import { fakeDueWork, type FakeDueWork } from './fake-due-work.ts';
@@ -25,7 +25,7 @@ describe('the due rows of a projection, in the loop of the host', () => {
     const looping = await dueLooping(rows, skippingClock(now));
 
     await looping.armTimer(now - 1000);
-    await eventually(rows.performed, (performed) => performed.length === 300);
+    await until(rows.performed, (performed) => performed.length === 300);
 
     expect(looping.order()).toEqual([`timer 1 after ${dueInOneTick} rows`]);
     expect([rows.mostAtOnce(), new Set(rows.performed().map(({ at }) => at)).size]).toEqual([duePerformedAtOnce, 1]);
@@ -40,7 +40,7 @@ describe('the due rows of a projection, in the loop of the host', () => {
     const looping = await dueLooping(rows, skippingClock(now));
 
     await looping.armTimer(now - 1000);
-    await eventually(rows.performed, (performed) => performed.length === 40);
+    await until(rows.performed, (performed) => performed.length === 40);
 
     expect(looping.order()).toEqual(['timer 1 after 0 rows']);
     expect(rows.mostAtOnce()).toBe(duePerformedAtOnce);
@@ -52,7 +52,7 @@ describe('the due rows of a projection, in the loop of the host', () => {
     rows.add('later', now + 90_000);
 
     await dueLooping(rows, skippingClock(now));
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
+    const [performed] = await until(rows.performed, (done) => done.length > 0);
 
     expect(performed).toEqual({ key: 'later', at: now + 90_000, by: 'host' });
   });
@@ -69,11 +69,11 @@ describe('due rows whose perform never ends, as a delivery through a tool that n
     const looping = await dueLooping(rows);
 
     await looping.armTimer(now - 1000);
-    await eventually(looping.order, (order) => order.length === 1);
+    await until(looping.order, (order) => order.length === 1);
     const firstFiredAt = Date.now();
     const secondDueAt = Date.now() + 300;
     await looping.armTimer(secondDueAt, '2');
-    await eventually(looping.order, (order) => order.length === 2);
+    await until(looping.order, (order) => order.length === 2);
 
     expect(firstFiredAt - now).toBeLessThan(dueAwaitedMs + 3000);
     expect(Date.now() - secondDueAt).toBeLessThan(dueAwaitedMs);
@@ -109,7 +109,7 @@ describe('due rows in flight', () => {
     }
 
     await dueLooping(rows);
-    const performed = await eventually(rows.performed, (done) => done.length === dueInOneTick + 20);
+    const performed = await until(rows.performed, (done) => done.length === dueInOneTick + 20);
 
     expect(performed).toHaveLength(dueInOneTick + 20);
   });
@@ -127,7 +127,7 @@ describe('a due row that calls out nowhere, while deliveries hang', () => {
     rows.local('expiry');
 
     await dueLooping(rows);
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
+    const [performed] = await until(rows.performed, (done) => done.length > 0);
 
     expect(performed?.key).toBe('expiry');
     expect(Date.now() - now).toBeLessThan(dueAwaitedMs);
@@ -146,7 +146,7 @@ describe('a due row that cannot be performed', () => {
     rows.local('next');
 
     const looping = await dueLooping(rows, skippingClock(now));
-    const attempts = await eventually(rows.attempts, (made) => made.length >= 6);
+    const attempts = await until(rows.attempts, (made) => made.length >= 6);
 
     expect(attempts.slice(0, 6).map(({ key, at }) => [key, at - now])).toEqual([
       ['stuck', 0],
@@ -168,7 +168,7 @@ describe('due rows that cannot be read', () => {
     rows.failReads(2);
 
     const looping = await dueLooping(rows, systemClock, 20);
-    const performed = await eventually(rows.performed, (done) => done.length > 0);
+    const performed = await until(rows.performed, (done) => done.length > 0);
 
     expect([performed.length, new Set(looping.troubles())]).toEqual([
       1,

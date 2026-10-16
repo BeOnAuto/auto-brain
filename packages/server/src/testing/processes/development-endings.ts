@@ -2,7 +2,6 @@ import {
   developmentFiles,
   runnerLines,
   startDevelopment,
-  untilGone,
   untilListening,
   type Development,
 } from './development-process.ts';
@@ -10,10 +9,6 @@ import {
 export interface Stopped {
   readonly exitCode: unknown;
   readonly said: readonly string[];
-}
-
-export interface Ending extends Stopped {
-  readonly allStopped: boolean;
 }
 
 export async function runningDevelopment(): Promise<Development> {
@@ -27,7 +22,8 @@ export async function stoppedWith(development: Development, signal: NodeJS.Signa
   return { exitCode: await development.exited, said: runnerLines(development) };
 }
 
-export async function endingOf(development: Development): Promise<Ending> {
+export async function endingOf(development: Development): Promise<Stopped> {
   const exitCode = await development.exited;
-  return { exitCode, allStopped: await untilGone(development), said: runnerLines(development) };
+  await development.outputClosed;
+  return { exitCode, said: runnerLines(development) };
 }

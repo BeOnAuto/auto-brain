@@ -14,8 +14,8 @@ import {
 } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { refusedWhile, rejectedFor } from '../reaction-testing/recorded-reactions.ts';
-import { until } from '../reaction-testing/until.ts';
 import { reactionRunIdOf } from '../reactions/reaction-ids.ts';
+import { until } from '../testing/until.ts';
 
 const closed = eventTrigger({ type: 'com.acme.closed' });
 

@@ -1,7 +1,8 @@
 import { weeklyOrders } from '@on.auto/prediction/testing';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/waiting/until.ts';
 import { standingWhen } from './build-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
@@ -9,8 +10,6 @@ const closing: (() => Promise<void>)[] = [];
 afterEach(async () => {
   await Promise.all(closing.splice(0).map((close) => close()));
 });
-
-const testTimeoutMs = 60_000;
 
 const question = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b71';
 
@@ -34,16 +33,13 @@ function published(server: ReasoningServer, id: string, data: object) {
 }
 
 function standingUntil(server: ReasoningServer, folded: number, passedOver: number): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const { body } = await server.call('GET', `${alpha}/definitions/prediction/weekly-orders`);
-      expect(body).toMatchObject({
-        standing: { dataset: { phase: 'live', events_folded: folded, passed_over: passedOver } },
-      });
-      return body;
-    },
-    { timeout: testTimeoutMs - 10_000, interval: 50 },
-  );
+  return until(async () => {
+    const { body } = await server.call('GET', `${alpha}/definitions/prediction/weekly-orders`);
+    expect(body).toMatchObject({
+      standing: { dataset: { phase: 'live', events_folded: folded, passed_over: passedOver } },
+    });
+    return body;
+  });
 }
 
 function historyOf(server: ReasoningServer, runId: string) {
