@@ -10,6 +10,10 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
   ],
   [{ reason: 'conflict', kind: 'build_in_flight' }, 'a build of the function is already in flight'],
   [{ reason: 'conflict', kind: 'dataset_too_large' }, 'its dataset holds more rows or series than a build takes'],
+  [
+    { reason: 'conflict', kind: 'baseline_perfect' },
+    'a baseline its candidates must beat already predicts every period held back as well as a score can, so no candidate can beat it',
+  ],
   [{ reason: 'conflict', kind: 'not_a_build' }, 'the run named is not a build of a prediction function'],
   [
     { reason: 'conflict', kind: 'build_ended' },

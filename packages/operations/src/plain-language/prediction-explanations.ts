@@ -9,6 +9,7 @@ type PredictionKind =
       | 'data_changed'
       | 'build_in_flight'
       | 'dataset_too_large'
+      | 'baseline_perfect'
       | 'not_a_build'
       | 'build_ended'
       | 'already_active'
@@ -32,6 +33,11 @@ export const predictionExplanations: Readonly<Record<PredictionKind, Explanation
     why: 'its dataset holds more rows or series than a build takes',
     remedy:
       'This can be put right on your side: a narrower window or fewer series make it fit; the details below give the figures.',
+  },
+  baseline_perfect: {
+    why: 'a baseline its candidates must beat already predicts every period held back as well as a score can, so no candidate can beat it',
+    remedy:
+      'Nothing on your side changes that: a build can be asked for again once the series has moved in the periods it holds back.',
   },
   not_a_build: {
     why: 'the run named is not a build of a prediction function',
