@@ -1,10 +1,9 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Effect, Function } from 'effect';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import { eventually } from '../testing/eventually.ts';
 import { onSQLite } from '../testing/host-files.ts';
-import { heldFolds, heldReads } from '../views-testing/pool-faults.ts';
+import { databaseTracking, heldFolds, heldReads, type DatabaseTracking } from '../views-testing/pool-faults.ts';
 import {
   overrunningFold,
   overrunningFolding,
@@ -41,6 +40,18 @@ function partsOf(views: ViewHarness, database: PassParts['database'], pagesPerWa
     firstSeen: () => true,
     trouble: () => Effect.void,
   };
+}
+
+interface Holding {
+  readonly waiting: number;
+  readonly busy: number;
+}
+
+function untilOnlyTheHeldWait(waiting: () => number, tracking: DatabaseTracking, held: number): Promise<unknown> {
+  return eventually(
+    (): Holding => ({ waiting: waiting(), busy: tracking.busy() }),
+    (now) => now.waiting === held && now.busy === 0,
+  );
 }
 
 function runsOf(count: number): readonly number[] {
@@ -83,16 +94,11 @@ describe('the share of a projector', () => {
   it('passes at most as many playbooks at once as it may', async () => {
     const views = await viewHarness(await onSQLite());
     await viewsInEveryPlaybook(views);
-    const reads = heldReads(views.store.database);
+    const tracking = databaseTracking();
+    const reads = heldReads(tracking.over(views.store.database));
     views.start({ through: () => reads.gated, playbooksAtOnce: 2 });
 
-    await vi.waitFor(
-      () => {
-        expect(reads.waiting()).toBe(2);
-      },
-      { timeout: 10_000 },
-    );
-    await setTimeout(300);
+    await untilOnlyTheHeldWait(reads.waiting, tracking, 2);
     const most = reads.most();
     reads.open();
     await Promise.all(playbooks.map((playbook) => views.until('runs', liveWith(1), playbook)));
@@ -103,16 +109,11 @@ describe('the share of a projector', () => {
   it('folds in at most half the workers of the pool at once', async () => {
     const views = await viewHarness(await onSQLite());
     await viewsInEveryPlaybook(views);
+    const tracking = databaseTracking();
     const folds = heldFolds(views.pool);
-    views.start({ pool: folds.gated });
+    views.start({ pool: folds.gated, through: tracking.over });
 
-    await vi.waitFor(
-      () => {
-        expect(folds.waiting()).toBe(2);
-      },
-      { timeout: 10_000 },
-    );
-    await setTimeout(300);
+    await untilOnlyTheHeldWait(folds.waiting, tracking, 2);
     const most = folds.most();
     folds.open();
     await Promise.all(playbooks.map((playbook) => views.until('runs', liveWith(1), playbook)));

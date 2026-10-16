@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import type { CallResult } from '@on.auto/operations';
 import { callKeyText, type CallKey, type StartCall } from '@on.auto/workflow-engine';
 import { Deferred, Effect } from 'effect';
@@ -191,7 +189,8 @@ describe('the executor of the host, failing to record an answer', () => {
 
     await Effect.runPromise(executor.executor.start(call, run, origin));
     await eventually(calls.troubles, (troubles) => troubles.length > 0);
-    await setTimeout(120);
+    const refusedByTheTrouble = calls.database.writesRefused();
+    await eventually(calls.database.writesRefused, (refused) => refused > refusedByTheTrouble);
     const resumedWhileWriting = await Effect.runPromise(executor.resume());
     calls.database.failingWrites(false);
     await Effect.runPromise(executor.idle());

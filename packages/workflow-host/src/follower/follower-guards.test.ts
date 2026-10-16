@@ -120,7 +120,6 @@ describe('a playbook whose run log holds a record its dispatch never covers', ()
     const starts = await until(
       () => Promise.resolve(reacting.reactions.starts()),
       (found) => found.length > 0,
-      2000,
     );
 
     expect(starts.map(({ workflow }) => workflow)).toEqual(['close']);

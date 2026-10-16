@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { setTimeout } from 'node:timers/promises';
 
 import { messageIdOf } from '@on.auto/operations';
 import { Client } from 'pg';
@@ -9,6 +8,7 @@ import { onPostgreSQLAt, type SettingsOf } from '../testing/host-files.ts';
 import { collecting, foldedAll, isLive } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { viewsSuites } from '../views-testing/views-suites.ts';
+import { untilAWholeWakeHasPassed, watchedSystemClock } from '../views-testing/watched-clock.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -73,12 +73,13 @@ describe.skipIf(skipped)(`the views of recall functions on PostgreSQL${notice}`,
       const connectionString = await aDatabase();
       const views = await viewHarness(onPostgreSQLAt(connectionString));
       await views.saved('outputs', collecting);
-      views.start();
+      const clock = watchedSystemClock();
+      views.start({ clock });
       await views.until('outputs', isLive);
       const open = await aRunLeftOpen(connectionString, 'late');
 
       await views.ran('reasoning/after', 'after');
-      await setTimeout(500);
+      await untilAWholeWakeHasPassed(clock);
       const held = await views.viewOf('outputs');
       await open.query('COMMIT');
       const folded = await views.until('outputs', foldedAll(2));

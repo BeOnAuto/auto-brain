@@ -16,7 +16,7 @@ describe('the due rows of a projection, across hosts of one database', () => {
     await eventually(rows.performed, (performed) => performed.length === 1);
     await first.host.stop();
     rows.add('after', Date.now());
-    await eventually(rows.performed, (performed) => performed.length === 2, 2000);
+    await eventually(rows.performed, (performed) => performed.length === 2);
 
     expect(rows.performed().map(({ key, by }) => [key, by])).toEqual([
       ['before', 'first'],

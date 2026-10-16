@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -8,6 +6,7 @@ import { definitionsByType } from '../projector/projector-schedule.ts';
 import { reconciledRows, type DefinitionsKept } from '../projector/reconciled-rows.ts';
 import { openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { alphaKey, counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';
+import { readsWhile, untilAWholeWakeHasPassed, watchedSystemClock } from '../views-testing/watched-clock.ts';
 import {
   talliesOf,
   tallyFolderOf,
@@ -52,25 +51,18 @@ function withOutputs(change: TallyChange, next: Partial<TallyChange['next']> = {
   return { ...change, next: { ...change.next, ...next }, outputs: [['"elsewhere"', 1]] };
 }
 
-async function readsWhile(tallies: TallyHarness, work: () => Promise<unknown>): Promise<number> {
-  await setTimeout(100);
-  const before = tallies.reads();
-  await work();
-  await setTimeout(100);
-  return tallies.reads() - before;
-}
-
 function sharingTests(settingsOf: SettingsOf): void {
   it('folds in the host’s own process into a table of its own, beside the views of recall functions, and shares their one read a wake once both are caught up', async () => {
     const tallies = await tallyHarness(await settingsOf());
     await tallies.saved('runs', counting);
     await tallies.savedTally('succeeded', succeeded);
     await tallies.ranEach('reasoning/runs', [1, 2]);
-    tallies.startWithTallies({ sweepEveryMs: 60_000 });
+    const clock = watchedSystemClock();
+    tallies.startWithTallies({ sweepEveryMs: 60_000, clock });
     await tallies.until('runs', liveWith(2));
     await tallies.untilTally(succeeded, liveCounting(2));
 
-    const shared = await readsWhile(tallies, async () => {
+    const shared = await readsWhile(tallies, clock, async () => {
       await tallies.ran('reasoning/runs', 3);
       await tallies.until('runs', foldedAll(3));
       await tallies.untilTally(succeeded, liveCounting(3));
@@ -118,9 +110,10 @@ function restartTests(settingsOf: SettingsOf): void {
     const watch = tallies.watchingTallies();
 
     await tallies.ranEach('reasoning/runs', [3, 4, 5]);
-    tallies.startWithTallies({ through: watch.through });
+    const clock = watchedSystemClock();
+    tallies.startWithTallies({ through: watch.through, clock });
     await tallies.untilTally(succeeded, liveCounting(5));
-    await setTimeout(300);
+    await untilAWholeWakeHasPassed(clock);
     const [after] = await tallies.tallies();
 
     expect(before.checkpoint).toBeDefined();

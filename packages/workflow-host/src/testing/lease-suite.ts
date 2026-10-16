@@ -1,5 +1,4 @@
 import { join } from 'node:path';
-import { setTimeout } from 'node:timers/promises';
 
 import { Effect } from 'effect';
 import { expect, it } from 'vitest';
@@ -7,7 +6,8 @@ import { expect, it } from 'vitest';
 import { HostElsewhere } from '../host/run-requests.ts';
 import { eventually } from './eventually.ts';
 import { runAt, startOf, workflow } from './host-documents.ts';
-import { aSQLiteFile } from './host-files.ts';
+import { aSQLiteFile, openedOn } from './host-files.ts';
+import { leaseOn, untilRenewedBy } from './host-leases.ts';
 import { databaseSettingsOf, hostIn, type ProcessDatabasesOf } from './host-processes.ts';
 import { hostedOn } from './host-runs.ts';
 
@@ -33,14 +33,16 @@ export function leaseSuite(databases: ProcessDatabasesOf): void {
     const database = await databases();
     const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), sweepEveryMs);
     await first.said('calling');
+    const leases = await openedOn(databaseSettingsOf(database));
     const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs });
     second.know(runId);
 
     const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(runId), startOf(listening))));
-    await setTimeout(3 * sweepEveryMs);
+    const held = await leaseOn(leases);
+    await untilRenewedBy(leases, held, 3);
     const performedWhileBothRan = second.calls().length;
     await first.killed();
-    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0, 2000);
+    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0);
 
     expect(refused).toBeInstanceOf(HostElsewhere);
     expect(performedWhileBothRan).toBe(0);
@@ -55,7 +57,7 @@ export function leaseSuite(databases: ProcessDatabasesOf): void {
     const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs, holder: 'second' });
 
     await first.host.stop();
-    const notes = await eventually(second.notes, (noted) => noted.length > 1, 2000);
+    const notes = await eventually(second.notes, (noted) => noted.length > 1);
 
     expect(notes).toMatchObject([
       { kind: 'standing_by', holder: 'first' },
@@ -69,10 +71,12 @@ export function claimSuite(databases: ProcessDatabasesOf, claimClock: ClaimClock
     const database = await databases();
     const first = hostIn(database, 'hang-on-call', join(aSQLiteFile(), '..', 'settlements.jsonl'), shortestSweepMs);
     await first.said('calling');
+    const leases = await openedOn(databaseSettingsOf(database));
     const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs: shortestSweepMs });
+    const held = await leaseOn(leases);
 
     await first.paused(1000);
-    await setTimeout(10 * shortestSweepMs);
+    await untilRenewedBy(leases, held, 1);
     const refused = await Effect.runPromise(Effect.flip(second.host.start(runAt(runId), startOf(listening))));
 
     expect(refused).toBeInstanceOf(HostElsewhere);

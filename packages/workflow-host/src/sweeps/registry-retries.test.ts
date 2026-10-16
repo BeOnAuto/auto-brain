@@ -63,7 +63,6 @@ describe('a playbook another process creates, swept before its registry could be
     const starts = await until(
       () => Promise.resolve(reactions.starts()),
       (found) => found.length > 0,
-      1000,
     );
 
     expect(starts.map(({ playbook, workflow }) => [playbook, workflow])).toEqual([['beta', 'close']]);

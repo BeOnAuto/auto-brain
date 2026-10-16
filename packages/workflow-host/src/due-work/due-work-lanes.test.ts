@@ -73,7 +73,7 @@ describe('due rows that end while the loop reads when to wake next', () => {
     }
 
     await dueLooping(rows);
-    const performed = await eventually(rows.performed, (done) => done.length === duePerformedAtOnce + 1, 800);
+    const performed = await eventually(rows.performed, (done) => done.length === duePerformedAtOnce + 1);
 
     expect(performed).toHaveLength(duePerformedAtOnce + 1);
   });

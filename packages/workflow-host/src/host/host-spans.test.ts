@@ -33,7 +33,7 @@ describe('the host given the context of its server', () => {
     hosted.know(runId);
 
     await Effect.runPromise(Effect.withTracer(hosted.host.start(run, startOf(notifying)), recording.tracer));
-    const spans = await eventually(recording.spans, settledIn, 2000);
+    const spans = await eventually(recording.spans, settledIn);
     const started = named(spans, 'started');
     const call = named(spans, 'call notify');
     const answered = named(spans, 'call_answered');

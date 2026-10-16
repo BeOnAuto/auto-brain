@@ -18,8 +18,6 @@ import {
   startedThenCancelled,
 } from './lost-run.ts';
 
-const attempts = 2000;
-
 const ofTheRun = {
   by: 'playbook:alpha',
   at,
@@ -44,15 +42,15 @@ function diedAfterTheStart(settingsOf: SettingsOf): void {
       const database = await openedOn(settings);
       await playbookCreated(database.store, 'alpha');
       const first = await hostedOn(settings);
-      await untilFollowed(database, attempts);
+      await untilFollowed(database);
       await startedThenCancelled(database);
-      await followedThroughTheLatest(database, attempts);
+      await followedThroughTheLatest(database);
       await first.host.stop();
       await startedByAHostThatDied(database, lostRunKey, lostStart);
 
       const next = await hostedOn(settings);
       next.know(lostRunId);
-      const settlement = await settledIn(next, attempts)(lostRunId);
+      const settlement = await settledIn(next)(lostRunId);
 
       expect(settlement).toEqual({
         status: 'rejected',
@@ -72,21 +70,21 @@ function endedWithoutStarting(settingsOf: SettingsOf): void {
       const database = await openedOn(settings);
       await playbookCreated(database.store, 'alpha');
       const first = await hostedOn(settings);
-      await untilFollowed(database, attempts);
+      await untilFollowed(database);
       const pending = () => Effect.runPromise(pendingCancelRowsAfter(database, '', 10));
       await startedThenCancelled(database);
       await recorded(database.store, `${alpha}runs/${strandedId}`, strandedCancel, {
         ...ofTheRun,
         runId: strandedId,
       });
-      const kept = await until(pending, (rows) => rows.length === 2, attempts);
+      const kept = await until(pending, (rows) => rows.length === 2);
       await recorded(database.store, lostStream, rejectedUnstarted, { ...ofTheRun, runId: lostRunId });
-      await followedThroughTheLatest(database, attempts);
+      await followedThroughTheLatest(database);
       const keptAfterTheEnding = await pending();
       await first.host.stop();
 
       await hostedOn(settings);
-      const left = await until(pending, (rows) => rows.length === 1, attempts);
+      const left = await until(pending, (rows) => rows.length === 1);
 
       expect(kept.find(({ runKey }) => runKey === lostRunKey)).toEqual({
         runKey: lostRunKey,

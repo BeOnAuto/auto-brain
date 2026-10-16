@@ -20,7 +20,6 @@ function startsReaching(reacting: ReactingHost, count: number) {
   return until(
     () => Promise.resolve(reacting.reactions.starts()),
     (starts) => starts.length >= count,
-    2000,
   );
 }
 

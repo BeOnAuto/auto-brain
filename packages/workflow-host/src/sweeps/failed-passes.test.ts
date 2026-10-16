@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { streamSignalOf, type AppendedStreams } from '@on.auto/ledger';
 import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
@@ -7,8 +5,9 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import type { FollowedPlaybooks } from '../follower/followed-playbooks.ts';
 import { startFollower } from '../follower/follower-loop.ts';
 import type { PassEnd } from '../follower/record-steps.ts';
-import { systemClock } from '../loop/host-clock.ts';
+import { systemClock, type HostClock } from '../loop/host-clock.ts';
 import { until } from '../reaction-testing/until.ts';
+import { eventually } from '../testing/eventually.ts';
 import { playbookSweepsOn } from './playbook-sweeps.ts';
 
 const alpha = 'playbook/acme/alpha/';
@@ -32,11 +31,31 @@ interface Following {
   readonly playbookSeen?: (playbookKey: string) => Effect.Effect<void>;
 }
 
+interface Wait {
+  readonly milliseconds: number;
+  readonly sweptBefore: number;
+}
+
 interface Followed {
+  readonly waits: () => readonly Wait[];
   readonly sweeps: () => number;
   readonly upkeeps: () => number;
   readonly troubles: () => readonly string[];
   readonly stop: () => Promise<void>;
+}
+
+function recordingWaits(sweeps: () => number): { readonly pace: HostClock; readonly waits: () => readonly Wait[] } {
+  const waits: Wait[] = [];
+  return {
+    pace: {
+      now: systemClock.now,
+      sleep: (milliseconds) => {
+        waits.push({ milliseconds, sweptBefore: sweeps() });
+        return systemClock.sleep(milliseconds);
+      },
+    },
+    waits: () => [...waits],
+  };
 }
 
 function followed(following: Following): Followed {
@@ -50,6 +69,7 @@ function followed(following: Following): Followed {
   } = following;
   const counts = { reads: 0, upkeeps: 0 };
   const troubles: string[] = [];
+  const recording = recordingWaits(() => counts.reads - 1);
   const store = {
     readAppended: (): Promise<AppendedStreams> => {
       counts.reads += 1;
@@ -69,7 +89,7 @@ function followed(following: Following): Followed {
     upkeep: { sweep: upkeep, fireSchedules: () => Effect.void, nextScheduleAt: () => Effect.succeed(null) },
     appended: streamSignalOf(),
     clock: systemClock,
-    pace: systemClock,
+    pace: recording.pace,
     sweepEveryMs,
     trouble: (what) =>
       Effect.sync(() => {
@@ -78,6 +98,7 @@ function followed(following: Following): Followed {
   });
   onTestFinished(() => follower.stop());
   return {
+    waits: recording.waits,
     sweeps: () => counts.reads - 1,
     upkeeps: () => counts.upkeeps,
     troubles: () => troubles,
@@ -182,9 +203,10 @@ describe('a sweep in which more playbooks fail than it has room for', () => {
       pass: () => Effect.die(new Error('The ledger could not be read')),
     });
 
-    await setTimeout(500);
+    const waits = await eventually(watched.waits, (asked) => asked.some(({ milliseconds }) => milliseconds > 0));
+    const firstWait = waits.find(({ milliseconds }) => milliseconds > 0);
 
-    expect(watched.sweeps()).toBeLessThanOrEqual(2);
+    expect(firstWait?.sweptBefore).toBeLessThanOrEqual(2);
   });
 });
 

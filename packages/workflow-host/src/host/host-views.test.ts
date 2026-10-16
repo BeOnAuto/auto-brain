@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Effect, Function } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -9,6 +7,7 @@ import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
 import { counting } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
+import { watchedSystemClock } from '../views-testing/watched-clock.ts';
 import { openWorkflowStore } from './workflow-store.ts';
 
 describe('a host given a store and the settings of its projector', () => {
@@ -20,14 +19,16 @@ describe('a host given a store and the settings of its projector', () => {
     const projector = views.settingsOf();
     const store = await openWorkflowStore(settings, Function.constVoid, projector.folders);
 
-    const hosted = await hostedOn(store, { projector });
+    const clock = watchedSystemClock();
+    const hosted = await hostedOn(store, { projector, clock });
     const kept = await views.until('runs', ({ folded }) => folded === 1);
     await hosted.host.stop();
+    const sleepingAfterStopping = clock.sleeping();
     await views.ran('reasoning/runs', 2);
-    await setTimeout(300);
     const afterStopping = await views.viewOf('runs');
 
     expect([kept.phase, kept.view, afterStopping?.folded]).toEqual(['live', 1, 1]);
+    expect(sleepingAfterStopping).toBe(0);
     expect(hosted.troubles()).toEqual([]);
   });
 });

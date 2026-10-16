@@ -29,7 +29,7 @@ export function longRunSuite(settings: SettingsOf): void {
     hosted.know(runId);
 
     await Effect.runPromise(hosted.host.start(runAt(runId), startOf(ticking)));
-    await eventually(hosted.settlements, (settled) => settled.size > 0, 5000);
+    await eventually(hosted.settlements, (settled) => settled.size > 0);
     await hosted.host.stop();
     const runStore = ledgerRunLogStore(await openedOn(database));
     const stored = await Effect.runPromise(runStore.load(`acme/alpha/${runId}`));
