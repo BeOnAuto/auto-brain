@@ -13,7 +13,7 @@ import {
   type Succeeded,
 } from '@on.auto/operations';
 import { memoryPlaybookRegistry, recordingReporter, type MemoryLedger } from '@on.auto/operations/testing';
-import { Effect, Layer } from 'effect';
+import { Clock, Effect, Layer } from 'effect';
 
 import type { ChildStart, ChildStarted } from '../capability/prediction-ports.ts';
 
@@ -54,9 +54,10 @@ function startedOf(outcome: Outcome): ChildStarted {
   return outcome.status === 'rejected' ? { status: 'rejected', detail: outcome.detail } : { status: outcome.status };
 }
 
-export function playbookCalls(ledger: MemoryLedger, { runDefinition }: Operations): PlaybookCalls {
+export function playbookCalls(ledger: MemoryLedger, { runDefinition }: Operations, clock: Clock.Clock): PlaybookCalls {
   const services = Layer.mergeAll(
     Layer.succeed(Ledger, ledger.service),
+    Layer.succeed(Clock.Clock, clock),
     memoryPlaybookRegistry([alpha]),
     recordingReporter().layer,
   );

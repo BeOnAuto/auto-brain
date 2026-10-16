@@ -15,7 +15,7 @@ interface OverviewSubject {
   readonly outputSchema?: Schema.JsonObject;
 }
 
-export type SectionsOf<Parsed> = (parsed: Parsed, source: string) => readonly OverviewSection[];
+export type SectionsOf<Parsed> = (parsed: Parsed, source: string, name: string) => readonly OverviewSection[];
 
 interface OverviewRequest {
   readonly name: string;

@@ -22,7 +22,7 @@ import {
 } from '@on.auto/interaction';
 import { noTools } from '@on.auto/interaction/testing';
 import type { DueWork } from '@on.auto/workflow-host';
-import { Effect } from 'effect';
+import { Clock, Effect } from 'effect';
 
 import { buildsDue } from '../builds/builds-due.ts';
 import { makePredictionFunctionAdapter } from '../capability/prediction-function.ts';
@@ -47,10 +47,31 @@ export interface BuildPlaybook extends PlaybookCalls {
   readonly prediction: Capability;
   readonly operations: PlaybookOperations;
   readonly due: readonly DueWork[];
+  readonly now: () => number;
   readonly cancelled: (id: string) => ReturnType<PlaybookCalls['call']>;
 }
 
-export function buildPlaybook(options: PortOptions = {}): BuildPlaybook {
+interface BuildPlaybookOptions extends PortOptions {
+  readonly clock?: Clock.Clock;
+}
+
+function performedOn(clock: Clock.Clock, work: DueWork): DueWork {
+  return {
+    ...work,
+    due: (now, most, callsOut) =>
+      Effect.map(work.due(now, most, callsOut), (items) =>
+        items.map((item) => ({
+          ...item,
+          perform: (at: number) => Effect.provideService(item.perform(at), Clock.Clock, clock),
+        })),
+      ),
+  };
+}
+
+export function buildPlaybook({
+  clock = Clock.Clock.defaultValue(),
+  ...options
+}: BuildPlaybookOptions = {}): BuildPlaybook {
   const test = testPorts({ ...options, projections: [openRequests] });
   const { ports, ledger } = test;
   const prediction = makePredictionFunctionAdapter({
@@ -75,12 +96,12 @@ export function buildPlaybook(options: PortOptions = {}): BuildPlaybook {
     update: defineUpdateDefinition(capabilities),
     interactions: listInteractions,
   };
-  const calls = playbookCalls(ledger, { runDefinition: operations.run });
+  const calls = playbookCalls(ledger, { runDefinition: operations.run }, clock);
   const record = workRecorder(ledger.service, runFactsOf(composedFactsOf(capabilities).onRuns));
   const due: readonly DueWork[] = [
     buildsDue({ ports, runs: calls.startChild }),
     requestsDue({ ledger: ledger.service, tools: noTools, record }),
-  ];
+  ].map((work) => performedOn(clock, work));
   const cancelled = async (id: string) => {
     const asked = await calls.call(operations.cancel, { run_id: id });
     await Effect.runPromise(
@@ -88,9 +109,9 @@ export function buildPlaybook(options: PortOptions = {}): BuildPlaybook {
         { org: 'acme', playbook: 'alpha', id },
         { kind: 'requested', reason: 'Not needed any more', by: 'acme-admin' },
         { causationId: null, correlationId: id },
-      ),
+      ).pipe(Effect.provideService(Clock.Clock, clock)),
     );
     return asked;
   };
-  return { ...calls, test, prediction, operations, due, cancelled };
+  return { ...calls, test, prediction, operations, due, now: () => clock.currentTimeMillisUnsafe(), cancelled };
 }
