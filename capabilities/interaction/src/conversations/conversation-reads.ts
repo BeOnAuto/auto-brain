@@ -15,6 +15,10 @@ export interface ReadDone {
   readonly state: ReadingState;
 }
 
+function sentByThePlaybook(kept: readonly KeptRequest[]): ReadonlySet<string> {
+  return new Set(kept.map(({ sent }) => sent.id));
+}
+
 export function readReplies(reading: Reading, oldest: KeptRequest): Effect.Effect<ReadDone> {
   const { parts, place, route } = reading;
   const input = readArguments(route, place.row, oldest);
@@ -35,7 +39,7 @@ export function readReplies(reading: Reading, oldest: KeptRequest): Effect.Effec
   return Effect.gen(function* () {
     const start = yield* parts.tools.startOf(call);
     const called = yield* parts.tools.callOnce(call);
-    const answer = readAnswerOf(route.replies, called);
+    const answer = readAnswerOf(route.replies, called, sentByThePlaybook(reading.kept));
     const state = yield* Effect.reduce(
       answer.replies,
       () => nothingRead,

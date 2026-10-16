@@ -44,21 +44,28 @@ function replyOf(item: unknown, each: ReplyPointers): readonly Reply[] {
   return [{ id, sender, text: textAt(item, each.text), to: each.to === undefined ? undefined : textAt(item, each.to) }];
 }
 
-function listed(replies: Replies, document: unknown, answered: CallAnswered): ReadAnswer {
-  const list = valueAt(document, replies.read.list);
-  return Array.isArray(list)
-    ? {
-        outcome: 'result',
-        answered,
-        replies: list.flatMap((item: unknown) => replyOf(item, replies.read.each)),
-        ids: list.flatMap((item: unknown) => idOf(item, replies.read.each)),
-        considered: list.length,
-        retryAfterMs: null,
-      }
-    : failedRead('unreadable');
+function isSentByThePlaybook(item: unknown, each: ReplyPointers, sent: ReadonlySet<string>): boolean {
+  return idOf(item, each).some((id) => sent.has(id));
 }
 
-export function readAnswerOf(replies: Replies, called: CalledOnce): ReadAnswer {
+function listed(replies: Replies, document: unknown, answered: CallAnswered, sent: ReadonlySet<string>): ReadAnswer {
+  const list = valueAt(document, replies.read.list);
+  if (!Array.isArray(list)) {
+    return failedRead('unreadable');
+  }
+  const { each } = replies.read;
+  const others = list.filter((item: unknown) => !isSentByThePlaybook(item, each, sent));
+  return {
+    outcome: 'result',
+    answered,
+    replies: others.flatMap((item: unknown) => replyOf(item, each)),
+    ids: list.flatMap((item: unknown) => idOf(item, each)),
+    considered: others.length,
+    retryAfterMs: null,
+  };
+}
+
+export function readAnswerOf(replies: Replies, called: CalledOnce, sent: ReadonlySet<string>): ReadAnswer {
   if (called.kind === 'unopened') {
     return failedRead(called.refused === 'tool_not_offered' ? 'tool_not_offered' : 'server_failure');
   }
@@ -71,5 +78,5 @@ export function readAnswerOf(replies: Replies, called: CalledOnce): ReadAnswer {
   }
   return Buffer.byteLength(JSON.stringify(document), 'utf8') > toolBounds.readAnswerBytes
     ? failedRead('too_large')
-    : listed(replies, document, called.answered);
+    : listed(replies, document, called.answered, sent);
 }
