@@ -42,6 +42,10 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
     { reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite' },
     'the model answered something other than finite numbers in the shape its signature gives',
   ],
+  [
+    { reason: 'unavailable', kind: 'model_process_failed', because: 'baseline_check' },
+    'the process that checks the build’s baselines ended before it answered',
+  ],
 ];
 
 const aSentence: unknown = expect.stringMatching(/\.$/u);
@@ -54,6 +58,17 @@ describe('the explanation of a refusal of a prediction function', () => {
   it('says how to ask for a build when no version is active, and that nothing was changed', () => {
     expect(unsuccessfulWords('predict', 'command', rejected('conflict', 'x', undefined, 'no_active_version'))).toBe(
       'Could not predict: the function has no model that answers yet. Nothing was changed. It answers once a build has given it an active version: ask for one with the input { build: {} }.',
+    );
+  });
+
+  it('says that the process that checks a build’s baselines ended, and to ask for the build again', () => {
+    expect(
+      unsuccessfulWords('build', 'command', {
+        ...rejected('unavailable', 'x', undefined, 'model_process_failed'),
+        because: 'baseline_check',
+      }),
+    ).toBe(
+      'Could not build: the process that checks the build’s baselines ended before it answered. Nothing was changed. Nothing needs to change: asking for the build again starts a new process to check them.',
     );
   });
 });

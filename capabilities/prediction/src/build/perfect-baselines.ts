@@ -22,6 +22,7 @@ const busy = new Unavailable({
 const ended = new Unavailable({
   detail: 'The model process that checks the baselines ended before it answered; ask for the build again',
   kind: 'model_process_failed',
+  because: 'baseline_check',
 });
 
 export function noBaselinePerfect(

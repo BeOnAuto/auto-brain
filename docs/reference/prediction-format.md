@@ -296,17 +296,17 @@ A build asks a trainer for candidate models. It scores each against rows the tra
 
 A build can be refused as it starts. Its run then records only that it started and was rejected, with no content:
 
-| Refusal                               | When                                                                                                                                                                |
-| ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `conflict`, `build_in_flight`         | Another build of the function has not ended; the words name its run                                                                                                 |
-| `unavailable`, `builds_full`          | The function used its builds of the day (`because` `builds_of_the_day`; the words say when it may ask again), or the server scores as many builds as it may at once |
-| `unavailable`, `requests_full`        | The build would ask through the inbox, and the playbook already holds as many open requests as it may                                                               |
-| `unavailable`, `dataset_not_ready`    | The dataset is waiting or rebuilding, or it stalled, with `because` `stalled`                                                                                       |
-| `conflict`, `dataset_too_large`       | The dataset is past the bounds a build reads, with the figures it counted                                                                                           |
-| `conflict`, `baseline_perfect`        | A baseline the function names already scores 0 on its metric wherever the metric scores it, so no candidate can beat it; see below                                  |
-| `unavailable`, `model_process_busy`   | Every model process a build may hold stayed taken for the 30 seconds the build waits to check its baselines; asking again shortly may succeed                       |
-| `unavailable`, `model_process_failed` | The model process that checks the baselines ended before it answered                                                                                                |
-| `conflict`, `unworkable`              | The brief renders past 64 KiB over this dataset                                                                                                                     |
+| Refusal                                                         | When                                                                                                                                                                |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `conflict`, `build_in_flight`                                   | Another build of the function has not ended; the words name its run                                                                                                 |
+| `unavailable`, `builds_full`                                    | The function used its builds of the day (`because` `builds_of_the_day`; the words say when it may ask again), or the server scores as many builds as it may at once |
+| `unavailable`, `requests_full`                                  | The build would ask through the inbox, and the playbook already holds as many open requests as it may                                                               |
+| `unavailable`, `dataset_not_ready`                              | The dataset is waiting or rebuilding, or it stalled, with `because` `stalled`                                                                                       |
+| `conflict`, `dataset_too_large`                                 | The dataset is past the bounds a build reads, with the figures it counted                                                                                           |
+| `conflict`, `baseline_perfect`                                  | A baseline the function names already scores 0 on its metric wherever the metric scores it, so no candidate can beat it; see below                                  |
+| `unavailable`, `model_process_busy`                             | Every model process a build may hold stayed taken for the 30 seconds the build waits to check its baselines; asking again shortly may succeed                       |
+| `unavailable`, `model_process_failed`, because `baseline_check` | The model process that checks the baselines ended before it answered; asking for the build again may succeed                                                        |
+| `conflict`, `unworkable`                                        | The brief renders past 64 KiB over this dataset                                                                                                                     |
 
 - A function has 4 builds a day unless the server's `PREDICTION_BUILDS_PER_DAY` says otherwise.
 - The server scores at most `PREDICTION_BUILDS_AT_ONCE` builds at once. A build that waits for its trainer or an approval is not counted.

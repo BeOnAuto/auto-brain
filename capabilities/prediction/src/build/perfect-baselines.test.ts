@@ -170,6 +170,7 @@ describe('a build whose baselines cannot be checked', () => {
       status: 'rejected',
       reason: 'unavailable',
       kind: 'model_process_failed',
+      because: 'baseline_check',
       detail: 'The model process that checks the baselines ended before it answered; ask for the build again',
     });
   });
