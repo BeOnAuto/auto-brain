@@ -904,6 +904,10 @@
                       ],
                       "description": "partial when a provider could not be asked just now, so its models are missing or as they were when last read"
                     },
+                    "narrowed": {
+                      "type": "boolean",
+                      "description": "true when the operator allows only some models, so the list holds only those; false when a reasoning function may name any model of the configured providers"
+                    },
                     "listed_at": {
                       "type": "string",
                       "description": "When the oldest list of models in the answer was read from its provider, in ISO 8601"
@@ -917,6 +921,7 @@
                     "object",
                     "data",
                     "catalog_status",
+                    "narrowed",
                     "listed_at"
                   ],
                   "additionalProperties": false
