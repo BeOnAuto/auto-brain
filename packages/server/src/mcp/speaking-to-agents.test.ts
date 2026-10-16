@@ -1,7 +1,7 @@
 import { internalTermsIn, plainTextIn, type McpSession } from '@on.auto/api/testing';
 import { answers, jsonResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   descriptionIn,
@@ -11,7 +11,7 @@ import {
   type MeetingsServer,
   type Surfaces,
 } from '../testing/servers/meetings-server.ts';
-import { recallTestTimeoutMs } from '../testing/servers/recall-server.ts';
+import { liveOverMcp } from '../testing/servers/recall-server.ts';
 
 let meetings: MeetingsServer;
 
@@ -122,17 +122,6 @@ const rememberingWhatWasPosted = [
 
 const inPosts = { playbook: 'posts' };
 
-function standingOf(session: McpSession): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const read = await session.callTool('get_definition', { ...inPosts, type: 'recall', name: 'posted' });
-      expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded: 1 } });
-      return read.structuredContent;
-    },
-    { timeout: recallTestTimeoutMs - 10_000, interval: 50 },
-  );
-}
-
 async function rememberedOverMcp(session: McpSession) {
   await session.callTool('create_playbook', { ...inPosts, name: 'Posts' });
   await session.callTool('create_definition', {
@@ -153,7 +142,7 @@ async function rememberedOverMcp(session: McpSession) {
     name: 'posted',
     source: rememberingWhatWasPosted,
   });
-  await standingOf(session);
+  await liveOverMcp(session, { ...inPosts, name: 'posted' }, 1);
   return session.callTool('run_definition', { ...inPosts, type: 'recall', name: 'posted' });
 }
 

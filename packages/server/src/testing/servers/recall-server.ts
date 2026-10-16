@@ -1,3 +1,4 @@
+import type { McpSession } from '@on.auto/api/testing';
 import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { campaignReviews } from '@on.auto/recall/testing';
 import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
@@ -115,6 +116,19 @@ export function standingUntil(
     const standing = Option.getOrUndefined(decodeStanding(body))?.standing;
     expect(standing !== undefined && holds(standing)).toBe(true);
     return body;
+  }, untilNearTheTestTimeout);
+}
+
+interface RecallFunctionNamed {
+  readonly name: string;
+  readonly playbook?: string;
+}
+
+export function liveOverMcp(session: McpSession, named: RecallFunctionNamed, folded: number): Promise<unknown> {
+  return vi.waitFor(async () => {
+    const read = await session.callTool('get_definition', { ...named, type: 'recall' });
+    expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded } });
+    return read.structuredContent;
   }, untilNearTheTestTimeout);
 }
 
