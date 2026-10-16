@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { RegisterRoutes } from '../index.ts';
-import { notebookOperationsAnnouncingWaits } from '../testing/announced-waiting.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
 import { listenOnLoopback } from '../testing/listening.ts';
 import { connectMcp } from '../testing/mcp-clients.ts';
+import { notebookOperationsAnnouncingWaits } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 describe('closing the API', () => {

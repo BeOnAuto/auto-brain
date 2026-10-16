@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { notebookOperationsAnnouncingWaits } from '../testing/announced-waiting.ts';
 import { call } from '../testing/api-calls.ts';
+import { notebookOperationsAnnouncingWaits } from '../testing/notebook.ts';
 import { acmeAdmin, operationServer } from '../testing/operation-server.ts';
 
 const asAdmin = { authorization: `Bearer ${acmeAdmin.key}` };
