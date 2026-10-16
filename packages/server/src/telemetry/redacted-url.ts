@@ -1,6 +1,6 @@
 const redacted = 'REDACTED';
 
-const tokenOfALink = /(?<=\/link\/)[^/?#]+/u;
+const tokenOfALink = /(?<=\/connections\/[^/?#]+\/link\/)[^/?#]+/u;
 
 export interface RequestTarget {
   readonly origin: string;

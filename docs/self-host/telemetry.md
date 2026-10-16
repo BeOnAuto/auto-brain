@@ -63,7 +63,7 @@ A request is a trace:
 - A request with a W3C `traceparent` header continues the caller's trace.
 - A tool an agent calls over MCP is a `tools/call <tool>` span beneath the request that carried the call. It is linked to the agent's trace when the call carries `traceparent` in its `_meta`.
 - `GET /health` is not traced.
-- Its `url.full` carries the token of a connection's link, the segment after `/link/`, as `REDACTED`, so a link that is still open never reaches the collector.
+- Its `url.full` carries the token of a connection's link, the segment after `/connections/<id>/link/`, as `REDACTED`, so a link that is still open never reaches the collector.
 
 Beneath the request:
 
