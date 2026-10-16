@@ -43,7 +43,7 @@ function reachedFrom(name: string, reached: ReadonlySet<string> = new Set()): Re
   if (reached.has(name)) {
     return reached;
   }
-  return workspaceDependenciesOf(name).reduce(
+  return workspaceDependenciesOf(name).reduce<ReadonlySet<string>>(
     (known, dependency) => reachedFrom(dependency, known),
     new Set([...reached, name]),
   );
