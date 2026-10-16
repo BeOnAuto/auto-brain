@@ -405,7 +405,7 @@ Listing an HTTP API's tools asks the API nothing: the document is the list.
 `allowed` narrows what a function may name, as `allowed_models` narrows the models. A server's own policy remains the hard boundary.
 
 - A function's `server/*` offers exactly the tools its server's entry allows.
-- `allowed` is the one list of a server's tools. The five tools over the playbook's tool servers, `search`, `introspect`, `validate`, `dry_run` and `execute`, show and call the tools it allows and no other.
+- `allowed` is the one list of a server's tools. The five operations over the playbook's tool servers, `search`, `introspect`, `validate`, `dry_run` and `execute`, show and call the tools it allows and no other.
 
 ### Try the tools by hand
 

@@ -43,7 +43,7 @@ These four need no key. Where sign-in is on, the [protected resource metadata](a
 The server builds the document when it starts, from its operations: the same operations its routes and its MCP tools serve.
 
 - Each operation appears once. Its `operationId` is the operation's name, with `search_in_org` for the org's `search`. Its summary is its title. Its tag names the resource it acts on.
-- Its description is its MCP tool's description. The five prediction routes served only over HTTP have no tool, so they have descriptions of their own.
+- Its description is its MCP tool's description. An operation served only over HTTP has no tool, so its description is its own: the five prediction routes, the three routes of Studio's connection page, `get_playbook`, `get_connection`, `get_run_history`, `get_playbook_analytics` and `validate`.
 - Its input is in the path, and in the query string of a `GET`. A command, or a query routed by `POST` such as `validate` and `dry_run`, takes it in the JSON body. The two uploads take a CSV dataset or a candidate's bytes as the body, and the document gives their maximum size.
 - Its schemas are JSON Schema 2020-12. Each has its own `$id` under `https://on.auto/schemas/runtime/`, with its definitions inside it.
 - Each problem an operation can return is listed under its status.
@@ -726,7 +726,7 @@ Each event's `causation_id` links the events of a run into a graph.
 - Its number counts from 1 without a leading zero, so `_0` and `_02` are refused with `invalid_input`.
 - An id the playbook does not have, whether of another playbook or of a step its input did not move, returns `not_found`.
 
-Over MCP, a field that may be large is shown in full only up to 64 KiB, as [the MCP reference](mcp.md#events-history-and-analytics) says.
+Over MCP, a field that may be large is shown in full only up to 64 KiB, as [the MCP reference](mcp.md#events-and-history) says.
 
 ### Paging
 
@@ -1051,7 +1051,7 @@ A connection is a tool server that a person adds to the org through their agent,
 
 | Operation           | Method and route                     | Permission                                         | Input                                                                                                                |
 | ------------------- | ------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| `add_connection`    | `POST /connections`                  | `org:write`                                        | `name`, `kind`, `entry`, `credential`, optional `playbooks`                                                          |
+| `add_connection`    | `POST /connections`                  | `org:write`                                        | `name`, `kind`, `entry`, `credential`                                                                                |
 | `list_connections`  | `GET /connections`                   | `org:read`                                         | Optional `include_removed`                                                                                           |
 | `get_connection`    | `GET /connections/{id}`              | `org:read`                                         | Connection id in path                                                                                                |
 | `remove_connection` | `DELETE /connections/{id}`           | `org:write`                                        | Connection id in path                                                                                                |
@@ -1061,9 +1061,9 @@ A connection is a tool server that a person adds to the org through their agent,
 
 Every operation answers the connection: `id`, a UUIDv7; `name`; `kind`, `mcp` or `openapi`; `entry`; `credential`, how it is credentialled, never its value; `status`, `pending`, `connected`, `broken` or `removed`; `added_by`; `added_at`; `connected_at`; and `broken`, why it is broken, or `null`. `add_connection` answers `201` with the connection and `connect`, `{ url, expires_at }`: `url` is Studio's page, `https://studio.on.auto/connect?server=<the runtime's origin>&org=<org>&connection=<id>&token=<token>`, whose origin is `PUBLIC_URL`, or the server's own address in local mode, and the link expires ten minutes on. `list_connections` answers them newest first in `connections`, the removed ones only with `include_removed`.
 
-- `entry` holds the server without its credential: `url` for `mcp`; `document` and `base_url` for `openapi`; and `headers`, `query_params`, `allowed`, `playbooks`, `record_content` and `request_id`, as an entry of the configuration file has them. `playbooks` beside `entry` takes the place of the entry's; giving both is `invalid_input`.
-- `credential` is `{ kind: none }`; `{ kind: reference, name }`, a variable of the runtime; `{ kind: secret, placed }`, where `placed` is `{ header }`, or for an HTTP API `{ query }` or `{ security }`; `{ kind: client_credentials, issuer, client_id, scope }`; or `{ kind: authorization }`, which is refused until a later release adds it.
-- The three routes of the link are Studio's page's alone, and no MCP endpoint serves them. Each takes the token, which the runtime keeps only as its SHA-256, and matches it to the open link of the connection: one given less than ten minutes ago that nothing has used up.
+- `entry` holds the server without its credential: `url` for `mcp`; `document` and `base_url` for `openapi`; and `headers`, `query_params`, `allowed`, `playbooks`, `record_content` and `request_id`, as an entry of the configuration file has them.
+- `credential` is one object, `kind` and the fields that kind takes, each optional in the schema and refused as `invalid_input` at the field where its kind lacks it or does not take it: `none` takes no other field; `reference` takes `name`, a variable of the runtime such as `CRM_API_KEY`; `secret` takes `name` and `in`, `header`, `query` or `security`, so `name` is the header, the query parameter or the security scheme of the document the value is sent as, and only an `openapi` connection takes `query` or `security`; `client_credentials` takes `issuer`, an `https` URL or an `http` URL on a loopback address, `client_id` and an optional `scope`; and `authorization`, which takes no other field, is refused until a later release adds it. The same object is what every operation answers and what the org's record keeps.
+- `get_connection`, which Studio reads, and the three routes of the link are served over HTTP alone, and no MCP endpoint serves them. The three routes of the link are Studio's page's alone. Each takes the token, which the runtime keeps only as its SHA-256, and matches it to the open link of the connection: one given less than ten minutes ago that nothing has used up.
 - `approve` connects a connection whose credential is `none` or `reference` and uses its link up. `give_credential` keeps the value sealed in the runtime's secret store, connects the connection and uses its link up: giving the credential is its approval.
 - On a runtime that signs people in, `approve` and `give_credential` need the session of the person who added the connection. In local mode the token alone binds.
 - `remove_connection` removes a connection for good, and the runtime forgets its credential. Removing a removed connection succeeds and records nothing. Its name may then be given to a new connection.
@@ -1071,7 +1071,7 @@ Every operation answers the connection: `id`, a UUIDv7; `name`; `kind`, `mcp` or
 | Case                                                                                                                           | Response                                   |
 | ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
 | An entry that holds a value that looks like a credential, a reference such as `${NAME}`, or a field another entry would refuse | `invalid_input`                            |
-| The credential `authorization`, or a credential given in the wrong fields                                                      | `invalid_input`                            |
+| The credential `authorization`, or a field its kind lacks or does not take                                                     | `invalid_input`                            |
 | A connection the operator's rules do not take: no one may add one, its host or its kind of credential                          | `forbidden`, with the sentence of the rule |
 | A name of an entry of `tool_servers`, or of a connection of the org that is not removed                                        | `conflict`                                 |
 | A token that is unknown, used up or expired, or an id the org does not have                                                    | `not_found`                                |
