@@ -16,11 +16,6 @@ type Transport<S extends ServerSettings> = S extends ServerSettings
 
 const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/u;
 
-const headersOfTheMcpClient = {
-  names: new Set(['mcp-session-id', 'mcp-protocol-version', 'content-type', 'accept', 'last-event-id']),
-  setBy: 'the MCP client',
-};
-
 const serverKinds: Readonly<Record<ServerType, string>> = {
   mcp: 'an mcp server',
   stdio: 'a stdio server',
@@ -81,7 +76,7 @@ function isWebUrl(url: string): boolean {
 
 function mcpTransport(name: string, fields: ServerEntryFields, url: string): Checked<Transport<McpServerSettings>> {
   const checkedUrl = isWebUrl(url) ? accepted(url) : refused(name, ['url'], 'Expected an http or https URL');
-  const headers = checkedHeaders(name, fields.headers ?? {}, headersOfTheMcpClient);
+  const headers = checkedHeaders(name, fields.headers ?? {}, 'mcp');
   const auth = checkedAuth(name, fields);
   return checkedUrl.ok && headers.ok && auth.ok
     ? accepted({ type: 'mcp', url, headers: headers.value, auth: auth.value })

@@ -64,6 +64,7 @@ export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } fr
 export { ServerEntrySchema, ToolServersSchema, type ServerEntryFields } from './settings/server-entries.ts';
 export { checkedEntry, serverNameProblems, type EntryContext } from './settings/entry-checks.ts';
 export { isPinnableUrl } from './settings/checked.ts';
+export { headersTheRuntimeSets } from './settings/reserved-headers.ts';
 export type { ServerSettings, ToolServerSettings } from './settings/server-settings.ts';
 export type { Describing, ToolServers } from './openapi/described-api.ts';
 export type { LeftOutOperation } from './openapi/api-tools.ts';

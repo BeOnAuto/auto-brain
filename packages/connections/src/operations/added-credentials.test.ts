@@ -67,6 +67,47 @@ describe('a credential that cannot be taken', () => {
   });
 });
 
+function inHeader(name: string) {
+  return { kind: 'secret', name, in: 'header' } as const;
+}
+
+describe('a secret in a header', () => {
+  it('is refused in a header the runtime sends itself, and taken in Authorization', async () => {
+    const connections: readonly unknown[] = [
+      { ...crm, credential: inHeader('Mcp-Session-Id') },
+      { ...crm, credential: inHeader('Host') },
+      { ...billing, credential: inHeader('Content-Type') },
+      { ...billing, credential: inHeader('content-length') },
+    ];
+
+    const refused = await Promise.all(
+      connections.map(async (connection: unknown) => issuesIn(await adding(harness(), connection))),
+    );
+    const statuses = await statusesOf(harness(), [
+      { ...crm, credential: inHeader('Authorization') },
+      { ...billing, credential: inHeader('Authorization') },
+    ]);
+
+    expect(refused).toEqual([
+      [
+        {
+          pointer: '/credential/name',
+          detail: 'A header the MCP client sets itself, so the credential cannot go in it',
+        },
+      ],
+      [
+        {
+          pointer: '/credential/name',
+          detail: 'A header the MCP client sets itself, so the credential cannot go in it',
+        },
+      ],
+      [{ pointer: '/credential/name', detail: 'A header the runtime sets itself, so the credential cannot go in it' }],
+      [{ pointer: '/credential/name', detail: 'A header the runtime sets itself, so the credential cannot go in it' }],
+    ]);
+    expect(statuses).toEqual(['succeeded', 'succeeded']);
+  });
+});
+
 describe('a secret of an HTTP API', () => {
   it('is taken in a header, a query parameter or a security scheme the entry leaves free', async () => {
     const api = { ...billing, entry: { ...billing.entry, query_params: { tenant: 'acme' } } };

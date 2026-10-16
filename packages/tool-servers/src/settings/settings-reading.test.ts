@@ -199,12 +199,13 @@ describe('the name, org and playbooks of a server', () => {
 
 describe('the transport of a server', () => {
   it('refuses a url that is not http, a header name that is not one, and a header the client sets itself', () => {
-    const headers = { 'X Graph': 'one', 'Mcp-Session-Id': 'two' };
+    const headers = { 'X Graph': 'one', 'Mcp-Session-Id': 'two', Host: 'graph.example.com' };
 
     expect(problemsOf({ graph: { url: 'ftp://graph.example.com/mcp', org: 'acme', headers } })).toEqual([
       'TOOL_SERVERS: /graph/url: Expected an http or https URL',
       'TOOL_SERVERS: /graph/headers/X Graph: Expected a header name',
       'TOOL_SERVERS: /graph/headers/Mcp-Session-Id: A header the MCP client sets itself',
+      'TOOL_SERVERS: /graph/headers/Host: A header the MCP client sets itself',
     ]);
   });
 

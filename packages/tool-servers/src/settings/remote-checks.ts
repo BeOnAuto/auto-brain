@@ -10,23 +10,20 @@ import {
   secretsOf,
   type Checked,
 } from './checked.ts';
+import { headersTheRuntimeSets, type RemoteServerType } from './reserved-headers.ts';
 import type { ServerEntryFields } from './server-entries.ts';
 import type { AuthCredential, AuthSettings } from './server-settings.ts';
 
 type Auth = NonNullable<ServerEntryFields['auth']>;
-
-export interface ReservedHeaders {
-  readonly names: ReadonlySet<string>;
-  readonly setBy: string;
-}
 
 const headerName = /^[!#$%&'*+.^_`|~0-9A-Za-z-]+$/u;
 
 export function checkedHeaders(
   name: string,
   headers: Readonly<Record<string, string>>,
-  reserved: ReservedHeaders,
+  type: RemoteServerType,
 ): Checked<ReadonlyMap<string, Redacted.Redacted>> {
+  const reserved = headersTheRuntimeSets(type);
   const problems = problemsOf(
     ...Object.keys(headers).map((header) => {
       if (!headerName.test(header)) {

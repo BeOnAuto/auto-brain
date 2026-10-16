@@ -1,4 +1,5 @@
 import type { Issue } from '@on.auto/operations';
+import { headersTheRuntimeSets } from '@on.auto/tool-servers';
 
 import type { ConnectionEntry, ConnectionKind } from '../registry/connection-entry.ts';
 import type { Credential } from '../registry/credential.ts';
@@ -7,8 +8,22 @@ function issue(pointer: string, detail: string): readonly Issue[] {
   return [{ pointer, detail }];
 }
 
+function among(names: Iterable<string>, name: string | undefined): boolean {
+  return [...names].some((given) => given.toLowerCase() === name?.toLowerCase());
+}
+
 function sentAlready(names: Readonly<Record<string, string>> | undefined, name: string | undefined): boolean {
-  return Object.keys(names ?? {}).some((given) => given.toLowerCase() === name?.toLowerCase());
+  return among(Object.keys(names ?? {}), name);
+}
+
+function headerIssuesOf(name: string | undefined, kind: ConnectionKind, entry: ConnectionEntry): readonly Issue[] {
+  const reserved = headersTheRuntimeSets(kind);
+  if (among(reserved.names, name)) {
+    return issue('/credential/name', `A header ${reserved.setBy} sets itself, so the credential cannot go in it`);
+  }
+  return sentAlready(entry.headers, name)
+    ? issue('/credential/name', 'The entry sends this header already, so the credential cannot go in it')
+    : [];
 }
 
 export function credentialIssuesOf(
@@ -23,9 +38,7 @@ export function credentialIssuesOf(
     );
   }
   if (credential.in === 'header') {
-    return sentAlready(entry.headers, credential.name)
-      ? issue('/credential/name', 'The entry sends this header already, so the credential cannot go in it')
-      : [];
+    return headerIssuesOf(credential.name, kind, entry);
   }
   if (credential.in !== undefined && kind === 'mcp') {
     return issue(
