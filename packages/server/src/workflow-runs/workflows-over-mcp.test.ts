@@ -1,12 +1,10 @@
-import { setTimeout } from 'node:timers/promises';
-
-import { listedTools, toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
+import { listedTools, toolNamesIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, settledOverMcp, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',
@@ -46,14 +44,11 @@ const playbookTools = [
   'get_run',
   'cancel_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'get_event',
   'publish_event',
   'search',
   'introspect',
-  'validate',
   'dry_run',
   'execute',
   'answer_interaction',
@@ -83,15 +78,6 @@ async function onAlpha<T>(replies: readonly ScriptedReply[], use: (session: McpS
   return onAlphaOf(server, use);
 }
 
-async function settled(session: McpSession, runId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_run', { run_id: runId });
-  if (reading.structuredContent?.['status'] !== 'started') {
-    return reading;
-  }
-  await setTimeout(100);
-  return settled(session, runId);
-}
-
 const typeField = Schema.decodeUnknownSync(
   Schema.Struct({ properties: Schema.Struct({ type: Schema.Struct({ enum: Schema.Array(Schema.String) }) }) }),
 );
@@ -102,7 +88,7 @@ function typesOfCreateDefinition(listing: unknown): readonly string[] {
 }
 
 describe('workflows over MCP', () => {
-  it('lists eighteen tools on the endpoint of a playbook, and every capability in the definition tools', async () => {
+  it('lists twenty tools on the endpoint of a playbook, and every capability in the definition tools', async () => {
     const listing = await onAlpha([], (session) => session.listTools());
 
     expect(toolNamesIn(listing)).toEqual([...playbookTools, 'get_guide']);
@@ -130,7 +116,7 @@ describe('workflows over MCP', () => {
         run_id: runId,
         event: { type: 'com.acme.approval.decided', data: 'yes' },
       });
-      return { started: starting, sent: sending, run: await settled(session, runId) };
+      return { started: starting, sent: sending, run: await settledOverMcp(session, runId) };
     });
 
     expect(started.structuredContent).toMatchObject({ type: 'workflow', status: 'started' });
@@ -171,8 +157,8 @@ function causesNamedNowhereIn(events: readonly Event[]): readonly string[] {
 }
 
 describe('the graph of a workflow run over MCP', () => {
-  it('reads the steps of a run with their causes, and the whole tree of the run in the feed of its playbook, its child caused by the input that started the call', async () => {
-    const { history, tree } = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
+  it('reads the whole tree of a run in the feed of its playbook, its steps with their causes and its child caused by the input that started the call', async () => {
+    const tree = await onAlpha([answers(jsonResult({ approve: true }))], async (session) => {
       await session.callTool('create_definition', { type: 'reasoning', name: 'verdict', source: verdict });
       await session.callTool('create_definition', { type: 'workflow', name: 'approval', source: approval });
       const starting = await session.callTool('run_definition', {
@@ -185,15 +171,12 @@ describe('the graph of a workflow run over MCP', () => {
         run_id: runId,
         event: { type: 'com.acme.approval.decided', data: 'yes' },
       });
-      await settled(session, runId);
-      return {
-        history: await session.callTool('get_run_history', { run_id: runId, limit: 100 }),
-        tree: await session.callTool('list_playbook_events', { run_id: runId, order: 'asc', limit: 100 }),
-      };
+      await settledOverMcp(session, runId);
+      return session.callTool('list_playbook_events', { run_id: runId, order: 'asc', limit: 100 });
     });
-    const { events } = eventsOf(history.structuredContent);
+    const { events } = eventsOf(tree.structuredContent);
     const waiting = stepOf(events, 'step_waiting', 'judge');
-    const childStarted = startOf(eventsOf(tree.structuredContent).events, waiting?.data.run_id);
+    const childStarted = startOf(events, waiting?.data.run_id);
 
     expect(events.filter(({ type }) => type.startsWith('step_')).length).toBeGreaterThan(0);
     expect(causesNamedNowhereIn(events)).toEqual([]);

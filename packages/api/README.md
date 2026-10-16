@@ -25,7 +25,7 @@ A path with no route gets `404` `not_found`, and a method the path does not serv
 
 `operationRoutes` registers one route per operation. An org operation's route is relative to `/v1/orgs/{org}`, a playbook operation's to `/v1/orgs/{org}/playbooks/{playbook}`; literal segments win over parameters wherever two routes could match the same path.
 
-- **Input.** The operation's input is one object assembled from the path parameters, the query string of a `GET`, and the JSON body of a `POST` or `PUT`. A query is routed by `GET`, or by `POST` where its input is an object a query string cannot carry, as `validate` and `dry_run` of `@on.auto/tool-servers` are, and takes its body then; the method decides nothing else, so such a query is still a read, under the read permission of its scope and marked read-only over MCP. A field may come from only one place; giving it twice is `400` `bad_request`, and so is a query string on a `POST` or `PUT`. Query values arrive as strings and decode with the `strings` encoding; a body decodes with the `json` encoding.
+- **Input.** The operation's input is one object assembled from the path parameters, the query string of a `GET` or a `DELETE`, which take no body (`takesNoBody` of `@on.auto/operations`), and the JSON body of a `POST` or `PUT`. A query is routed by `GET`, or by `POST` where its input is an object a query string cannot carry, as `validate` and `dry_run` of `@on.auto/tool-servers` are, and takes its body then; the method decides nothing else, so such a query is still a read, under the read permission of its scope and marked read-only over MCP. A field may come from only one place; giving it twice is `400` `bad_request`, and so is a query string on a `POST` or `PUT`. Query values arrive as strings and decode with the `strings` encoding; a body decodes with the `json` encoding.
 - **Body.** A body must be a JSON object sent as `application/json` in UTF-8, with no `Content-Encoding` other than `identity`, and no larger than 1 MiB. Otherwise it is `413` `content_too_large`, `415` `unsupported_media_type` or `400` `bad_request`.
 - **Answer.** A success is the operation's output as JSON with the operation's success status (`200`, or `201` where the operation says so) and `Cache-Control: no-store`.
 
@@ -92,39 +92,38 @@ All three sit behind the same chain as every other path. Before the SDK runs, a 
 
 The HTTP method decides nothing. The server serves these, which `packages/server/src/mcp/served-tools.test.ts` checks against this table:
 
-| Tool                     | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
-| ------------------------ | -------------- | ----------------- | ---------------- | --------------- |
-| `create_playbook`        | false          | false             | false            | false           |
-| `list_playbooks`         | true           | false             | true             | false           |
-| `get_playbook`           | true           | false             | true             | false           |
-| `update_playbook`        | false          | false             | true             | false           |
-| `retire_playbook`        | false          | true              | true             | false           |
-| `list_models`            | true           | false             | true             | true            |
-| `search`                 | true           | false             | true             | true            |
-| `create_definition`      | false          | false             | false            | false           |
-| `list_definitions`       | true           | false             | true             | false           |
-| `get_definition`         | true           | false             | true             | false           |
-| `update_definition`      | false          | false             | true             | false           |
-| `retire_definition`      | false          | true              | true             | false           |
-| `run_definition`         | false          | false             | false            | true            |
-| `get_run`                | true           | false             | true             | false           |
-| `cancel_run`             | false          | true              | true             | false           |
-| `list_runs`              | true           | false             | true             | false           |
-| `get_run_history`        | true           | false             | true             | false           |
-| `get_playbook_analytics` | true           | false             | true             | false           |
-| `list_playbook_events`   | true           | false             | true             | false           |
-| `get_event`              | true           | false             | true             | false           |
-| `publish_event`          | false          | false             | false            | false           |
-| `introspect`             | true           | false             | true             | true            |
-| `validate`               | true           | false             | true             | true            |
-| `dry_run`                | true           | false             | true             | true            |
-| `execute`                | false          | false             | false            | true            |
-| `answer_interaction`     | false          | true              | true             | false           |
-| `list_interactions`      | true           | false             | true             | false           |
-| `send_run_event`         | false          | false             | false            | false           |
-| `get_guide`              | true           | false             | true             | false           |
+| Tool                   | `readOnlyHint` | `destructiveHint` | `idempotentHint` | `openWorldHint` |
+| ---------------------- | -------------- | ----------------- | ---------------- | --------------- |
+| `create_playbook`      | false          | false             | false            | false           |
+| `list_playbooks`       | true           | false             | true             | false           |
+| `update_playbook`      | false          | false             | true             | false           |
+| `retire_playbook`      | false          | true              | true             | false           |
+| `list_models`          | true           | false             | true             | true            |
+| `add_connection`       | false          | false             | false            | false           |
+| `list_connections`     | true           | false             | true             | false           |
+| `remove_connection`    | false          | true              | true             | false           |
+| `search`               | true           | false             | true             | true            |
+| `create_definition`    | false          | false             | false            | false           |
+| `list_definitions`     | true           | false             | true             | false           |
+| `get_definition`       | true           | false             | true             | false           |
+| `update_definition`    | false          | false             | true             | false           |
+| `retire_definition`    | false          | true              | true             | false           |
+| `run_definition`       | false          | false             | false            | true            |
+| `get_run`              | true           | false             | true             | false           |
+| `cancel_run`           | false          | true              | true             | false           |
+| `list_runs`            | true           | false             | true             | false           |
+| `list_playbook_events` | true           | false             | true             | false           |
+| `get_event`            | true           | false             | true             | false           |
+| `publish_event`        | false          | false             | false            | false           |
+| `introspect`           | true           | false             | true             | true            |
+| `dry_run`              | true           | false             | true             | true            |
+| `execute`              | false          | false             | false            | true            |
+| `answer_interaction`   | false          | true              | true             | false           |
+| `list_interactions`    | true           | false             | true             | false           |
+| `send_run_event`       | false          | false             | false            | false           |
+| `get_guide`            | true           | false             | true             | false           |
 
-`run_definition` and `execute` are destructive while a tool server is configured, since a reasoning function's tools, the tool an interaction function calls or sends through, and the tool `execute` calls may then change something outside; the table is the server without one, as the test serves it. `list_models` and `run_definition` reach model providers, and `search`, `introspect`, `validate`, `dry_run` and `execute` reach the tool servers. `validate` and `dry_run` are routed by `POST`, since their arguments are an object a query string cannot carry, and are queries, so they are read-only and idempotent as every query is.
+`run_definition` and `execute` are destructive while a tool server is configured, since a reasoning function's tools, the tool an interaction function calls or sends through, and the tool `execute` calls may then change something outside; the table is the server without one, as the test serves it. `list_models` and `run_definition` reach model providers, and `search`, `introspect`, `dry_run` and `execute` reach the tool servers. `dry_run` is routed by `POST`, since its arguments are an object a query string cannot carry, and is a query, so it is read-only and idempotent as every query is. Five operations of the catalog are served over HTTP alone besides the routes of a prediction function's trainer and of Studio's page: `get_playbook`, since a playbook `list_playbooks` lists holds the same fields; `get_connection`, which Studio reads; `get_run_history`, since `list_playbook_events` given a `run_id` answers the run's events and those of every run it started; `get_playbook_analytics`, which Studio presents; and `validate`, since `dry_run` reports the same check of the arguments.
 
 **Calls.** On a scoped endpoint the org, and the playbook of a playbook endpoint, come from the URL, and the arguments are the whole input; on `/mcp` the org is the caller's own and the playbook an argument. The input is decoded with the `json` encoding. A call goes through the same dispatcher and the same `settle` as an HTTP request, with the caller in the URL's org.
 
@@ -145,7 +144,9 @@ So invalid arguments are a tool result with `isError` and an `invalid_input` pro
 
 **Instructions.** Every endpoint answers `initialize` with instructions built by `instructionsFor` in `src/mcp/instructions.ts`. They establish that Auto Runtime executes playbooks, Studio manages them, and the agent is a separate client. Each playbook contains one brain of reusable functions and its workflows; functions run directly or through workflows, and runs belong to the playbook.
 
-The instructions are composed from the tools the caller may use, registered definition types and available recipes. They explain connection scope, put what the person wants kept in a recall function rather than the agent's own notes where the server runs recall functions, require reading the format before writing a definition, name model and tool discovery where offered, and direct an answer to an outstanding interaction back to the same run. Scoped connections and read-only callers receive only applicable instructions and recipes. `src/mcp/instructions.test.ts` checks these combinations and the 2,000-character limit; startup refuses instructions that exceed the bound. Tool descriptions and format guides carry the details that do not fit in initialization.
+The instructions are composed from the tools the caller may use, registered definition types and available recipes. They explain connection scope, put what the person wants kept in a recall function rather than the agent's own notes where the server runs recall functions, require reading the format before writing a definition, name model and tool discovery where offered, say what `add_connection` adds where it is listed, and direct an answer to an outstanding interaction back to the same run. Scoped connections and read-only callers receive only applicable instructions and recipes. `src/mcp/instructions.test.ts` checks these combinations and the 2,000-character limit, about what Claude Code shows of a server's instructions; startup refuses instructions that exceed the bound. Tool descriptions and format guides carry the details that do not fit in initialization.
+
+**A link to open.** An operation whose definition gives `linkToOpen`, as `add_connection` of `@on.auto/connections` does with Studio's page that approves a connection, puts the page in its output, and its tool also asks the client to open it, with the message the definition gives, through the `url` form of elicitation, when the client declared that form in the capabilities its request carries (`src/tools/linked-answers.ts`). Only a request of the `2026-07-28` revision carries them: the handler serves an earlier revision statelessly, each request "by a fresh instance from the same factory", as the SDK documents its `legacy: 'stateless'`, so the capabilities a `2025-11-25` client declared in its `initialize` never reach the instance that answers its call, nor would the client's answer to the SDK's `elicitInput`, which takes the `url` form, reach the instance that asked; a client of that revision is answered at once, the page in the output. A tool that asks answers `input_required`, with one `url` elicitation and a `requestState` that `createRequestStateCodec` of the SDK signs with the current key of `retryStateKeys`, the HMAC keys `mcpRoutes` is given, and binds with the codec's `bind` to the caller and the org of the request: the tool's answer, with the tool, the caller and the org it was made for. The client opens the page, or the person declines, and retries the call with the state; the SDK verifies the state, and the tool answers what it kept for the same tool, caller and org without running the operation again, so a retry adds nothing a second time. The server derives `retryStateKeys` from its secrets keys with HKDF and a label of its purpose, the current from `SECRETS_KEY` and the previous from `SECRETS_KEY_PREVIOUS`, and verifies a state under the current key and then under the previous one, so every server of a deployment, which shares that key, answers a retry another server asked for, before a rotation of the key and across it, as `src/tools/linked-answers.test.ts` and the server's `src/connections/connections-over-mcp.test.ts` show across two servers; a state of another key, made for another caller or org, or older than its ten minutes, is refused by the SDK as `-32602`, `Invalid or expired requestState`, and what the first call did stands.
 
 **Guides.** Every endpoint serves `get_guide`, a read-only tool whose `guide` argument is the enum of the guides' names and whose answer is one guide's whole Markdown as text, and lists the same guides as resources, `guide://<name>`, `text/markdown`, annotated for the assistant, which answer the same text. The server passes them as `shelf`, the `GuideShelf` `guideShelfOf(guides, recipes, definitionTypes)` builds once and checks against the bounds, from the guides, a `Guide` each with its `name`, `title`, `description` and `text`, the recipes and the definition types, and hands the same shelf to `openApiDocumentRoutes` and `guideRoutes`. A `Recipe` is a guide with the `arguments` its prompt takes, the `formatGuide` it embeds, the tools its steps `call` and the `request` it makes of the person's words. Each recipe whose steps call only tools the connection lists, the rule that names it in the instructions, is also a prompt, under its name and title, so a playbook endpoint offers no `first-playbook` and a key that may only read no prompt: `prompts/get` answers one user message, the request with the person's words filled in and then the recipe, followed by its format guide as an embedded resource. `guideShelfOf` refuses a shelf without the guide of each definition type and the format guide of each recipe, so no endpoint mounts without them.
 
@@ -156,8 +157,8 @@ The instructions are composed from the tools the caller may use, registered defi
 | Instructions of a connection | 2,000 characters                                                                                                                                                                                                                                                            | The server refuses to start                                  |
 | A tool description           | 800 characters, 3 to 8 sentences                                                                                                                                                                                                                                            | The server refuses to start                                  |
 | An argument's description    | 300 characters, at any depth of the input                                                                                                                                                                                                                                   | The server refuses to start                                  |
-| Tools on a connection        | a limit of 32, `get_guide` included, which does not move when a tool is added; the server lists 29 on `/mcp`, 8 on the org endpoint and 23 on the playbook endpoint                                                                                                         | The server refuses to start                                  |
-| The listing of a connection  | 48,000 bytes on the wire on `/mcp`, 12,000 on the org endpoint and 40,000 on the playbook endpoint, the bound that binds, measured as `tools/list` answers under the 2025-11-25 revision (`src/tools/tool-listing.ts`); see [The cost of a listing](#the-cost-of-a-listing) | The server refuses to start                                  |
+| Tools on a connection        | a limit of 32, `get_guide` included, which does not move when a tool is added; the server lists 28 on `/mcp`, 10 on the org endpoint and 20 on the playbook endpoint                                                                                                        | The server refuses to start                                  |
+| The listing of a connection  | 48,000 bytes on the wire on `/mcp`, 13,000 on the org endpoint and 40,000 on the playbook endpoint, the bound that binds, measured as `tools/list` answers under the 2025-11-25 revision (`src/tools/tool-listing.ts`); see [The cost of a listing](#the-cost-of-a-listing) | The server refuses to start                                  |
 | A guide                      | 64 KiB                                                                                                                                                                                                                                                                      | The server refuses to start                                  |
 | A recipe                     | 4 KiB, its format guide embedded beside it                                                                                                                                                                                                                                  | The server refuses to start                                  |
 | Guides                       | one a definition type and the terminology                                                                                                                                                                                                                                   | The server refuses to start                                  |
@@ -168,13 +169,13 @@ The instructions are composed from the tools the caller may use, registered defi
 
 The bound on a listing is bytes because a listing is what an agent's client loads whole and holds for the connection. A client that defers its tool listing, and searches it, pays for a tool when it uses it; one that does not pays for the whole listing on every request, so the bound keeps a listing within what such a client loads at about 12,000 tokens. The server's listings take, with every tool and no tool server configured, as `packages/server/src/mcp/served-schemas.test.ts` pins them:
 
-| Endpoint                                    | Tools | Bytes on the wire | Bound  | Tokens, as two open byte-pair vocabularies of 100,000 and 200,000 count them |
-| ------------------------------------------- | ----- | ----------------- | ------ | ---------------------------------------------------------------------------- |
-| `POST /mcp`                                 | 29    | 44,219            | 48,000 | 11,082 and 11,355                                                            |
-| `POST /orgs/{org}/mcp`                      | 8     | 8,737             | 12,000 | 2,069 and 2,128                                                              |
-| `POST /orgs/{org}/playbooks/{playbook}/mcp` | 23    | 35,321            | 40,000 | 8,758 and 8,941                                                              |
+| Endpoint                                    | Tools | Bytes on the wire | Bound  |
+| ------------------------------------------- | ----- | ----------------- | ------ |
+| `POST /mcp`                                 | 28    | 43,094            | 48,000 |
+| `POST /orgs/{org}/mcp`                      | 10    | 12,549            | 13,000 |
+| `POST /orgs/{org}/playbooks/{playbook}/mcp` | 20    | 30,769            | 40,000 |
 
-A listing takes 3.9 to 4.2 bytes a token, so the 48,000 bytes of `/mcp` come to about 12,000 tokens (counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
+The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, as decision 0031 records: its listing takes 12,549 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
 
 **Which errors look how.** An MCP endpoint answers in three shapes:
 
@@ -220,11 +221,12 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
     }
   ],
   "catalog_status": "complete",
+  "narrowed": false,
   "listed_at": "2026-10-01T09:30:00.000Z"
 }
 ```
 
-`id` is the model as a definition names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `resolved_to` only for an alias, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
+`id` is the model as a definition names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `resolved_to` only for an alias, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, `narrowed` is `true` when the operator allows only some models, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
 
 ## Lifecycle
 

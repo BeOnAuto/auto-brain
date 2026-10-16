@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { chatEnvironment, chatServer } from '../testing/servers/chat-deliveries.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const limitApproval = [
   '---',

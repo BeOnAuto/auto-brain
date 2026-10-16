@@ -24,12 +24,12 @@ describe('the org and playbooks an entry serves', () => {
 
   it('are refused without an org, or with an org or playbook that is not an id, at their places', () => {
     expect(servedScopeOf('EXAMPLE', 'graph', {}, 'endpoint')).toEqual(
-      Result.fail([{ setting: 'EXAMPLE', detail: '/graph: Expected the org this endpoint serves' }]),
+      Result.fail([{ setting: 'EXAMPLE', pointer: '/graph', detail: 'Expected the org this endpoint serves' }]),
     );
     expect(servedScopeOf('EXAMPLE', 'graph', { org: 'ac/me', playbooks: ['sales', 'Sales'] }, 'server')).toEqual(
       Result.fail([
-        { setting: 'EXAMPLE', detail: '/graph/org: Expected an org id, a list of them, or *' },
-        { setting: 'EXAMPLE', detail: '/graph/playbooks/1: Expected a playbook id' },
+        { setting: 'EXAMPLE', pointer: '/graph/org', detail: 'Expected an org id, a list of them, or *' },
+        { setting: 'EXAMPLE', pointer: '/graph/playbooks/1', detail: 'Expected a playbook id' },
       ]),
     );
   });
@@ -42,15 +42,16 @@ describe('the orgs an entry serves, refused', () => {
       servedScopeOf('EXAMPLE', 'graph', { org: ['acme', 'glo/bex', '*'] }, 'server'),
       servedScopeOf('EXAMPLE', 'graph', { org: '*', playbooks: ['sales'] }, 'server'),
     ]).toEqual([
-      Result.fail([{ setting: 'EXAMPLE', detail: '/graph/org: Expected at least one org id' }]),
+      Result.fail([{ setting: 'EXAMPLE', pointer: '/graph/org', detail: 'Expected at least one org id' }]),
       Result.fail([
-        { setting: 'EXAMPLE', detail: '/graph/org/1: Expected an org id' },
-        { setting: 'EXAMPLE', detail: '/graph/org/2: Expected an org id; * stands alone, for every org' },
+        { setting: 'EXAMPLE', pointer: '/graph/org/1', detail: 'Expected an org id' },
+        { setting: 'EXAMPLE', pointer: '/graph/org/2', detail: 'Expected an org id; * stands alone, for every org' },
       ]),
       Result.fail([
         {
           setting: 'EXAMPLE',
-          detail: '/graph/playbooks: Expected no playbooks beside every org, since a playbook id belongs to one org',
+          pointer: '/graph/playbooks',
+          detail: 'Expected no playbooks beside every org, since a playbook id belongs to one org',
         },
       ]),
     ]);

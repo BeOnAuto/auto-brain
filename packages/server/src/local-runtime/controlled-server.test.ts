@@ -5,7 +5,6 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 import { defaultServerOptions, startServer, servedBy, type ServerOptions } from '../lifecycle/lifecycle.ts';
 import { accessTokenOf, issuerOverHttps } from '../sign-in/issuer-over-https.ts';
 import { optionsServing } from '../testing/entries/serving-options.ts';
-import { testRoutes } from '../testing/entries/test-routes.ts';
 import { localControlOf, type LocalControl } from './local-control.ts';
 import { runsInFlight } from './runs-in-flight.ts';
 
@@ -30,7 +29,7 @@ function startedInATerminal(): LocalControl {
 }
 
 function controlledBy(local: LocalControl): ServerOptions<never> {
-  return { ...optionsServing(() => servedBy([testRoutes])), localServingIn: local.servingIn };
+  return { ...optionsServing(() => servedBy([])), localServingIn: local.servingIn };
 }
 
 interface Answers {
@@ -88,7 +87,7 @@ describe('a server started with the control of the auto-runtime command', () => 
   it('has no control without one', async () => {
     const server = await startServer(
       loopback,
-      optionsServing(() => servedBy([testRoutes])),
+      optionsServing(() => servedBy([])),
     );
     onTestFinished(() => server.stop());
 

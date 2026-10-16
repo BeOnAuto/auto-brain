@@ -94,7 +94,7 @@ allowed_models:
 An entry is `provider/model`, or ends in a `*` that stands for any model id, as in an alias. The list applies in one place for two uses:
 
 - A definition that names anything else is refused before any provider is called, as `unavailable` of the kind `model_not_offered` with `because: "model_not_allowed"`. Its detail names the model, never the allow list, and its plain words point to `list_models`.
-- `list_models` shows only what the list allows.
+- `list_models` shows only what the list allows, and says `narrowed: true`. Without the setting, it says `narrowed: false`.
 
 Matching rules:
 

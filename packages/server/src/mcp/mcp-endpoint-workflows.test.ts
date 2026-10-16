@@ -1,11 +1,10 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const greeting = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Greet {{ input.name }}.'].join('\n');
 
@@ -37,13 +36,11 @@ function onMcp<T>(use: (session: McpSession) => Promise<T>): Promise<T> {
   return withMcpSession('current revision', { url: `${server.origin}/mcp`, headers: {} }, use);
 }
 
-async function settled(session: McpSession, runId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_run', { playbook: 'sales', run_id: runId });
-  if (reading.structuredContent?.['status'] !== 'started') {
-    return reading;
-  }
-  await setTimeout(100);
-  return settled(session, runId);
+function settled(session: McpSession, runId: string): Promise<ToolResult> {
+  return until(
+    () => session.callTool('get_run', { playbook: 'sales', run_id: runId }),
+    (reading) => reading.structuredContent?.['status'] !== 'started',
+  );
 }
 
 async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
@@ -76,7 +73,7 @@ async function welcomedAfterReply(session: McpSession): Promise<ToolResult> {
 }
 
 describe('/mcp with workflows', () => {
-  it('lists twenty-nine tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
+  it('lists twenty-eight tools, and its instructions say how to see whether a workflow run ended or still waits', async () => {
     server = await servingWorkflows([]);
 
     const served = await onMcp(async (session) => ({
@@ -84,7 +81,7 @@ describe('/mcp with workflows', () => {
       instructions: session.instructions,
     }));
 
-    expect(served.tools).toHaveLength(29);
+    expect(served.tools).toHaveLength(28);
     expect(served.tools.slice(-2)).toEqual(['send_run_event', 'get_guide']);
     expect(served.instructions).toContain(
       'A run of a workflow answers started; get_run shows whether it ended or still waits.',

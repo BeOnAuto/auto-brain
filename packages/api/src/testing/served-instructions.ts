@@ -1,6 +1,6 @@
 import type { DefinitionType, McpEndpoint, RecipeCalls, ServedTools } from '../mcp/instructions.ts';
 
-const managingPlaybooks = ['create_playbook', 'list_playbooks', 'get_playbook', 'update_playbook', 'retire_playbook'];
+const managingPlaybooks = ['create_playbook', 'list_playbooks', 'update_playbook', 'retire_playbook'];
 
 const insideAPlaybook = [
   'create_definition',
@@ -12,13 +12,10 @@ const insideAPlaybook = [
   'get_run',
   'cancel_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'publish_event',
   'search',
   'introspect',
-  'validate',
   'dry_run',
   'execute',
   'list_interactions',
@@ -32,18 +29,17 @@ export const queriesInsideAPlaybook = [
   'get_definition',
   'get_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'search',
   'introspect',
-  'validate',
   'dry_run',
   'list_interactions',
   'get_guide',
 ];
 
 const discovering = ['list_models', 'search'];
+
+const connecting = ['add_connection', 'list_connections', 'remove_connection'];
 
 export const orgEndpoint: ServedTools = {
   orgTools: [...managingPlaybooks, ...discovering, 'get_guide'],
@@ -77,13 +73,17 @@ export const recipes: readonly RecipeCalls[] = [
   },
   {
     name: 'give-tools',
-    calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'get_run_history'],
+    calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'list_playbook_events'],
   },
   { name: 'schedule', calls: ['list_definitions', 'create_definition', 'update_definition', 'list_runs', 'get_run'] },
 ];
 
+export function withConnections({ orgTools, playbookTools }: ServedTools): ServedTools {
+  return { orgTools: [...orgTools, ...connecting], playbookTools };
+}
+
 export const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
-  ['org', orgEndpoint],
+  ['org', withConnections(orgEndpoint)],
   ['playbook', playbookEndpoint],
-  ['own org', ownOrg],
+  ['own org', withConnections(ownOrg)],
 ];

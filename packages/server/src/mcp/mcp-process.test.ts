@@ -1,12 +1,11 @@
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { connectMcp, problemIn, withMcpSession, type McpClientKind, type McpSession } from '@on.auto/api/testing';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { callInFlightFileVariable } from '../testing/entries/announced-waiting.ts';
-import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
+import { callInFlightFileVariable } from '../testing/entries/calls-in-flight.ts';
+import { spawnServer, untilCallInFlight, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 
 const serveWithWaitingTool = fileURLToPath(new URL('../testing/entries/serve-with-waiting-tool.ts', import.meta.url));
@@ -56,12 +55,7 @@ async function waitingCallOn(kind: McpClientKind): Promise<WaitingCall> {
     (result) => ({ isError: result.isError, problem: problemIn(result) }),
     (error: unknown) => ({ ended: String(error) }),
   );
-  await vi.waitFor(
-    () => {
-      expect(existsSync(inFlight)).toBe(true);
-    },
-    { timeout: 30_000, interval: 10 },
-  );
+  await untilCallInFlight(inFlight);
   return { child, port, session, waiting };
 }
 

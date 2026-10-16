@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { definitionOperationsFor } from '../testing/definition-operations.ts';
 import { echo } from '../testing/echo.ts';
 
-const { listRuns, getRunHistory } = definitionOperationsFor([echo]);
+const { listRuns } = definitionOperationsFor([echo]);
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -23,29 +23,6 @@ function listed(runs: readonly unknown[], filters: object = {}, hasMore = false)
   return listRuns.registration.plainLanguage?.outcome(
     { runs, has_more: hasMore, next_cursor: hasMore ? 'WyJicmFpbiJd' : null },
     filters,
-  );
-}
-
-const event = {
-  id: '0b1c2d3e-4f50-5a6b-8c7d-8e9fa0b1c2d3',
-  type: 'run_started',
-  summary: 'A run started.',
-  data: {},
-  metadata: {
-    stream: 'playbook/acme/alpha/runs/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a',
-    position: 1,
-    global_position: 1,
-    correlation_id: null,
-    causation_id: null,
-    at: '2026-10-01T09:00:00.000Z',
-    by: 'acme-admin',
-  },
-};
-
-function found(events: readonly unknown[], input: object = {}, hasMore = false): string | undefined {
-  return getRunHistory.registration.plainLanguage?.outcome(
-    { events, has_more: hasMore, next_cursor: hasMore ? 'WyJicmFpbiJd' : null },
-    { run_id: runId, ...input },
   );
 }
 
@@ -88,29 +65,5 @@ describe('the plain language of list_runs', () => {
       listRuns.registration.plainLanguage?.attempt({ type: 'echo', status: 'started' }),
       listRuns.registration.plainLanguage?.attempt({ status: 'sideways' }),
     ]).toEqual(['list the runs', 'list the runs of greetings that are still running', 'list the runs']);
-  });
-});
-
-describe('the plain language of get_run_history', () => {
-  it('says how many events of the run it found, in which order', () => {
-    expect([found([event, event]), found([event], { order: 'desc' }, true)]).toEqual([
-      'Found 2 events in the history of the run, oldest first, each with its fact and its metadata.',
-      'Found 1 event in the history of the run, newest first, each with its fact and its metadata. More remain after these.',
-    ]);
-  });
-
-  it('says when a page shows nothing', () => {
-    expect([found([], {}, true), found([]), found([], { cursor: 'WyJicmFpbiJd' })]).toEqual([
-      'This page shows nothing of the run, but there is more of its history to read.',
-      'The run has nothing to show yet.',
-      'There is nothing more to show of the run.',
-    ]);
-  });
-
-  it('names what it tried', () => {
-    expect([
-      getRunHistory.registration.plainLanguage?.attempt({ run_id: runId }),
-      getRunHistory.registration.plainLanguage?.attempt({}),
-    ]).toEqual(['read the history of the run', 'read the history of a run']);
   });
 });

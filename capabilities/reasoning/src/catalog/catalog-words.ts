@@ -79,10 +79,12 @@ function nothingWords(provider: string | undefined, providerSetup: string | unde
     : `This server has no model it can call. ${providerSetup}`;
 }
 
+const allowedOnly = 'It lists only the models its operator allows.';
+
 const incomplete = 'The list may be incomplete: a provider could not be asked just now.';
 
 export function modelsListed(
-  { data, catalog_status: status }: ModelList,
+  { data, catalog_status: status, narrowed }: ModelList,
   provider?: string,
   providerSetup?: string,
 ): string {
@@ -91,6 +93,7 @@ export function modelsListed(
   const words = [
     data.length === 0 ? nothingWords(provider, providerSetup) : modelsWords(models),
     patternWords(patterns, models.length > 0),
+    narrowed ? allowedOnly : '',
     status === 'partial' ? incomplete : '',
   ];
   return words.filter((sentence) => sentence !== '').join(' ');

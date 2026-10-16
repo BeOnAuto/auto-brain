@@ -3,6 +3,7 @@ import {
   decodedJsonSetting,
   pointerOf,
   problem,
+  settingProblemText,
   substituted,
   type SettingProblem,
 } from '@on.auto/config';
@@ -77,7 +78,7 @@ function serversOf(
 }
 
 function invalid(problems: readonly SettingProblem[]): ToolServerSettingsInvalid {
-  const listed = problems.map(({ setting, detail }) => `${setting}: ${detail}`).join('; ');
+  const listed = problems.map((refused) => settingProblemText(refused)).join('; ');
   return new ToolServerSettingsInvalid({ message: `The tool server settings are invalid. ${listed}`, problems });
 }
 

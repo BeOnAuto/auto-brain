@@ -42,8 +42,6 @@ const definitionTools = [
   'get_run',
   'cancel_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
 ];
 
 describe('the tools of each endpoint', () => {
@@ -55,7 +53,7 @@ describe('the tools of each endpoint', () => {
     expect(listedTools(listing).map(({ name }) => name)).toEqual(['label_playbook', 'list_labels', guideToolName]);
   });
 
-  it('lists the eleven definition operations on a playbook endpoint and no org operation', async () => {
+  it('lists the nine definition operations served as tools on a playbook endpoint and no org operation', async () => {
     expect(listedTools(await onAlpha((session) => session.listTools())).map(({ name }) => name)).toEqual([
       ...definitionTools,
       guideToolName,

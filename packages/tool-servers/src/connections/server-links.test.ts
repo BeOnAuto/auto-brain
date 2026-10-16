@@ -1,5 +1,3 @@
-import { setTimeout as delay } from 'node:timers/promises';
-
 import { Redacted } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -221,17 +219,11 @@ describe('an http server that does not end its session', () => {
     const connection = await link.take();
     const finished = link[ending]().then(() => true);
     const request = await deleting.promise;
-    const deadline = new AbortController();
 
-    try {
-      expect(await Promise.race([finished, delay(2500, false, { signal: deadline.signal })])).toBe(true);
-      expect(request).toHaveProperty('signal.aborted', true);
-      await connection.closed;
-    } finally {
-      deadline.abort();
-      unanswered.resolve(new Response(null, { status: 204 }));
-      await finished;
-    }
+    expect(await finished).toBe(true);
+    expect(request).toHaveProperty('signal.aborted', true);
+    await connection.closed;
+    unanswered.resolve(new Response(null, { status: 204 }));
   });
 
   it('closes the local connection even when the server refuses deletion', async () => {

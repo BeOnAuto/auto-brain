@@ -15,7 +15,7 @@ const description = [
   '`type` and `name` say which definition, `input` is the value it takes, as the input_schema get_definition shows,',
   'and `run_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again.',
   'A function that calls a tool may change something outside the playbook, so a run of one that did not succeed is never run again under its id;',
-  'get_run_history shows what it called.',
+  'list_playbook_events with its run_id shows what it called.',
 ].join(' ');
 
 export function defineRunDefinition(capabilities: readonly Capability[]) {

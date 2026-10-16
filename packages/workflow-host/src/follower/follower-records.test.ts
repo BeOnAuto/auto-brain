@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { alpha, eventTrigger, published, recorded, definitionRecorded } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
+import { until } from '../testing/until.ts';
 import type { Consumer } from './consumers.ts';
 
 function recordingIds(name: string, types: readonly string[], received: (id: string) => void): Consumer {

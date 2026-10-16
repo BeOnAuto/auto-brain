@@ -1,11 +1,10 @@
-import { setTimeout as sleep } from 'node:timers/promises';
-
 import { describe, expect, it } from 'vitest';
 
 import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerConnection } from '../connections/server-connection.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { StdioServerSettings } from '../settings/server-settings.ts';
+import { until } from '../testing/until.ts';
 import { boundedSlot, takenWithin } from './connection-bound.ts';
 
 const connection: ServerConnection = {
@@ -61,20 +60,18 @@ describe('the opening of a connection for one call', () => {
   });
 
   it('gives up at its bound, and lets go of a connection that opens after it, never of one that fails', async () => {
-    const slow = opening(async () => {
-      await sleep(60);
-      return connection;
-    });
-    const slowFailing = opening(async () => {
-      await sleep(60);
-      throw new Error('The server went away');
-    });
+    const slowOpening = Promise.withResolvers<ServerConnection>();
+    const failingOpening = Promise.withResolvers<ServerConnection>();
+    const slow = opening(() => slowOpening.promise);
+    const slowFailing = opening(() => failingOpening.promise);
 
     const taken = await Promise.all([takenWithin(slow, 10), takenWithin(slowFailing, 10)]);
-    await sleep(120);
+    failingOpening.reject(new Error('The server went away'));
+    slowOpening.resolve(connection);
+    await until(() => slow.released() === 1);
 
     expect(taken).toEqual([{ late: true }, { late: true }]);
-    expect([slow.released(), slowFailing.released()]).toEqual([1, 0]);
+    expect(slowFailing.released()).toBe(0);
   });
 });
 

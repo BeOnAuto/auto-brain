@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { plainTextIn, type McpSession, type ToolResult } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 
-import { until } from './workflow-calls.ts';
+import { until } from '../waiting/until.ts';
 import { runIdIn } from './workflow-server.ts';
 
 export interface TutorialRun {
@@ -13,7 +13,14 @@ export interface TutorialRun {
 }
 
 const decodeEvents = Schema.decodeUnknownSync(
-  Schema.Struct({ events: Schema.Array(Schema.Struct({ summary: Schema.String })) }),
+  Schema.Struct({
+    events: Schema.Array(
+      Schema.Struct({
+        summary: Schema.String,
+        metadata: Schema.Struct({ run_id: Schema.optionalKey(Schema.String) }),
+      }),
+    ),
+  }),
 );
 
 const decodeListed = Schema.decodeUnknownSync(
@@ -119,7 +126,7 @@ export async function tutorialRunOn(session: McpSession): Promise<TutorialRun> {
   const answer = { verdict: 'approve', note: 'Approved for the autumn launch.' };
   const answered = await called(session, 'answer_interaction', { run_id: requestId, answer });
   const ended = await settledOn(session, workflowId);
-  const history = await called(session, 'get_run_history', { run_id: workflowId });
+  const history = await called(session, 'list_playbook_events', { run_id: workflowId, order: 'asc' });
   const request = await settledOn(session, requestId);
   const inbox = await called(session, 'list_interactions', {});
   const again = await called(session, 'answer_interaction', { run_id: requestId, answer: { verdict: 'revise' } });
@@ -127,7 +134,9 @@ export async function tutorialRunOn(session: McpSession): Promise<TutorialRun> {
     summaries: [
       ...created,
       ...[started, listed, answered, history, request, ended, inbox].map((result) => plainTextIn(result)),
-      ...decodeEvents(history.structuredContent).events.map(({ summary }) => summary),
+      ...decodeEvents(history.structuredContent)
+        .events.filter(({ metadata }) => metadata.run_id === workflowId)
+        .map(({ summary }) => summary),
     ],
     output: ended.structuredContent?.['output'],
     answeredAgain: again.isError,

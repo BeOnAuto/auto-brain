@@ -1,4 +1,4 @@
-import { problem, type SettingProblem } from './setting-values.ts';
+import { problemAt, type SettingProblem } from './setting-values.ts';
 
 const setting = 'MODEL_GATEWAYS';
 
@@ -40,21 +40,22 @@ function fieldProblems(
 ): readonly SettingProblem[] {
   const pointer = `${at}/${position}`;
   if (field.length === 0 || field.length > mostFieldCharacters) {
-    return problem(setting, `${pointer}: Expected a field name of 1 to ${mostFieldCharacters} characters`);
+    return problemAt(setting, pointer, `Expected a field name of 1 to ${mostFieldCharacters} characters`);
   }
   if (runtimeFields.has(field)) {
-    return problem(
+    return problemAt(
       setting,
-      `${pointer}: ${field} is set by the runtime or changes what the call is, so it cannot be allowed`,
+      pointer,
+      `${field} is set by the runtime or changes what the call is, so it cannot be allowed`,
     );
   }
-  return fields.indexOf(field) < position ? problem(setting, `${pointer}: ${field} is listed twice`) : [];
+  return fields.indexOf(field) < position ? problemAt(setting, pointer, `${field} is listed twice`) : [];
 }
 
 export function allowedOptionProblems(fields: readonly string[], index: number): readonly SettingProblem[] {
   const at = `/${index}/allowed_provider_options`;
   if (fields.length > mostAllowedFields) {
-    return problem(setting, `${at}: Expected at most ${mostAllowedFields} field names`);
+    return problemAt(setting, at, `Expected at most ${mostAllowedFields} field names`);
   }
   return fields.flatMap((field, position) => fieldProblems(field, position, fields, at));
 }

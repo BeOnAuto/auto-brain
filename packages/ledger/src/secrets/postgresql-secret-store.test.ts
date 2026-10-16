@@ -1,7 +1,8 @@
 import { Effect, Logger, Redacted } from 'effect';
 import { decodeProtectedHeader } from 'jose';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import { until } from '../testing/until.ts';
 import { postgresqlSecretStore, type SecretConnections } from './postgresql-secret-store.ts';
 
 interface Asked {
@@ -80,7 +81,7 @@ describe('the secret store on PostgreSQL, without a database', () => {
       'SELECT sealed FROM sealed_secrets WHERE id = $1',
       'DELETE FROM sealed_secrets WHERE id = $1',
     ]);
-    expect(fake.asked[0]?.values).toEqual([id, store.kid, expect.any(String), expect.any(String)]);
+    expect(fake.asked[0]?.values).toEqual([id, store.kid, expect.any(String), expect.any(String), null]);
     expect(decodeProtectedHeader(String(fake.asked[0]?.values[2]))).toMatchObject({ kid: store.kid });
     expect(JSON.stringify(fake.asked)).not.toContain('pasted-key');
     expect(fake.ended()).toBe(1);
@@ -98,7 +99,7 @@ describe('the secret store on PostgreSQL, without a database', () => {
 
     fake.lose(new Error('terminating connection due to administrator command'));
 
-    await vi.waitFor(() => {
+    await until(() => {
       expect(logged).toEqual([
         expect.stringContaining(
           '{"message":"A connection to the PostgreSQL database of the ledger was lost; the ledger opens another when it needs one","level":"WARN"',

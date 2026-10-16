@@ -10,8 +10,8 @@ import {
 } from '../testing/servers/chat-deliveries.ts';
 import { servingInteractions } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 import { runIdIn } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const aDigest: unknown = expect.stringMatching(/^[0-9a-f]{64}$/u);
 

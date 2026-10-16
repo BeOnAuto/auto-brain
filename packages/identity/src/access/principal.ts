@@ -40,6 +40,12 @@ export function principalOf({ id, org, permissions, playbooks }: ApiKey): Princi
   return principalOfCaller({ id, org, permissions, playbooks });
 }
 
+const personPrefix = 'person:';
+
 export function signedInPersonOf({ subject, org, permissions }: VerifiedPerson): Principal {
-  return principalOfCaller({ id: `person:${subject}`, org, permissions, playbooks: '*' });
+  return principalOfCaller({ id: `${personPrefix}${subject}`, org, permissions, playbooks: '*' });
+}
+
+export function isSignedInPerson({ id }: Pick<CallerIdentity, 'id'>): boolean {
+  return id.startsWith(personPrefix);
 }

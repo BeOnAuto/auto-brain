@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
+import { until } from '../testing/until.ts';
 import { fakeDueWork } from './fake-due-work.ts';
 
 describe('the due rows of a projection, across hosts of one database', () => {
@@ -13,10 +13,10 @@ describe('the due rows of a projection, across hosts of one database', () => {
     await hostedOn(database, { sweepEveryMs: 50, holder: 'second', dueWork: [rows.work('second')] });
 
     rows.add('before', Date.now());
-    await eventually(rows.performed, (performed) => performed.length === 1);
+    await until(rows.performed, (performed) => performed.length === 1);
     await first.host.stop();
     rows.add('after', Date.now());
-    await eventually(rows.performed, (performed) => performed.length === 2, 2000);
+    await until(rows.performed, (performed) => performed.length === 2);
 
     expect(rows.performed().map(({ key, by }) => [key, by])).toEqual([
       ['before', 'first'],

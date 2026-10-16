@@ -37,6 +37,12 @@ const mostFunctions: CountBounds = { setting: 'PREDICTION_MAX_FUNCTIONS', least:
 
 const cacheSetting = 'PREDICTION_CACHE_DIR';
 
+export const predictionVariables: readonly string[] = [
+  ...[processes, processMemoryMebibytes, buildsAtOnce, buildsPerDay, mostFunctions].map(({ setting }) => setting),
+  cacheSetting,
+  'PATH',
+];
+
 function belowTheProcesses(settings: ModelProcesses): readonly string[] {
   return settings.buildsAtOnce < settings.processes
     ? []

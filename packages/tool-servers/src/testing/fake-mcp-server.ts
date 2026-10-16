@@ -49,7 +49,7 @@ export interface FakeMcpServer {
     headers?: Readonly<Record<string, string>>,
   ) => void;
   readonly answerNextCallAfterNoise: (messages: number) => void;
-  readonly holdNextOf: (rpc: string) => void;
+  readonly holdNextOf: (rpc: string) => () => void;
   readonly forgetSessions: () => void;
   readonly revokeTokens: () => void;
   readonly removeTool: (name: string) => void;
@@ -68,7 +68,7 @@ interface NextAnswers {
   readonly answerWith: FakeMcpServer['answerNextWith'];
   readonly answerOf: FakeMcpServer['answerNextOf'];
   readonly answerAfterNoise: FakeMcpServer['answerNextCallAfterNoise'];
-  readonly held: (rpc: string | undefined) => boolean;
+  readonly held: (rpc: string | undefined) => Promise<void> | undefined;
   readonly hold: FakeMcpServer['holdNextOf'];
 }
 
@@ -79,12 +79,14 @@ function programmedAnswers(status: number, times: number, headers: Readonly<Reco
 function nextAnswers(): NextAnswers {
   const programmed: Programmed[] = [];
   const programmedOf = new Map<string, Programmed[]>();
-  const holding = new Set<string>();
+  const holding = new Map<string, Promise<void>[]>();
   let noise = 0;
   return {
-    held: (rpc) => holding.delete(String(rpc)),
+    held: (rpc) => holding.get(String(rpc))?.shift(),
     hold: (rpc) => {
-      holding.add(rpc);
+      const held = Promise.withResolvers<void>();
+      holding.set(rpc, [...(holding.get(rpc) ?? []), held.promise]);
+      return held.resolve;
     },
     programmed: (rpc) => programmedOf.get(String(rpc))?.shift() ?? programmed.shift(),
     noise: () => {
@@ -176,9 +178,7 @@ function mcpEndpoint({ sessions, see, next, requestIdHeader }: Endpoint): FetchH
       session: request.headers.get('mcp-session-id'),
       authorization: request.headers.get('authorization'),
     });
-    if (next.held(rpc)) {
-      return Promise.withResolvers<Response>().promise;
-    }
+    await next.held(rpc);
     const programmed = next.programmed(rpc);
     if (programmed !== undefined) {
       return new Response(JSON.stringify({ error: `answered ${programmed.status}` }), programmed);

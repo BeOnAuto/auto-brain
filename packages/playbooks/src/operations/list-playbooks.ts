@@ -12,7 +12,7 @@ export const listPlaybooks = defineQuery('org', {
   title: 'List playbooks',
   description: [
     'Lists the playbooks of the org that the caller may access, sorted by id, each with its name, what it is for and whether it is active.',
-    'Use it to find a playbook the person names, or to see whether one exists before another is made; get_playbook reads one playbook by its id.',
+    'Use it to find a playbook the person names, or to see whether one exists before another is made; each playbook it lists holds every field of the playbook.',
     '`include_retired` adds the retired playbooks, which are left out otherwise.',
   ].join(' '),
   route: { method: 'GET', path: '/playbooks' },

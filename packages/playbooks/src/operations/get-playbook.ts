@@ -1,12 +1,11 @@
-import { defineQuery, quoted } from '@on.auto/operations';
+import { defineHttpOperation } from '@on.auto/operations';
 import { Schema } from 'effect';
 
-import { playbookStanding, purposeOf } from '../plain-language/playbook-words.ts';
 import { PlaybookSchema } from '../registry/playbook.ts';
 import { PlaybookIdField } from './playbook-fields.ts';
 import { foundPlaybook } from './registry-loading.ts';
 
-export const getPlaybook = defineQuery('org', {
+export const getPlaybook = defineHttpOperation('org', 'query', {
   name: 'get_playbook',
   title: 'Get playbook',
   description: [
@@ -15,13 +14,9 @@ export const getPlaybook = defineQuery('org', {
     '`playbook` is the id of the playbook.',
   ].join(' '),
   route: { method: 'GET', path: '/playbooks/{playbook}' },
+  body: { kind: 'none' },
   inputSchema: Schema.Struct({ playbook: PlaybookIdField }),
-  outputSchema: PlaybookSchema,
+  answer: { kind: 'json', outputSchema: PlaybookSchema },
   reasons: ['not_found'],
   handle: ({ playbook }) => foundPlaybook(playbook),
-  plainLanguage: {
-    task: 'look up a playbook',
-    attempt: ({ playbook }) => `look up the playbook ${quoted(playbook)}`,
-    outcome: (playbook) => `${playbookStanding(playbook)}${purposeOf(playbook)}`,
-  },
 });

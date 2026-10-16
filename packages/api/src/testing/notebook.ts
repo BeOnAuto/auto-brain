@@ -18,7 +18,7 @@ import {
   type Issue,
   type PlainLanguage,
 } from '@on.auto/operations';
-import { Effect, Result, Schema } from 'effect';
+import { Effect, Function, Result, Schema } from 'effect';
 
 const NoteName = Schema.String.check(Schema.isPattern(/^[a-z][a-z0-9-]{0,31}$/u));
 
@@ -160,17 +160,19 @@ const breakDown = defineQuery('playbook', {
   plainLanguage: plainly('break down'),
 });
 
-export const waitForever = defineQuery('playbook', {
-  name: 'wait_forever',
-  title: 'Wait forever',
-  description: 'Never finishes on its own. It waits until it is stopped. It is for tests.',
-  route: { method: 'GET', path: '/waiting' },
-  inputSchema: Nothing,
-  outputSchema: Nothing,
-  reasons: [],
-  handle: () => Effect.never,
-  plainLanguage: plainly('wait forever'),
-});
+export function waitForeverAnnouncing(announce: () => void) {
+  return defineQuery('playbook', {
+    name: 'wait_forever',
+    title: 'Wait forever',
+    description: 'Never finishes on its own. It waits until it is stopped. It is for tests.',
+    route: { method: 'GET', path: '/waiting' },
+    inputSchema: Nothing,
+    outputSchema: Nothing,
+    reasons: [],
+    handle: () => Effect.andThen(Effect.sync(announce), Effect.never),
+    plainLanguage: plainly('wait forever'),
+  });
+}
 
 const PlaybookLabelSchema = Schema.Struct({ playbook: PlaybookIdSchema, label: Schema.String });
 
@@ -277,15 +279,20 @@ const sendNotes = defineCommand('playbook', {
   plainLanguage: plainly('send the notes'),
 });
 
-export const notebookOperations = [
-  addNote,
-  checkLines,
-  listNotes,
-  getNote,
-  latestNote,
-  breakDown,
-  waitForever,
-  labelPlaybook,
-  listLabels,
-  sendNotes,
-];
+export function notebookOperationsAnnouncingWaits(announce: () => void) {
+  const waitForever = waitForeverAnnouncing(announce);
+  return [
+    addNote,
+    checkLines,
+    listNotes,
+    getNote,
+    latestNote,
+    breakDown,
+    waitForever,
+    labelPlaybook,
+    listLabels,
+    sendNotes,
+  ];
+}
+
+export const notebookOperations = notebookOperationsAnnouncingWaits(Function.constVoid);

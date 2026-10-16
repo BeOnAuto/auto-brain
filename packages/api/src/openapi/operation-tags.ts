@@ -14,6 +14,8 @@ const descriptionsOfTags: Readonly<Record<string, string>> = {
   analytics: 'How the runs of a playbook went, counted by day',
   interactions: 'The requests runs wait on, and their answers',
   'tool-servers': 'The tool servers the functions of a playbook may use, and tests of their tools',
+  connections:
+    "The tool servers people add to the org, which its playbooks share, and the routes of Studio's page that approves them",
   prediction: "A prediction function's datasets and versions, and the routes of the trainer that builds it",
   guides: "The playbook's guides: what its words mean, how each kind of definition is written, and recipes",
 };

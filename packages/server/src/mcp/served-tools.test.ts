@@ -92,8 +92,8 @@ function hasNoConstraint({ name, keywords }: Argument): boolean {
 }
 
 describe('the descriptions of the tools of /mcp', () => {
-  it('are twenty-nine, each under 800 characters, in three to eight sentences', () => {
-    expect(tools).toHaveLength(29);
+  it('are twenty-eight, each under 800 characters, in three to eight sentences', () => {
+    expect(tools).toHaveLength(28);
     expect(tools.filter(({ description = '' }) => description.length >= 800).map(({ name }) => name)).toEqual([]);
     expect(tools.filter((tool) => isOutsideTheSentenceBound(tool)).map(({ name }) => name)).toEqual([]);
   });
@@ -118,12 +118,12 @@ describe('the descriptions of the tools of /mcp', () => {
     });
   });
 
-  it('say that a function that calls a tool may change something, in run_definition at 777 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 711', () => {
+  it('say that a function that calls a tool may change something, in run_definition at 798 characters, and that a run that ends within its call cannot be cancelled, in cancel_run at 711', () => {
     const [running, cancelling] = [descriptionOf('run_definition'), descriptionOf('cancel_run')];
 
     expect(running).toContain('A function that calls a tool may change something outside the playbook');
     expect(cancelling).toContain('or an interaction function that calls a tool, cannot be cancelled.');
-    expect([running.length, cancelling.length]).toEqual([777, 711]);
+    expect([running.length, cancelling.length]).toEqual([798, 711]);
   });
 });
 
@@ -156,10 +156,12 @@ type Hints = readonly [boolean, boolean, boolean, boolean];
 const served: Readonly<Record<string, Hints>> = {
   create_playbook: [false, false, false, false],
   list_playbooks: [true, false, true, false],
-  get_playbook: [true, false, true, false],
   update_playbook: [false, false, true, false],
   retire_playbook: [false, true, true, false],
   list_models: [true, false, true, true],
+  add_connection: [false, false, false, false],
+  list_connections: [true, false, true, false],
+  remove_connection: [false, true, true, false],
   create_definition: [false, false, false, false],
   list_definitions: [true, false, true, false],
   get_definition: [true, false, true, false],
@@ -169,14 +171,11 @@ const served: Readonly<Record<string, Hints>> = {
   get_run: [true, false, true, false],
   cancel_run: [false, true, true, false],
   list_runs: [true, false, true, false],
-  get_run_history: [true, false, true, false],
-  get_playbook_analytics: [true, false, true, false],
   list_playbook_events: [true, false, true, false],
   get_event: [true, false, true, false],
   publish_event: [false, false, false, false],
   search: [true, false, true, true],
   introspect: [true, false, true, true],
-  validate: [true, false, true, true],
   dry_run: [true, false, true, true],
   execute: [false, false, false, true],
   answer_interaction: [false, true, true, false],

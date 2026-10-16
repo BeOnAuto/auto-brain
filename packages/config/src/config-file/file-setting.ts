@@ -11,11 +11,13 @@ export interface FileSetting {
   readonly key: string;
   readonly schema: Schema.Top;
   readonly references: References;
+  readonly sortsOfCredential: readonly string[];
   readonly written: (value: unknown) => Result.Result<string, readonly FileProblem[]>;
 }
 
 export interface FileSettingOptions {
   readonly references?: References;
+  readonly sortsOfCredential?: readonly string[];
 }
 
 const formatIssues = SchemaIssue.makeFormatterStandardSchemaV1();
@@ -42,7 +44,7 @@ export function fileSetting<S extends Schema.Codec<unknown, unknown>>(
   setting: string,
   schema: S,
   written: (value: S['Type']) => string,
-  { references = 'resolved' }: FileSettingOptions = {},
+  { references = 'resolved', sortsOfCredential = [] }: FileSettingOptions = {},
 ): FileSetting {
   const decode = Schema.decodeUnknownResult(schema, { errors: 'all', onExcessProperty: 'error' });
   return {
@@ -50,6 +52,7 @@ export function fileSetting<S extends Schema.Codec<unknown, unknown>>(
     key: setting.toLowerCase(),
     schema,
     references,
+    sortsOfCredential,
     written: (value) => Result.mapBoth(decode(value), { onSuccess: written, onFailure: problemsOf }),
   };
 }

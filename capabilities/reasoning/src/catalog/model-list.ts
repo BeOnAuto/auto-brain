@@ -41,6 +41,10 @@ export const ModelListSchema = Schema.Struct({
     description:
       'partial when a provider could not be asked just now, so its models are missing or as they were when last read',
   }),
+  narrowed: Schema.Boolean.annotate({
+    description:
+      'true when the operator allows only some models, so the list holds only those; false when a reasoning function may name any model of the configured providers',
+  }),
   listed_at: Schema.String.annotate({
     description: 'When the oldest list of models in the answer was read from its provider, in ISO 8601',
   }),

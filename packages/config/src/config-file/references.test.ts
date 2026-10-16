@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { substituted } from '../index.ts';
+import { referencedVariablesOf, substituted } from '../index.ts';
 
 describe('the references a substitution finds', () => {
   it('names each reference with its place and the value the environment gave it', () => {
@@ -44,5 +44,18 @@ describe('the references a substitution finds', () => {
 
   it('finds no reference in text without one, nor in a value that is not text', () => {
     expect(substituted({ count: 2, on: true, none: null, text: 'plain' }, '', {})).toMatchObject({ references: [] });
+  });
+});
+
+describe('the variables a value refers to', () => {
+  it('are named by each reference in either form, at any depth, and never by an escaped $ or plain text', () => {
+    const value = {
+      url: 'https://${HOST}:${env:PORT:-8443}/v1',
+      headers: { authorization: 'Bearer ${TOKEN}', price: '$${COST}' },
+      args: ['--key=${TOKEN}', 7, true, null],
+    };
+
+    expect(referencedVariablesOf(value)).toEqual(['HOST', 'PORT', 'TOKEN', 'TOKEN']);
+    expect(referencedVariablesOf('plain')).toEqual([]);
   });
 });

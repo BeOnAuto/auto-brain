@@ -4,8 +4,8 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { blocksInOrderOf, fencedBlocksOf } from '../testing/servers/tutorial-calls.ts';
-import { until } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, servingWorkflows, settledRun } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const [reviewAndApprove, reviewCampaignBrief, approveCampaignBrief] = blocksInOrderOf(
   'reference/workflow-format.md',

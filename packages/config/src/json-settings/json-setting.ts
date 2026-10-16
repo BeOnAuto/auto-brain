@@ -4,6 +4,7 @@ type PathSegment = PropertyKey | StandardSchema.StandardSchemaV1.PathSegment;
 
 export interface SettingProblem {
   readonly setting: string;
+  readonly pointer?: string;
   readonly detail: string;
 }
 
@@ -22,7 +23,11 @@ export function pointerOf(path: readonly PropertyKey[]): string {
 }
 
 export function problem(setting: string, pointer: string, detail: string): SettingProblem {
-  return { setting, detail: `${pointer === '' ? '/' : pointer}: ${detail}` };
+  return { setting, pointer, detail };
+}
+
+export function settingProblemText({ setting, pointer, detail }: SettingProblem): string {
+  return pointer === undefined ? `${setting}: ${detail}` : `${setting}: ${pointer === '' ? '/' : pointer}: ${detail}`;
 }
 
 function parsedJson(setting: string, text: string): Result.Result<unknown, readonly SettingProblem[]> {

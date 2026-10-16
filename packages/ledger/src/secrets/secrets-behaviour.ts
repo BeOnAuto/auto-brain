@@ -119,6 +119,24 @@ function keepingBehaviour(entry: SecretsEntry): void {
   });
 }
 
+function endingBehaviour(entry: SecretsEntry): void {
+  it('keeps the ending it is given beside the value, answers it by id, and forgets it with the value', async () => {
+    const database = await aDatabaseWithItsLedger(entry);
+    const store = await aStoreOn(entry, database, { current: aKey() });
+    const [ending, none] = [
+      await Effect.runPromise(store.keep(Redacted.make('crm-key-1234'), '1234')),
+      await kept(store, 'pasted-key'),
+    ];
+
+    const endings = await Effect.runPromise(store.endingsOf([ending, none, randomUUIDv7()]));
+    await Effect.runPromise(store.forget(ending));
+
+    expect(endings).toEqual(new Map([[ending, '1234']]));
+    expect(await Effect.runPromise(store.endingsOf([ending]))).toEqual(new Map());
+    expect(await Effect.runPromise(store.endingsOf([]))).toEqual(new Map());
+  });
+}
+
 function refusalBehaviour(entry: SecretsEntry): void {
   it('cannot read a value sealed under another key, and names that key and never the value', async () => {
     const database = await aDatabaseWithItsLedger(entry);
@@ -209,6 +227,7 @@ function rotationBehaviour(entry: SecretsEntry): void {
 export function secretsBehaviour(entry: SecretsEntry): void {
   describe('the secrets it keeps sealed', () => {
     keepingBehaviour(entry);
+    endingBehaviour(entry);
     refusalBehaviour(entry);
     rotationBehaviour(entry);
   });

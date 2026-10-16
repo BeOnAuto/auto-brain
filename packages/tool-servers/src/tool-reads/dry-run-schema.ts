@@ -36,8 +36,7 @@ export const DryRunSchema = Schema.Struct({
       "Whether the tool's server marks it read-only; null when its listing was not read, as for a tool that is not allowed or a server that could not be asked",
   }),
   arguments: Schema.NullOr(ArgumentCheckSchema).annotate({
-    description:
-      "The arguments checked against the tool's input schema, as validate checks them; null when none were given",
+    description: "The arguments checked against the tool's input schema; null when none were given",
   }),
   server: ReachedSchema.annotate({ description: 'Whether the tool server could be asked for its tools just now' }),
 });

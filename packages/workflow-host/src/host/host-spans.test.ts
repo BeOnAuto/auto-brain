@@ -2,10 +2,10 @@ import { recordingTracer, type RecordedSpan } from '@on.auto/operations/testing'
 import { Context, Effect, Tracer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
+import { until } from '../testing/until.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -33,7 +33,7 @@ describe('the host given the context of its server', () => {
     hosted.know(runId);
 
     await Effect.runPromise(Effect.withTracer(hosted.host.start(run, startOf(notifying)), recording.tracer));
-    const spans = await eventually(recording.spans, settledIn, 2000);
+    const spans = await until(recording.spans, settledIn);
     const started = named(spans, 'started');
     const call = named(spans, 'call notify');
     const answered = named(spans, 'call_answered');

@@ -2,7 +2,7 @@ import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { DatabaseFailed } from '../database/host-database.ts';
-import { eventually } from '../testing/eventually.ts';
+import { until } from '../testing/until.ts';
 import type { HostLease, LeaseClaim } from './host-lease.ts';
 import { keptLease } from './lease-keeper.ts';
 
@@ -60,10 +60,10 @@ const elsewhere: LeaseClaim = { held: false, holder: 'another-server', until: 15
 describe('the keeper of the claim of a host', () => {
   it('stands by while another server holds the claim, and serves once it gets it, saying each once', async () => {
     const kept = await keeping(elsewhere);
-    await eventually(kept.said, (said) => said.length > 0);
+    await until(kept.said, (said) => said.length > 0);
     kept.answer({ held: true });
 
-    const said = await eventually(kept.said, (lines) => lines.length > 1);
+    const said = await until(kept.said, (lines) => lines.length > 1);
 
     expect(said).toEqual(['standing by for another-server after unknown', 'held after standing_by']);
   });
@@ -71,10 +71,10 @@ describe('the keeper of the claim of a host', () => {
   it('stands down once it could not renew its claim for as long as a claim lasts', async () => {
     const kept = await keeping({ held: true });
     kept.answer('unreachable');
-    await eventually(kept.said, (said) => said.length > 1);
+    await until(kept.said, (said) => said.length > 1);
     kept.at(15);
 
-    const said = await eventually(kept.said, (lines) => lines.some((line) => line.startsWith('standing by')));
+    const said = await until(kept.said, (lines) => lines.some((line) => line.startsWith('standing by')));
 
     const standingBy = said.filter((line) => line.startsWith('standing by'));
     const troubles = said.filter((line) => line.startsWith('The claim'));

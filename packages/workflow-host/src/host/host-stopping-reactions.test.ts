@@ -1,6 +1,6 @@
 import { streamAppends, type StreamSignal } from '@on.auto/ledger';
 import { Effect, Exit } from 'effect';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
 import { heldStart, type HeldStart } from '../reaction-testing/held-start.ts';
@@ -8,12 +8,11 @@ import { eventTrigger, published, definitionRecorded } from '../reaction-testing
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
+import { until } from '../testing/until.ts';
 
 const anHourMs = 3_600_000;
 
 const sweepEveryMs = 20;
-
-const awaitedAtMostMs = 30_000;
 
 function toldWhenTheFollowerStops(stopped: () => void): StreamSignal {
   return {
@@ -62,14 +61,11 @@ describe('a reaction starting a run while its host stops serving', () => {
     await hostedOn(settings, { holder: 'ahead', clock: { now: () => Date.now() + anHourMs, sleep: Effect.sleep } });
     await standingBy.promise;
     held.release(reacting.host);
-    const notes = await vi.waitFor(
-      () => {
-        const noted = reacting.notes();
-        expect(noted).not.toHaveLength(0);
-        return noted;
-      },
-      { timeout: awaitedAtMostMs, interval: 10 },
-    );
+    const notes = await until(() => {
+      const noted = reacting.notes();
+      expect(noted).not.toHaveLength(0);
+      return noted;
+    });
 
     expect(held.exits()).toEqual([Exit.succeed('started')]);
     expect(notes).toMatchObject([{ kind: 'standing_by', holder: 'ahead' }]);

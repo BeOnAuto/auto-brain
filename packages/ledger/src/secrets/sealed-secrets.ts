@@ -13,7 +13,8 @@ const sealedSecretsTable: PlaybookIndex = {
     id TEXT PRIMARY KEY,
     kid TEXT NOT NULL,
     sealed TEXT NOT NULL,
-    kept_at TEXT NOT NULL
+    kept_at TEXT NOT NULL,
+    ends_with TEXT
   )`,
 };
 

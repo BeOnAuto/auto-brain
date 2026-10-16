@@ -1,11 +1,16 @@
 export {
+  calledOpeningLinks,
   connectMcp,
   mcpClientKinds,
   plainTextIn,
   problemIn,
+  retriedWith,
+  stateAskedBy,
   technicalTextIn,
   textOf,
   withMcpSession,
+  type LinkOpening,
+  type LinksAsked,
   type McpClientKind,
   type McpConnection,
   type McpSession,
@@ -20,7 +25,7 @@ export {
   unresolvedSchemasIn,
   type DocumentedOperation,
 } from './openapi/openapi-document.ts';
-export { waitForever } from './notebook.ts';
+export { waitForeverAnnouncing } from './notebook.ts';
 export { danglingReferencesIn } from './self-contained.ts';
 export {
   guideToolName,

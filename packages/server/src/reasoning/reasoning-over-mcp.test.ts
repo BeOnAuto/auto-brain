@@ -32,14 +32,11 @@ const definitionTools = [
   'get_run',
   'cancel_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'get_event',
   'publish_event',
   'search',
   'introspect',
-  'validate',
   'dry_run',
   'execute',
   'answer_interaction',
@@ -140,7 +137,7 @@ describe('the definition tools an agent sees on the endpoint of a playbook', () 
     const tools = listedTools(await onAlpha([], (session) => session.listTools()));
     const schemas = tools.map(({ inputSchema }) => inputSchema);
 
-    expect(schemas).toHaveLength(23);
+    expect(schemas).toHaveLength(20);
     expect(schemas.map((schema) => schema['type'])).toEqual(schemas.map(() => 'object'));
     expect(schemas.flatMap((schema) => danglingReferencesIn(schema))).toEqual([]);
   });

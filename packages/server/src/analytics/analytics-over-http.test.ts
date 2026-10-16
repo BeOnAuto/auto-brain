@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import { withMcpSession } from '@on.auto/api/testing';
 import { OutputInvalid } from '@on.auto/reasoning';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
@@ -93,7 +92,34 @@ async function playbookWithThreeRuns(environment: Readonly<Record<string, string
   await running({ text: 7 });
 }
 
-const today = new Date().toISOString().slice(0, 10);
+const decodeDays = Schema.decodeUnknownSync(
+  Schema.Struct({
+    by_day: Schema.Array(Schema.Struct({ day: Schema.String, runs: Schema.Struct({ total: Schema.Int }) })),
+  }),
+);
+
+const decodeStarts = Schema.decodeUnknownSync(
+  Schema.Struct({ runs: Schema.Array(Schema.Struct({ started_at: Schema.String })) }),
+);
+
+function dayOf(time: number | string): string {
+  return new Date(time).toISOString().slice(0, 10);
+}
+
+function lastDayOf(body: unknown): string | undefined {
+  return decodeDays(body).by_day.at(-1)?.day;
+}
+
+function runsByDay(body: unknown): readonly (readonly [string, number])[] {
+  return decodeDays(body)
+    .by_day.filter(({ runs }) => runs.total > 0)
+    .map(({ day, runs }) => [day, runs.total]);
+}
+
+function runsByTheDayTheyStarted(body: unknown): readonly (readonly [string, number])[] {
+  const days = decodeStarts(body).runs.map(({ started_at: startedAt }) => dayOf(startedAt));
+  return [...new Set(days)].toSorted().map((day) => [day, days.filter((each) => each === day).length]);
+}
 
 const decodeDuration = Schema.decodeUnknownSync(
   Schema.Struct({ duration_ms: Schema.Struct({ p50: Schema.Int, p95: Schema.Int }) }),
@@ -103,18 +129,17 @@ function durationOf(body: unknown): { readonly p50: number; readonly p95: number
   return decodeDuration(body).duration_ms;
 }
 
-describe.each(stores)('the analytics of a playbook over HTTP and MCP, on $store', ({ skipped, environment }) => {
+describe.each(stores)('the analytics of a playbook over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)(
     'count the runs that ended today, by how they ended, and the tokens their models used',
     async () => {
       await playbookWithThreeRuns(await environment());
 
+      const readFrom = Date.now();
       const read = await server.call('GET', `${alpha}/analytics`);
+      const readBy = Date.now();
+      const started = await server.call('GET', `${alpha}/runs?type=reasoning&name=summary`);
       const filtered = await server.call('GET', `${alpha}/analytics?days=14&type=reasoning&name=summary`);
-      const onAlpha = { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} };
-      const overMcp = await withMcpSession('current revision', onAlpha, (session) =>
-        session.callTool('get_playbook_analytics', {}),
-      );
 
       expect(read).toMatchObject({
         status: 200,
@@ -125,10 +150,10 @@ describe.each(stores)('the analytics of a playbook over HTTP and MCP, on $store'
           by_function: [{ type: 'reasoning', name: 'summary', runs: 3 }],
         },
       });
-      expect(read.body).toMatchObject({ by_day: { 6: { day: today, runs: { total: 3 } } } });
+      expect([dayOf(readFrom), dayOf(readBy)]).toContain(lastDayOf(read.body));
+      expect(runsByDay(read.body)).toEqual(runsByTheDayTheyStarted(started.body));
       expect(durationOf(read.body).p50).toBeLessThanOrEqual(durationOf(read.body).p95);
       expect(filtered).toMatchObject({ status: 200, body: { days: 14, runs: { total: 3 } } });
-      expect(overMcp.structuredContent).toEqual(read.body);
     },
   );
 

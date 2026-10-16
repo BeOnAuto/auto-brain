@@ -187,7 +187,13 @@ export {
   quoted,
   type Noun,
 } from './plain-language/phrasing.ts';
-export type { Explanation, PlainLanguage, RegisteredPlainLanguage, Remedies } from './plain-language/plain-language.ts';
+export type {
+  Explanation,
+  LinkToOpen,
+  PlainLanguage,
+  RegisteredPlainLanguage,
+  Remedies,
+} from './plain-language/plain-language.ts';
 export { mostOutcomeCharacters, mostRefusalCharacters, withinCharacters } from './plain-language/word-bounds.ts';
 export { OrgContext, type OrgAddress } from './caller/org-context.ts';
 export { OrgWriter } from './ledger/org-writer.ts';
@@ -242,7 +248,7 @@ export type {
   Runnable,
 } from './definition/registration.ts';
 export { callSummaryOf, type PlaybookRequest, type OrgRequest } from './dispatch/request.ts';
-export type { Method, Route } from './definition/route.ts';
+export { takesNoBody, type Method, type Route } from './definition/route.ts';
 export type { OperationKind, OperationScope } from './caller/operation-scope.ts';
 export { settle } from './dispatch/settle.ts';
 export { SettlementSchema, type SettledRejection, type Settlement } from './outcome/settlement.ts';

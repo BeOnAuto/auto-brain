@@ -1,10 +1,10 @@
-import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
 import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
+import { until } from '../testing/waiting/until.ts';
 import { logIncident } from './logging.ts';
 
 const serveWithSelfCausedError = fileURLToPath(
@@ -14,13 +14,11 @@ const serveWithSelfCausedError = fileURLToPath(
 const selfCaused = new Error('an error whose cause is itself');
 selfCaused.cause = selfCaused;
 
-async function stderrOnceItContains(child: SpawnedServer, text: string, attemptsLeft = 40): Promise<string> {
-  const { stderr } = child.output();
-  if (stderr.includes(text) || attemptsLeft === 0) {
-    return stderr;
-  }
-  await setTimeout(50);
-  return stderrOnceItContains(child, text, attemptsLeft - 1);
+function stderrOnceItContains(child: SpawnedServer, text: string): Promise<string> {
+  return until(
+    () => child.output().stderr,
+    (stderr) => stderr.includes(text),
+  );
 }
 
 describe('logIncident for an error whose cause cannot be formatted', () => {

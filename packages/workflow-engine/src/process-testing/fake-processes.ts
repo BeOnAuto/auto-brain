@@ -34,7 +34,7 @@ const fakeProcessSource = [
   '  echo: (payload) => counted(payload),',
   '  sleep: (ms) => new Promise((resolve) => { setTimeout(() => resolve(counted(ms)), ms); }),',
   `  'begin and wait': () => { announce('began'); return ${pending}; },`,
-  '  block: () => { for (;;) {} },',
+  "  block: () => { announce('began'); for (;;) {} },",
   '  allocate: (mebibytes) => { const chunks = []; while (chunks.length * 32 < mebibytes) chunks.push(new Uint8Array(33554432).fill(1)); return chunks.length; },',
   '  exit: (code) => process.exit(code),',
   '  abort: () => process.abort(),',

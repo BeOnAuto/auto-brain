@@ -1,10 +1,10 @@
-import { NotFound, alternatives, articled, type JsonSchemaDocument, type Registration } from '@on.auto/operations';
+import { NotFound, alternatives, articled, type JsonSchemaDocument, type RouteRegistration } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { isDefinitionTypeName, type Capability } from './capability.ts';
 
 interface PublishedOperation {
-  readonly registration: Registration<'playbook'>;
+  readonly registration: RouteRegistration<'playbook'>;
 }
 
 const DefinitionTypeField = Schema.String.check(

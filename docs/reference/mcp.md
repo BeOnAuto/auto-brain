@@ -15,7 +15,7 @@ A reasoning function can call tools itself, through tool servers the runtime's o
 | Path                                   | Acts on                                                                | Tools                                                                                                                      |
 | -------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `/mcp`                                 | The caller's own org and, through a `playbook` argument, its playbooks | Every tool. A tool that works inside a playbook takes a required `playbook` argument; `search` takes it as an optional one |
-| `/orgs/{org}/mcp`                      | One org's playbooks                                                    | Playbook management, `list_models`, `search` and `get_guide`                                                               |
+| `/orgs/{org}/mcp`                      | One org's playbooks                                                    | Playbook management, `list_models`, `search`, the connection tools and `get_guide`                                         |
 | `/orgs/{org}/playbooks/{playbook}/mcp` | One playbook                                                           | The tools that work inside a playbook, with no `playbook` argument, and `search` and `get_guide`                           |
 
 - Every endpoint uses streamable HTTP without sessions and accepts `POST`.
@@ -24,7 +24,7 @@ A reasoning function can call tools itself, through tool servers the runtime's o
 - A connection lists only the tools its key or token may call. A read-only key sees the tools that read, and none that creates or runs a function. A key that may only read inside some playbooks is offered `list_playbooks`, which lists those playbooks.
 - Which tools a connection lists depends on both the endpoint and the caller's permissions. A missing `create_definition` can mean either. The connection may be to the org endpoint, or its key or token may lack `playbook:write`.
 - The org and playbook a scoped endpoint names stay subject to the caller's access. Choosing a more specific endpoint grants no extra permission.
-- Five prediction routes are served only over [HTTP](http.md#prediction-functions): the three a build's trainer calls, the upload of a dataset and the activation of a version. No endpoint offers them as tools.
+- Five prediction routes are served only over [HTTP](http.md#prediction-functions): the three a build's trainer calls, the upload of a dataset and the activation of a version. So are the three routes of Studio's page that approves a [connection](#connections): `read_link`, `approve` and `give_credential`. So are five reads an agent does with another tool or leaves to Studio: `get_playbook`, since each playbook `list_playbooks` returns holds the same fields; `get_connection`, which Studio reads; `get_run_history`, since `list_playbook_events` with a `run_id` returns the run's events and those of every run it started; `get_playbook_analytics`, which Studio presents; and `validate`, since `dry_run` reports the same check of the arguments in its `arguments` field. No endpoint offers any of them as a tool.
 
 ### What a connecting agent is told
 
@@ -35,9 +35,10 @@ An agent that connects receives instructions written for the tools its key or to
 - what the connection acts on: the caller's own org on `/mcp`, one org's playbooks on `/orgs/{org}/mcp`, or one playbook on `/orgs/{org}/playbooks/{playbook}/mcp`;
 - that `get_guide` returns the format of each definition and the recipes;
 - how a reasoning function names its model and its tools;
+- where `add_connection` is listed, that it adds a tool server, which the person approves;
 - that `get_run` shows whether a run that finishes later has ended or is still waiting;
 - that when the person answers what a run waits on, such as an approval, the agent answers the request with `answer_interaction` and starts no new run for it. The tool's description gives the shape of the answer;
-- that runs, history, events and requests come one page at a time;
+- that runs, events and requests come one page at a time;
 - how to reply to the person: what was done and what they can do next, in the words of playbooks, functions, workflows and runs. An id or a status appears only when the person needs it to act.
 
 The recall sentence says that a recall function reads run results, definitions and events from the playbook's history, never a run's input or its tool calls. The prediction sentence says that a prediction function predicts from a model a trainer built on the playbook's history. It also says that a build (the input `{ build: {} }`) returns `started`.
@@ -80,12 +81,12 @@ Every tool supplies a description and the JSON Schema of its input. No tool has 
 
 Each tool's annotations tell a client how careful to be:
 
-| Annotation        | Means                                                          | `true` for                                                                                                                                             |
-| ----------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `readOnlyHint`    | The tool only reads                                            | Every tool that reads, including `validate` and `dry_run`, although their HTTP routes use `POST`                                                       |
-| `destructiveHint` | What it does cannot be undone, or may change something outside | `retire_playbook`, `retire_definition`, `cancel_run` and `answer_interaction`; `run_definition` and `execute` while any tool server is configured      |
-| `idempotentHint`  | Calling it again with the same input changes nothing           | Every tool that reads, and `update_playbook`, `retire_playbook`, `update_definition`, `retire_definition`, `cancel_run` and `answer_interaction`       |
-| `openWorldHint`   | It reaches outside the runtime                                 | `list_models` and `run_definition`, which reach model providers; `search`, `introspect`, `validate`, `dry_run` and `execute`, which reach tool servers |
+| Annotation        | Means                                                          | `true` for                                                                                                                                                             |
+| ----------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readOnlyHint`    | The tool only reads                                            | Every tool that reads, including `dry_run`, although its HTTP route uses `POST`                                                                                        |
+| `destructiveHint` | What it does cannot be undone, or may change something outside | `retire_playbook`, `remove_connection`, `retire_definition`, `cancel_run` and `answer_interaction`; `run_definition` and `execute` while any tool server is configured |
+| `idempotentHint`  | Calling it again with the same input changes nothing           | Every tool that reads, and `update_playbook`, `retire_playbook`, `remove_connection`, `update_definition`, `retire_definition`, `cancel_run` and `answer_interaction`  |
+| `openWorldHint`   | It reaches outside the runtime                                 | `list_models` and `run_definition`, which reach model providers; `search`, `introspect`, `dry_run` and `execute`, which reach tool servers                             |
 
 `run_definition` is marked destructive while a tool server is configured, because a function's tools may then change something. An agent can ask the person before it runs a function.
 
@@ -97,12 +98,11 @@ These tools are listed on `/mcp` and the org endpoint. Their routes are relative
 | ----------------- | ----------------------------------- | ------------------------------------------------------------------------------------------ |
 | `create_playbook` | `POST /playbooks`                   | Create a playbook, active and empty                                                        |
 | `list_playbooks`  | `GET /playbooks`                    | List the playbooks the caller may access                                                   |
-| `get_playbook`    | `GET /playbooks/{playbook}`         | Read one playbook                                                                          |
 | `update_playbook` | `PUT /playbooks/{playbook}`         | Change a playbook's name and description                                                   |
 | `retire_playbook` | `POST /playbooks/{playbook}/retire` | Retire a playbook for good                                                                 |
 | `list_models`     | `GET /models`                       | List the models a reasoning function may name; see [Model information](#model-information) |
 
-[Playbooks](http.md#playbooks) and [Models](http.md#models) give the fields, limits and refusals.
+Each playbook `list_playbooks` returns holds every field of the playbook, a retired one among them with `include_retired`. [Playbooks](http.md#playbooks) and [Models](http.md#models) give the fields, limits and refusals.
 
 ### Definitions
 
@@ -122,14 +122,13 @@ The `overview` describes a definition in plain words, so an agent can show a per
 
 These tools are listed on `/mcp` and a playbook endpoint. Their routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`.
 
-| Tool              | HTTP operation                        | What it is for                                                             |
-| ----------------- | ------------------------------------- | -------------------------------------------------------------------------- |
-| `run_definition`  | `POST /definitions/{type}/{name}/run` | Run a function or workflow once, with its `input` and an optional `run_id` |
-| `get_run`         | `GET /runs/{run_id}`                  | Read a run, with its detailed `record`                                     |
-| `list_runs`       | `GET /runs`                           | List the playbook's runs, newest first                                     |
-| `get_run_history` | `GET /runs/{run_id}/history`          | Read what was recorded about one run, oldest first                         |
-| `cancel_run`      | `POST /runs/{run_id}/cancel`          | Cancel a run that waits                                                    |
-| `send_run_event`  | `POST /runs/{run_id}/events`          | Deliver an event to a workflow run that is still `started`                 |
+| Tool             | HTTP operation                        | What it is for                                                             |
+| ---------------- | ------------------------------------- | -------------------------------------------------------------------------- |
+| `run_definition` | `POST /definitions/{type}/{name}/run` | Run a function or workflow once, with its `input` and an optional `run_id` |
+| `get_run`        | `GET /runs/{run_id}`                  | Read a run, with its detailed `record`                                     |
+| `list_runs`      | `GET /runs`                           | List the playbook's runs, newest first                                     |
+| `cancel_run`     | `POST /runs/{run_id}/cancel`          | Cancel a run that waits                                                    |
+| `send_run_event` | `POST /runs/{run_id}/events`          | Deliver an event to a workflow run that is still `started`                 |
 
 [Runs and results](http.md#runs-and-results) covers input limits and which runs finish later, and [Retrying under a run id](http.md#retrying-under-a-run-id) what a request under an earlier run's id returns. [Cancelling a run](http.md#cancelling-a-run), [Sending an event to a run](http.md#sending-an-event-to-a-run) and [Run history and playbook events](http.md#run-history-and-playbook-events) give the rest.
 
@@ -144,40 +143,57 @@ These tools are listed on `/mcp` and a playbook endpoint. Their routes are relat
 
 [Interaction functions](http.md#interaction-functions) lists every field of a request and of an answer, and each refusal. [Answering a request](interaction-format.md#answering-a-request) explains how a run takes its answer.
 
-### Events, history and analytics
+### Events and history
 
 These tools are listed on `/mcp` and a playbook endpoint. Their routes are relative to `/v1/orgs/{org}/playbooks/{playbook}`.
 
-| Tool                     | HTTP operation           | What it is for                                                                                     |
-| ------------------------ | ------------------------ | -------------------------------------------------------------------------------------------------- |
-| `publish_event`          | `POST /events`           | Record an event in the playbook, such as a month closed in a ledger                                |
-| `list_playbook_events`   | `GET /events`            | Read everything that happened in the playbook, newest first, or with `run_id` one run's whole tree |
-| `get_event`              | `GET /events/{event_id}` | Read one event with every field in full, such as a tool's whole result                             |
-| `get_playbook_analytics` | `GET /analytics`         | Count the runs that ended over a window of days, with their tokens and durations                   |
+| Tool                   | HTTP operation           | What it is for                                                                                     |
+| ---------------------- | ------------------------ | -------------------------------------------------------------------------------------------------- |
+| `publish_event`        | `POST /events`           | Record an event in the playbook, such as a month closed in a ledger                                |
+| `list_playbook_events` | `GET /events`            | Read everything that happened in the playbook, newest first, or with `run_id` one run's whole tree |
+| `get_event`            | `GET /events/{event_id}` | Read one event with every field in full, such as a tool's whole result                             |
 
 Over MCP, a result carries its output twice, as JSON text and as structured content. So `get_event` shows a large field in full only up to 64 KiB as JSON, and shows its size beyond that. The large fields are an input, an output, a record, an answer, a call's `arguments` and `result`, and a published event's data. Over HTTP, every field is whole.
 
-[Publishing events](http.md#publishing-events), [Run history and playbook events](http.md#run-history-and-playbook-events) and [Analytics](http.md#analytics) give the fields, filters, paging and limits.
+`list_playbook_events` with a run's `run_id` returns what the run and every run it started recorded: its steps, its tool calls and how it ended. [Publishing events](http.md#publishing-events) and [Run history and playbook events](http.md#run-history-and-playbook-events) give the fields, filters, paging and limits. The playbook's [analytics](http.md#analytics) are Studio's to present, over HTTP alone.
 
 ### Tool servers
 
-Five tools work with the tool servers set up for the playbook, whether MCP servers or HTTP APIs. An agent gateway offers the same five tools over the systems behind it, so an agent uses one vocabulary with either. The routes are relative to `/v1/orgs/{org}`.
+Four tools work with the tool servers set up for the playbook, whether MCP servers or HTTP APIs, under the names an agent gateway gives the same tools over the systems behind it, so an agent uses one vocabulary with either. A fifth operation, `validate`, is served over [HTTP](http.md#tool-servers) alone: `dry_run` reports the same check of the arguments. The routes are relative to `/v1/orgs/{org}`.
 
 | Tool         | HTTP operation                                                                                        | What it is for                                                                 |
 | ------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
 | `search`     | `GET /tool-servers/search`, or on a playbook endpoint `GET /playbooks/{playbook}/tool-servers/search` | Find the servers and the tools a reasoning function may name in `tools`        |
 | `introspect` | `GET /playbooks/{playbook}/tool-servers/{server}/tools/{tool}`                                        | Read one tool in full: its description, its arguments' schema and its hints    |
-| `validate`   | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/validate`                              | Check arguments against a tool's schema                                        |
 | `dry_run`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/dry-run`                               | See what `execute` would check, without calling the tool                       |
 | `execute`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/execute`                               | Call one tool by hand, live, as the playbook, to see what it returns or to act |
 
-- `search` is listed on every endpoint, and the other four on `/mcp` and a playbook endpoint.
+- `search` is listed on every endpoint, and the other three on `/mcp` and a playbook endpoint.
 - On `/mcp` and the org endpoint, `search` takes an optional `playbook`. Without it, `search` covers the whole org, so an agent can see what is set up before a playbook exists. On a playbook endpoint, `search` takes no `playbook`.
-- `introspect`, `validate` and `dry_run` change nothing and call no tool, but they ask the servers for their tool lists. So they are marked read-only and open-world, and a key that may read the playbook is offered them.
+- `introspect` and `dry_run` change nothing and call no tool, but they ask the servers for their tool lists. So they are marked read-only and open-world, and a key that may read the playbook is offered them.
 - `execute` needs `playbook:write` whatever the tool does, so a key that may only read is not offered it. Each call is recorded in the playbook's history.
 - A call that names a server or a tool the playbook may not use is refused, and the refusal's words say what `search` shows.
 
 [Tool servers](http.md#tool-servers) gives the fields, limits and refusals of all five.
+
+### Connections
+
+A connection is a tool server that a person adds to the org through their agent, which every playbook of the org may use, or the playbooks its entry names. These tools are listed on `/mcp` and the org endpoint. Their routes are relative to `/v1/orgs/{org}`.
+
+| Tool                | HTTP operation             | What it is for                                                                     |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
+| `add_connection`    | `POST /connections`        | Add a tool server to the org, pending, and answer the link that approves it        |
+| `list_connections`  | `GET /connections`         | List the org's connections, newest first, and whether each is pending or connected |
+| `remove_connection` | `DELETE /connections/{id}` | Remove a connection for good, which forgets its credential                         |
+
+- A connection is added by a person: where the runtime signs people in, `add_connection` refuses a key, and a runtime of API keys alone, which signs nobody in, refuses every connection, since no person could approve it.
+- The agent adds a connection without its credential: an entry that holds a value that looks like a credential, or a reference such as `${CRM_API_KEY}`, is refused. The person approves the connection, and gives its credential where it takes one, on Studio's page, which `connect.url` of the answer opens within ten minutes.
+- `add_connection` always puts the link in its answer. To a client of the `2026-07-28` revision that declares in its request that it opens links, the `url` form of elicitation, it also asks for the link to be opened, with a message that says what to do. The client opens the page or declines, and retries the call, which answers the connection added once and never adds a second one. A retry by another caller, or in another org, is refused, and the connection stays added. A client of an earlier revision, whose requests carry no capabilities on this stateless server, is not asked; it shows the person the link from the answer.
+- The credential is one object: its `kind` and the fields that kind takes, `name` for `reference`, `name` and `in` for `secret`, and `issuer`, `client_id` and an optional `scope` for `client_credentials`. A field its kind lacks or does not take is refused as `invalid_input` at that field.
+- A link is gone after its ten minutes, and nothing gives a pending connection another: remove the connection with `remove_connection` and add it again.
+- `add_connection` and `remove_connection` need `org:write`, and `list_connections` needs `org:read`. `get_connection`, which Studio reads to see whether the person approved a connection, is served over HTTP alone.
+
+[Connections](http.md#connections) gives the fields, limits and refusals, and [Let people add connections](../self-host/connections.md) the flow and the rules the operator sets.
 
 ## Guides and prompts
 
@@ -206,7 +222,7 @@ A prompt returns the recipe with the person's words filled in, followed by the f
 
 Its optional `provider` input selects one provider prefix, such as `anthropic`, or a configured gateway name. The server then lists only what that provider serves, and asks no other provider.
 
-The result has the shape of the OpenAI API's list of models, with two extra fields at the top:
+The result has the shape of the OpenAI API's list of models, with fields of its own at the top:
 
 ```json
 {
@@ -248,16 +264,19 @@ The result has the shape of the OpenAI API's list of models, with two extra fiel
     { "id": "bedrock/*", "object": "model", "created": 0, "owned_by": "bedrock", "pattern": true }
   ],
   "catalog_status": "complete",
+  "narrowed": false,
   "listed_at": "2026-10-01T09:30:00.000Z"
 }
 ```
 
-| Field            | Meaning                                                                                                     |
-| ---------------- | ----------------------------------------------------------------------------------------------------------- |
-| `object`         | `"list"`                                                                                                    |
-| `data`           | The entries, sorted by `id`, each `id` once                                                                 |
-| `catalog_status` | `complete`, or `partial` when a provider could not be asked, so its models are missing or are its last list |
-| `listed_at`      | When the oldest provider list in the result was read; the time of the response when no provider was queried |
+| Field            | Meaning                                                                                                                                                                                                    |
+| ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `object`         | `"list"`                                                                                                                                                                                                   |
+| `data`           | The entries, sorted by `id`, each `id` once                                                                                                                                                                |
+| `catalog_status` | `complete`, or `partial` when a provider could not be asked, so its models are missing or are its last list                                                                                                |
+| `narrowed`       | `true` when `allowed_models` or `ALLOWED_MODELS` is set, so the list holds only what the operator allows; `false` when nothing narrows it, and a definition may name any model of the configured providers |
+| `listed_at`      | When the oldest provider list in the result was read; the time of the response when no provider was queried                                                                                                |
+| `provider_setup` | Only from a runtime started with npx, when no `provider` is given and it lists no model: how the person adds a model provider                                                                              |
 
 Each entry contains `id`, `object: "model"`, `created` and `owned_by`. The last five fields in this table appear only where they apply:
 
@@ -298,6 +317,7 @@ The plain-language summary of the result follows these rules:
 - It names at most 20 models and counts the rest. It names each by the name its provider gives, or else by the last part of its id.
 - A name two providers share gets its provider in brackets. A name one provider repeats is replaced by the last part of the id.
 - It says which providers accept any model id, such as `It can also call any openai model.`
+- When the list is narrowed, it then says `It lists only the models its operator allows.`
 - A `partial` result ends with `The list may be incomplete: a provider could not be asked just now.`
 
 A server with six models, for example, says: `This server can call 6 models through anthropic and gateway: Claude Haiku 4.5 (anthropic), Claude Opus 4.1, Claude Sonnet 4.5, Qwen3-14B, Claude Haiku 4.5 (gateway), and fast.`
@@ -333,12 +353,12 @@ get_run: The workflow “review-and-approve” is still running; how it ends can
 list_interactions: Found 1 request waiting on this page.
 answer_interaction: The request is answered: the run that asked it takes the answer within the host's sweep, a second by default, and get_run shows how it ended.
 get_run: The run of the workflow “review-and-approve” finished. Its result: review: “Revise: the audience lacks a job role.” and approval: (verdict: “approve” and note: “Approved for the autumn launch.”)
-get_run_history: Found 9 events in the history of the run, oldest first, each with its fact and its metadata.
+list_playbook_events: Found 15 events of the run asked for in this playbook, oldest first, each with its fact and its metadata.
 get_run: The run of the interaction function “approve-campaign-brief” finished. Its answer: verdict: “approve” and note: “Approved for the autumn launch.”
 list_interactions: No request is waiting.
 ```
 
-Each event in a history carries a summary too. The nine events of that workflow run read, oldest first:
+Each event carries a summary too. Given the workflow run's `run_id`, `list_playbook_events` answers its events and those of the two runs it started, and the nine of the workflow run read, oldest first:
 
 ```text
 run_started: A run of the workflow “review-and-approve” started.

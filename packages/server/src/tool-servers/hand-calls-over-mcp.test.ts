@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { listedTools, plainTextIn, problemIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { createApiKey } from '@on.auto/identity';
 import { allPermissions } from '@on.auto/operations';
@@ -7,6 +5,7 @@ import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing'
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -111,7 +110,7 @@ describe('execute refused over MCP', () => {
 });
 
 describe('execute for a key that may only read', () => {
-  it('is not offered on either endpoint, while search, introspect, validate and dry_run are', async () => {
+  it('is not offered on either endpoint, while search, introspect and dry_run are', async () => {
     const { server } = await serving();
 
     const offered: readonly (readonly string[])[] = await Promise.all(
@@ -121,19 +120,12 @@ describe('execute for a key that may only read', () => {
     );
 
     expect(offered.map((names) => names.includes('execute'))).toEqual([false, false]);
-    expect(
-      offered.map((names) => ['search', 'introspect', 'validate', 'dry_run'].every((name) => names.includes(name))),
-    ).toEqual([true, true]);
+    expect(offered.map((names) => ['search', 'introspect', 'dry_run'].every((name) => names.includes(name)))).toEqual([
+      true,
+      true,
+    ]);
   });
 });
-
-async function until(holds: () => boolean, waited = 0): Promise<boolean> {
-  if (holds() || waited >= 5000) {
-    return holds();
-  }
-  await setTimeout(10);
-  return until(holds, waited + 10);
-}
 
 describe('a call made by hand whose caller goes away over MCP while the tool is called', () => {
   it('records a start and no answer, sends no second call, and still lets the session go', async () => {
@@ -152,11 +144,19 @@ describe('a call made by hand whose caller goes away over MCP while the tool is 
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: call }),
       signal: leaving.signal,
     }).catch((error: unknown) => error);
-    await until(() => graph.received().length === 1);
+    await until(
+      () => graph.received().length,
+      (received) => received === 1,
+    );
     leaving.abort();
     await gone;
 
-    expect(await until(() => graph.endedSessions() === 1)).toBe(true);
+    expect(
+      await until(
+        () => graph.endedSessions(),
+        (ended) => ended === 1,
+      ),
+    ).toBe(1);
     const events = await server.call('GET', `${alpha}/events?order=asc`, { key: builder.key });
     expect(events.body).toMatchObject({ events: [{ type: 'tool_call_started' }] });
     expect(events.body).not.toMatchObject({ events: [{}, {}] });

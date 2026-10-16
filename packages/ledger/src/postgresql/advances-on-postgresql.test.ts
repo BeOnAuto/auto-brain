@@ -6,6 +6,7 @@ import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { openLedgerWith } from '../testing/open-ledger.ts';
+import { until } from '../testing/until.ts';
 import { plainPoolsOn, postgresqlLedgerLayer } from './postgresql-ledger.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
@@ -13,8 +14,6 @@ const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 const skipped = server === '';
 
 const notice = skipped ? ', skipped: set LEDGER_TEST_POSTGRESQL_URL to the URL of a PostgreSQL server to run it' : '';
-
-const longestWaitForALock = 10_000;
 
 async function connected(connectionString: string): Promise<Client> {
   const client = new Client({ connectionString });
@@ -45,25 +44,13 @@ async function aDatabase(): Promise<string> {
   return database.href;
 }
 
-function pause(milliseconds: number): Promise<void> {
-  return new Promise((resolve) => {
-    setTimeout(resolve, milliseconds);
-  });
-}
-
 const waitingOnALock =
   "SELECT count(*)::int AS waiting FROM pg_stat_activity WHERE datname = current_database() AND wait_event_type = 'Lock'";
 
-async function untilAWriteWaitsOnALock(database: string, deadline = Date.now() + longestWaitForALock): Promise<void> {
-  const [counted] = await queried(database, waitingOnALock);
-  if (JSON.stringify(counted) === JSON.stringify({ waiting: 1 })) {
-    return;
-  }
-  if (Date.now() > deadline) {
-    throw new Error(`No write waited on a lock within ${longestWaitForALock} ms`);
-  }
-  await pause(20);
-  await untilAWriteWaitsOnALock(database, deadline);
+async function untilAWriteWaitsOnALock(database: string): Promise<void> {
+  await until(async () => {
+    expect(await queried(database, waitingOnALock)).toEqual([{ waiting: 1 }]);
+  });
 }
 
 describe.skipIf(skipped)(`A fold beside an advance of the same row on PostgreSQL${notice}`, () => {

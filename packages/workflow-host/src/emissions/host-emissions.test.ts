@@ -2,8 +2,8 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { reactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
+import { until } from '../testing/until.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7c';
 
