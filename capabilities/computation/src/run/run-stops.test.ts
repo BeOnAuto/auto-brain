@@ -83,8 +83,13 @@ describe('the input of a run', () => {
     ).toEqual(
       Exit.fail(
         new InvalidInput({
-          detail: 'The input does not match the computation function’s input schema',
-          issues: [{ pointer: '/rows/0/cost_cents', detail: 'Expected number' }],
+          detail: 'rows, then item 1, then cost_cents: expected a whole number, from 0 to 5,000,000.',
+          issues: [
+            {
+              pointer: '/rows/0/cost_cents',
+              detail: 'rows, then item 1, then cost_cents: expected a whole number, from 0 to 5,000,000.',
+            },
+          ],
         }),
       ),
     );
