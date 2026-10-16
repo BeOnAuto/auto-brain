@@ -41,7 +41,7 @@ const outlines: readonly RecipeOutline[] = [
       },
     ],
     formatGuide: 'reasoning-function',
-    calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'get_run_history'],
+    calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'list_playbook_events'],
     request: ({ server }) =>
       server === undefined ? 'Give the playbook tools.' : `Give the playbook the tools of the tool server ${server}.`,
   },

@@ -45,7 +45,7 @@ export const whatAPlaybookIs = [
   'A playbook contains one brain (its reusable functions) and workflows. The brain shares its lifecycle. Functions run directly or through workflows; runs belong to the playbook.',
 ];
 
-const pagedReads = ['list_runs', 'get_run_history', 'list_playbook_events', 'list_interactions'];
+const pagedReads = ['list_runs', 'list_playbook_events', 'list_interactions'];
 
 const howToAnswer = [
   'When you tell the person what happened, say what was done and what they can do next,',
@@ -149,7 +149,7 @@ const answeringWhatRunsWaitOn: Sentences = ({ listed }) =>
     : [];
 
 const paging: Sentences = ({ listed }) => {
-  const paged = listed('list_interactions') ? 'Runs, history, events and requests' : 'Runs, history and events';
+  const paged = listed('list_interactions') ? 'Runs, events and requests' : 'Runs and events';
   return pagedReads.some((name) => listed(name))
     ? [`${paged} come a page at a time; read on only when the person needs more.`]
     : [];

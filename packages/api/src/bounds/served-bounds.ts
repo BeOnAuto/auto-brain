@@ -12,10 +12,10 @@ const mostDescriptionSentences = 8;
 
 export const mostArgumentDescriptionCharacters = 300;
 
-export const mostToolsOnAConnection = 36;
+export const mostToolsOnAConnection = 32;
 
 export const mostListingBytes: Readonly<Record<McpEndpoint, number>> = {
-  'own org': 52_000,
+  'own org': 48_000,
   org: 16_000,
   playbook: 40_000,
 };

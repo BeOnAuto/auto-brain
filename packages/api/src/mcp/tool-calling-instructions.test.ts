@@ -13,16 +13,16 @@ import {
 import { instructionsFor } from './instructions.ts';
 
 describe('the length of the instructions with every tool', () => {
-  it('take 1,996 characters on /mcp, 1,644 on the org endpoint and 1,880 on the playbook endpoint', () => {
+  it('take 1,987 characters on /mcp, 1,644 on the org endpoint and 1,871 on the playbook endpoint', () => {
     expect(
       everyEndpoint.map(([endpoint, served]) => instructionsFor(endpoint, served, definitionTypes, recipes).length),
-    ).toEqual([1644, 1880, 1996]);
+    ).toEqual([1644, 1871, 1987]);
   });
 });
 
 describe('what the instructions say of calling a tool', () => {
   const reading = {
-    orgTools: ['list_playbooks', 'get_playbook', 'list_models', 'search', 'get_guide'],
+    orgTools: ['list_playbooks', 'list_models', 'search', 'get_guide'],
     playbookTools: queriesInsideAPlaybook,
   };
 
@@ -51,7 +51,7 @@ describe('what the instructions say of calling a tool', () => {
       instructionsFor('own org', reading, definitionTypes, recipes),
       instructionsFor(
         'own org',
-        { ...reading, orgTools: ['list_playbooks', 'get_playbook', 'search', 'get_guide'] },
+        { ...reading, orgTools: ['list_playbooks', 'search', 'get_guide'] },
         definitionTypes,
         recipes,
       ),
@@ -61,7 +61,7 @@ describe('what the instructions say of calling a tool', () => {
 
     expect(lengths.filter((instructions) => /\bexecute\b/u.test(instructions))).toEqual([]);
     expect(lengths[0]).toContain('may name tools that search finds; dry_run shows what a call of one would check.');
-    expect(lengths.map(({ length }) => length)).toEqual([1659, 1696, 1547, 1656]);
+    expect(lengths.map(({ length }) => length)).toEqual([1650, 1687, 1547, 1647]);
   });
 });
 

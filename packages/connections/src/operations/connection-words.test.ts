@@ -1,8 +1,6 @@
 import type { LinkToOpen, Outcome, RegisteredPlainLanguage, Succeeded } from '@on.auto/operations';
-import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { ConnectionSchema } from '../registry/connection.ts';
 import { added, crm, notes, statusesOf } from '../testing/additions.ts';
 import { ada, harness, operationNamed, type Harness } from '../testing/harness.ts';
 
@@ -28,8 +26,6 @@ async function linkOf(h: Harness): Promise<LinkToOpen | undefined> {
   const outcome = await h.call({ registration }, ada, crm);
   return 'linkToOpen' in registration ? registration.linkToOpen?.(outputOf(outcome)) : undefined;
 }
-
-const decodeConnection = Schema.decodeUnknownSync(ConnectionSchema);
 
 describe('the words of adding a connection', () => {
   it('say what was added and where the person approves it, leaving the link to the details beside them', async () => {
@@ -66,27 +62,11 @@ describe('the words of listing connections', () => {
   });
 });
 
-describe('the words of one connection', () => {
-  it('say where it stands, and why it is broken', async () => {
+describe('the words of removing a connection', () => {
+  it('say what was removed and that its credential is forgotten', async () => {
     const h = harness();
     const { id } = await added(h, notes);
-    const record = decodeConnection(
-      outputOf(await h.call(operationNamed(h.operations, 'get_connection'), ada, { id })),
-    );
-    const standing = wordsOf(h, 'get_connection');
 
-    expect(await outcomeWords(h, 'get_connection', { id })).toBe(
-      'The connection “notes” waits for the person who added it to approve it.',
-    );
-    expect([
-      standing.outcome({ ...record, status: 'connected' }, { id }),
-      standing.outcome({ ...record, status: 'removed' }, { id }),
-      standing.outcome({ ...record, status: 'broken', broken: 'Its key is lost' }, { id }),
-    ]).toEqual([
-      'The connection “notes” is connected.',
-      'The connection “notes” was removed.',
-      'The connection “notes” is broken: Its key is lost.',
-    ]);
     expect(await outcomeWords(h, 'remove_connection', { id })).toBe(
       'Removed the connection “notes”. No playbook may use it, and its credential is forgotten.',
     );
@@ -100,14 +80,9 @@ describe('the words of a tool that could not do what it was asked', () => {
     expect([
       wordsOf(h, 'add_connection').attempt(notes),
       wordsOf(h, 'list_connections').attempt({}),
-      wordsOf(h, 'get_connection').attempt({ id: 'crm-id' }),
       wordsOf(h, 'remove_connection').attempt({ id: 'crm-id' }),
-    ]).toEqual([
-      'add the connection “notes”',
-      'list the connections',
-      'look up the connection “crm-id”',
-      'remove the connection “crm-id”',
-    ]);
+    ]).toEqual(['add the connection “notes”', 'list the connections', 'remove the connection “crm-id”']);
+    expect(() => wordsOf(h, 'get_connection')).toThrow('The operation get_connection has no words');
     expect(() => wordsOf(h, 'read_link')).toThrow('The operation read_link has no words');
     expect(() => operationNamed(h.operations, 'nothing')).toThrow('There is no operation nothing');
   });

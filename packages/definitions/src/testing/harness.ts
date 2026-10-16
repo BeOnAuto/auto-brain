@@ -8,7 +8,9 @@ import {
   type Outcome,
   type RecordedPageRequest,
   type RecordedSelection,
+  type Runnable,
   type Settled,
+  type Succeeded,
 } from '@on.auto/operations';
 import {
   memoryPlaybookRegistry,
@@ -28,6 +30,15 @@ export type LedgerRead =
   | { readonly loaded: string }
   | { readonly selection: RecordedSelection; readonly page: RecordedPageRequest };
 
+interface PlaybookRoute {
+  readonly registration: Runnable<'playbook'>;
+}
+
+interface Calling {
+  (operation: PlaybookOperation, request: PlaybookRequest, at?: string): Promise<Outcome>;
+  (operation: PlaybookRoute, request: PlaybookRequest, at?: string): Promise<Outcome<Succeeded>>;
+}
+
 export interface Harness {
   readonly ledger: MemoryLedger;
   readonly ledgerReads: () => readonly LedgerRead[];
@@ -37,7 +48,7 @@ export interface Harness {
     request: PlaybookRequest,
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
   readonly run: <A>(calls: Effect.Effect<A, never, DispatcherServices>, at?: string) => Promise<A>;
-  readonly call: (operation: PlaybookOperation, request: PlaybookRequest, at?: string) => Promise<Outcome>;
+  readonly call: Calling;
   readonly callCancelledWhen: (
     cancelled: Promise<unknown>,
     operation: PlaybookOperation,
@@ -92,13 +103,18 @@ export function harness(): Harness {
         Effect.provide(services),
       ),
     );
+  function call(operation: PlaybookOperation, request: PlaybookRequest, at?: string): Promise<Outcome>;
+  function call(operation: PlaybookRoute, request: PlaybookRequest, at?: string): Promise<Outcome<Succeeded>>;
+  function call(operation: PlaybookRoute, request: PlaybookRequest, at?: string): Promise<Outcome<Succeeded>> {
+    return run(dispatcher.dispatchToPlaybook(operation.registration, request), at);
+  }
   return {
     ledger,
     ledgerReads: () => reads,
     reported: recording.reported,
     dispatch,
     run,
-    call: (operation, request, at) => run(dispatch(operation, request), at),
+    call,
     callCancelledWhen: (cancelled, operation, request) => {
       const cancelling = new AbortController();
       void cancelled.then(() => {

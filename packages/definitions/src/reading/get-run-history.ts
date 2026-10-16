@@ -5,7 +5,7 @@ import {
   EventPagingOutputFields,
   PublicEventSchema,
   defaultPageLimit,
-  defineQuery,
+  defineHttpOperation,
   eventsPageOf,
   keptContentOf,
   mostPublicEventDataBytes,
@@ -19,7 +19,6 @@ import {
 import { Effect, Schema } from 'effect';
 
 import { RunIdInputField } from '../operations/definition-fields.ts';
-import { historyFound } from '../plain-language/reading-words.ts';
 import { noRunCalled } from '../runs/run-lookup.ts';
 
 const description = [
@@ -84,19 +83,15 @@ function historyReader(presentation: Presentation) {
 }
 
 export function defineGetRunHistory(presenters: readonly Presenter[]) {
-  return defineQuery('playbook', {
+  return defineHttpOperation('playbook', 'query', {
     name: 'get_run_history',
     title: 'Get run history',
     description,
     route: { method: 'GET', path: '/runs/{run_id}/history' },
+    body: { kind: 'none' },
     inputSchema: RunHistoryInput,
-    outputSchema: EventsPage,
+    answer: { kind: 'json', outputSchema: EventsPage },
     reasons: ['not_found', 'invalid_input'],
     handle: historyReader(presentationOf(presenters)),
-    plainLanguage: {
-      task: 'read the history of a run',
-      attempt: () => 'read the history of the run',
-      outcome: historyFound,
-    },
   });
 }

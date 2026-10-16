@@ -119,9 +119,7 @@ export function harness({ beforeKeeping, ...given }: HarnessOptions = {}): Harne
 }
 
 export function operationNamed(operations: ConnectionOperations, name: string) {
-  const found = [...operations.operations, ...operations.pageRoutes].find(
-    ({ registration }) => registration.name === name,
-  );
+  const found = operations.find(({ registration }) => registration.name === name);
   if (found === undefined) {
     throw new Error(`There is no operation ${name}`);
   }

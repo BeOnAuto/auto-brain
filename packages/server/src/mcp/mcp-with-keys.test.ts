@@ -16,7 +16,7 @@ const acmeAlpha = createApiKey({ id: 'acme-alpha', org: 'acme', permissions: all
 
 const apiKeys = JSON.stringify([acmeAdmin.entry, acmeReader.entry, acmeAlpha.entry]);
 
-const playbookTools = ['create_playbook', 'list_playbooks', 'get_playbook', 'update_playbook', 'retire_playbook'];
+const playbookTools = ['create_playbook', 'list_playbooks', 'update_playbook', 'retire_playbook'];
 
 const definitionTools = [
   'create_definition',
@@ -28,14 +28,11 @@ const definitionTools = [
   'get_run',
   'cancel_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'get_event',
   'publish_event',
   'search',
   'introspect',
-  'validate',
   'dry_run',
   'execute',
   'answer_interaction',
@@ -83,7 +80,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release under the title Auto Runtime and lists the five playbook tools, list_models, search and the four of connections', async () => {
+  it('names the release under the title Auto Runtime and lists the four playbook tools, list_models, search and the three of connections', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -101,7 +98,6 @@ describe('the org endpoint of the server', () => {
         'search',
         'add_connection',
         'list_connections',
-        'get_connection',
         'remove_connection',
         'get_guide',
       ],
@@ -110,7 +106,7 @@ describe('the org endpoint of the server', () => {
 
   it('answers a playbook the org lacks as isError with a not_found problem', async () => {
     const missing = await withMcpSession('previous revision', endpoint('/orgs/acme/mcp', acmeAdmin.key), (session) =>
-      session.callTool('get_playbook', { playbook: 'nowhere' }),
+      session.callTool('search', { playbook: 'nowhere' }),
     );
 
     expect({ isError: missing.isError, problem: problemIn(missing) }).toMatchObject({
@@ -121,14 +117,13 @@ describe('the org endpoint of the server', () => {
 });
 
 describe('the playbook tools of the server', () => {
-  it('create, list, read, update and retire a playbook', async () => {
+  it('create, list, update and retire a playbook, listed with every field it was created with', async () => {
     const outcome = await withMcpSession(
       'previous major',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
       async (session) => ({
         created: await session.callTool('create_playbook', { playbook: 'alpha', name: 'Alpha' }),
         listed: await session.callTool('list_playbooks', {}),
-        read: await session.callTool('get_playbook', { playbook: 'alpha' }),
         updated: await session.callTool('update_playbook', {
           playbook: 'alpha',
           name: 'Alpha prime',
@@ -138,8 +133,7 @@ describe('the playbook tools of the server', () => {
       }),
     );
     expect(outcome.created.structuredContent).toMatchObject({ id: 'alpha', name: 'Alpha', status: 'active' });
-    expect(outcome.listed.structuredContent).toMatchObject({ playbooks: [{ id: 'alpha' }] });
-    expect(outcome.read.structuredContent).toEqual(outcome.created.structuredContent);
+    expect(outcome.listed.structuredContent).toEqual({ playbooks: [outcome.created.structuredContent] });
     expect(outcome.updated.structuredContent).toMatchObject({ name: 'Alpha prime', description: 'Notes' });
     expect(outcome.retired.structuredContent).toMatchObject({ status: 'retired' });
   });
@@ -165,15 +159,7 @@ describe('the callers the MCP endpoints of the server reject before MCP', () => 
   });
 });
 
-const queriesOfTheOrg = [
-  'list_playbooks',
-  'get_playbook',
-  'list_models',
-  'search',
-  'list_connections',
-  'get_connection',
-  'get_guide',
-];
+const queriesOfTheOrg = ['list_playbooks', 'list_models', 'search', 'list_connections', 'get_guide'];
 
 describe('the permissions and playbooks of a key over MCP', () => {
   it('offer a read-only key the queries of the org and no command, and serve it a query', async () => {

@@ -45,6 +45,7 @@ const amendments: readonly (readonly [string, string])[] = [
     'names a model this server can call, as the reasoning-function guide says, and may name tools',
   ],
   [", as a run's id they will return to.", '.'],
+  ['Runs, history and events come', 'Runs and events come'],
   [
     'may name tools that list_tool_servers lists.',
     'may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
@@ -82,7 +83,7 @@ function asServedWithSixTypes(recordText: string): string {
       'A run of a workflow answers started; get_run shows whether it ended or still waits.',
       `A run of a workflow answers started; get_run shows whether it ended or still waits. ${answeringSentence}`,
     )
-    .replace('Runs, history and events come', 'Runs, history, events and requests come');
+    .replace('Runs and events come', 'Runs, events and requests come');
 }
 
 const typesAfterTheRecord: ReadonlySet<string> = new Set(['interaction', 'prediction']);
@@ -139,7 +140,7 @@ describe('the instructions of a key that may only read', () => {
     const reading = instructionsFor(
       'own org',
       {
-        orgTools: ['list_playbooks', 'get_playbook', 'list_models', 'get_guide'],
+        orgTools: ['list_playbooks', 'list_models', 'get_guide'],
         playbookTools: queriesInsideAPlaybook,
       },
       definitionTypes,

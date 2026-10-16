@@ -217,7 +217,7 @@
       "get": {
         "operationId": "list_playbooks",
         "summary": "List playbooks",
-        "description": "Lists the playbooks of the org that the caller may access, sorted by id, each with its name, what it is for and whether it is active. Use it to find a playbook the person names, or to see whether one exists before another is made; get_playbook reads one playbook by its id. `include_retired` adds the retired playbooks, which are left out otherwise.",
+        "description": "Lists the playbooks of the org that the caller may access, sorted by id, each with its name, what it is for and whether it is active. Use it to find a playbook the person names, or to see whether one exists before another is made; each playbook it lists holds every field of the playbook. `include_retired` adds the retired playbooks, which are left out otherwise.",
         "tags": [
           "playbooks"
         ],
@@ -1844,7 +1844,7 @@
       "get": {
         "operationId": "list_connections",
         "summary": "List connections",
-        "description": "Lists the connections of the org, newest first, each with its server and whether it is pending, connected or broken. Use it to see which tool servers people added; get_connection reads one by its id. `include_removed` adds the removed ones.",
+        "description": "Lists the connections of the org, newest first, each with its server and whether it is pending, connected or broken. Use it to see which tool servers people added, and whether the person approved one add_connection added. `include_removed` adds the removed ones.",
         "tags": [
           "connections"
         ],
@@ -5718,7 +5718,7 @@
       "post": {
         "operationId": "run_definition",
         "summary": "Run definition",
-        "description": "Runs a function or workflow with an input and records the run. A run that ends within its call answers its result; a run that finishes later answers started with a run_id unless it ends before its first wait, and get_run shows how it ended. Use it to run a saved definition at the person's request; a workflow's steps call it the same way. `type` and `name` say which definition, `input` is the value it takes, as the input_schema get_definition shows, and `run_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again. A function that calls a tool may change something outside the playbook, so a run of one that did not succeed is never run again under its id; get_run_history shows what it called.",
+        "description": "Runs a function or workflow with an input and records the run. A run that ends within its call answers its result; a run that finishes later answers started with a run_id unless it ends before its first wait, and get_run shows how it ended. Use it to run a saved definition at the person's request; a workflow's steps call it the same way. `type` and `name` say which definition, `input` is the value it takes, as the input_schema get_definition shows, and `run_id` is optional: give the same id to retry safely, since a run that ended or waits answers as it stands and one that failed runs again. A function that calls a tool may change something outside the playbook, so a run of one that did not succeed is never run again under its id; list_playbook_events with its run_id shows what it called.",
         "tags": [
           "definitions"
         ],
@@ -6132,7 +6132,7 @@
       "get": {
         "operationId": "get_run",
         "summary": "Get run",
-        "description": "Reads one run of the playbook by its id: the definition and version that ran, who started it and when, its status, and its output or why it did not succeed, with the record its type keeps, such as the prompt and tokens of a reasoning function. A run is started until it ends as succeeded, rejected or failed. Use it to tell the person how a run ended; get_run_history shows each step and tool call of the run. `run_id` is the id run_definition answered with or was given.",
+        "description": "Reads one run of the playbook by its id: the definition and version that ran, who started it and when, its status, and its output or why it did not succeed, with the record its type keeps, such as the prompt and tokens of a reasoning function. A run is started until it ends as succeeded, rejected or failed. Use it to tell the person how a run ended; list_playbook_events with its run_id shows each step and tool call of the run. `run_id` is the id run_definition answered with or was given.",
         "tags": [
           "runs"
         ],
@@ -7885,7 +7885,7 @@
       "get": {
         "operationId": "list_playbook_events",
         "summary": "List playbook events",
-        "description": "Lists what happened in the playbook a page at a time, newest first: definitions saved and retired, runs started and how they ended, the steps of workflow runs, tool calls, and the events published to it, each with a summary in plain words, its fact as data with a large field as its size, and its metadata; get_event reads one event whole. Use it to follow the playbook's activity or to find the events a recall function or a workflow's schedule can take; get_run_history reads one run alone. `type` keeps one type of event, `run_id` one run and every run it started, `since` what was recorded from that time on, and `cursor` is the next_cursor of the page before. The playbook's own creation, update and retirement are not among the events; get_playbook shows them.",
+        "description": "Lists what happened in the playbook a page at a time, newest first: definitions saved and retired, runs started and how they ended, the steps of workflow runs, tool calls, and the events published to it, each with a summary in plain words, its fact as data with a large field as its size, and its metadata; get_event reads one event whole. Use it to follow the playbook's activity, to see what one run did, or to find the events a recall function or a workflow's schedule can take. `type` keeps one type of event, `run_id` one run and every run it started, `since` what was recorded from that time on, and `cursor` is the next_cursor of the page before. The playbook's own creation, update and retirement are not among the events; list_playbooks shows them.",
         "tags": [
           "events"
         ],
@@ -8452,7 +8452,7 @@
       "get": {
         "operationId": "get_event",
         "summary": "Get event",
-        "description": "Reads one event of the playbook whole by its id, as list_playbook_events and get_run_history show it: its fact as data and its metadata, every field whole, with a tool call's arguments, the tool's result as it answered and the answer document read from it. Over MCP an input, output, record, answer, arguments, result or event data past 65536 bytes appears as its size; over HTTP every field is whole. Use it to open what a tool answered, or a large input or output, that a page of events shows as its size. `event_id` is the event's id: a UUID, or for a workflow's step its record's id, an underscore and its number.",
+        "description": "Reads one event of the playbook whole by its id, as list_playbook_events shows it: its fact as data and its metadata, every field whole, with a tool call's arguments, the tool's result as it answered and the answer document read from it. Over MCP an input, output, record, answer, arguments, result or event data past 65536 bytes appears as its size; over HTTP every field is whole. Use it to open what a tool answered, or a large input or output, that a page of events shows as its size. `event_id` is the event's id: a UUID, or for a workflow's step its record's id, an underscore and its number.",
         "tags": [
           "events"
         ],
@@ -8941,7 +8941,7 @@
       "get": {
         "operationId": "introspect",
         "summary": "Introspect a tool",
-        "description": "Describes one tool of a tool server this playbook's functions may use, whole: what it does, the JSON Schema of the arguments it takes and the hints its server gives it. Use it once search has found a tool, before writing its arguments or naming it in the tools of a function as server/tool. Its server is asked for its tools when this is called, and nothing is sent to the tool; validate checks arguments against the schema and execute calls it. `server` and `tool` name the tool as search lists it.",
+        "description": "Describes one tool of a tool server this playbook's functions may use, whole: what it does, the JSON Schema of the arguments it takes and the hints its server gives it. Use it once search has found a tool, before writing its arguments or naming it in the tools of a function as server/tool. Its server is asked for its tools when this is called, and nothing is sent to the tool; dry_run checks arguments against the schema and execute calls it. `server` and `tool` name the tool as search lists it.",
         "tags": [
           "tool-servers"
         ],
@@ -9231,7 +9231,7 @@
       "post": {
         "operationId": "dry_run",
         "summary": "Dry run a tool call",
-        "description": "Answers what execute would check for one tool and its arguments, without calling the tool: whether the caller may execute, whether the playbook is retired, whether whoever runs this server allows the tool, whether it only reads, whether the arguments match its input schema and whether its server can be reached just now. Use it before execute when a call may change something, or when the arguments are unsure. Nothing is sent to the tool and nothing is recorded. `server` and `tool` name the tool as search lists it, and `arguments`, when given, are checked as validate checks them.",
+        "description": "Answers what execute would check for one tool and its arguments, without calling the tool: whether the caller may execute, whether the playbook is retired, whether whoever runs this server allows the tool, whether it only reads, whether the arguments match its input schema and whether its server can be reached just now. Use it before execute when a call may change something, or when the arguments are unsure. Nothing is sent to the tool and nothing is recorded. `server` and `tool` name the tool as search lists it, and `arguments`, when given, are the object to check.",
         "tags": [
           "tool-servers"
         ],
@@ -9375,7 +9375,7 @@
                           "type": "null"
                         }
                       ],
-                      "description": "The arguments checked against the tool's input schema, as validate checks them; null when none were given"
+                      "description": "The arguments checked against the tool's input schema; null when none were given"
                     },
                     "server": {
                       "type": "object",

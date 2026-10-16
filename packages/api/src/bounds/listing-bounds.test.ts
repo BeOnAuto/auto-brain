@@ -98,10 +98,10 @@ const listings: readonly Listing[] = [
   {
     endpoint: 'own org',
     path: '/mcp',
-    most: 52_000,
+    most: 48_000,
     servingWith: (extra) => ({
       operations: [
-        ...orgToolsFilled(10, descriptionRoom * 10, longestArgument),
+        ...orgToolsFilled(6, descriptionRoom * 6, longestArgument),
         ...playbookToolsFilled(25, extra, longestArgument),
       ],
     }),

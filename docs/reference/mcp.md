@@ -350,12 +350,12 @@ get_run: The workflow “review-and-approve” is still running; how it ends can
 list_interactions: Found 1 request waiting on this page.
 answer_interaction: The request is answered: the run that asked it takes the answer within the host's sweep, a second by default, and get_run shows how it ended.
 get_run: The run of the workflow “review-and-approve” finished. Its result: review: “Revise: the audience lacks a job role.” and approval: (verdict: “approve” and note: “Approved for the autumn launch.”)
-get_run_history: Found 9 events in the history of the run, oldest first, each with its fact and its metadata.
+list_playbook_events: Found 15 events of the run asked for in this playbook, oldest first, each with its fact and its metadata.
 get_run: The run of the interaction function “approve-campaign-brief” finished. Its answer: verdict: “approve” and note: “Approved for the autumn launch.”
 list_interactions: No request is waiting.
 ```
 
-Each event in a history carries a summary too. The nine events of that workflow run read, oldest first:
+Each event carries a summary too. Given the workflow run's `run_id`, `list_playbook_events` answers its events and those of the two runs it started, and the nine of the workflow run read, oldest first:
 
 ```text
 run_started: A run of the workflow “review-and-approve” started.

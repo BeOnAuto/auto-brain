@@ -4,7 +4,6 @@ import { Predicate, type Schema } from 'effect';
 import { isReadOnly, type ToolAnnotations } from '../bounds/tool-results.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { inWords, namesListed, toolInWords } from '../names/tool-words.ts';
-import type { ArgumentCheck } from './argument-checks.ts';
 import type { DryRun } from './dry-run-schema.ts';
 
 interface Described extends ToolReference {
@@ -16,7 +15,6 @@ const argumentNoun: Noun = { one: 'argument', other: 'arguments' };
 
 export const readingTask = {
   introspect: 'describe a tool of a tool server',
-  validate: 'check the arguments of a tool of a tool server',
   dry_run: 'dry run a call of a tool of a tool server',
 } as const;
 
@@ -39,16 +37,6 @@ function readingOf(annotations: ToolAnnotations | undefined): string {
 
 export function introspected(described: Described): string {
   return `${capitalized(toolInWords(described))} ${argumentsTaken(described)} and ${readingOf(described.annotations)}; what it does and what it takes are in the details.`;
-}
-
-export function validated({ valid }: ArgumentCheck, asked: ToolReference): string {
-  const tool = toolInWords(asked);
-  if (valid === null) {
-    return `The arguments of ${tool} could not be checked on this server; the details say why.`;
-  }
-  return valid
-    ? `The arguments are what ${tool} takes.`
-    : `The arguments are not what ${tool} takes; the details say where and why.`;
 }
 
 function argumentsInWords({ arguments: checked }: DryRun): string {

@@ -1,13 +1,11 @@
-import { PlaybookReader, defineQuery } from '@on.auto/operations';
+import { PlaybookReader, defineHttpOperation } from '@on.auto/operations';
 import { Clock, Effect, Schema } from 'effect';
 
 import type { Capability } from '../capability/capability.ts';
 import { knownCapabilities, type KnownCapabilities } from '../capability/known-capabilities.ts';
 import { RunsOfNameField } from '../operations/definition-fields.ts';
-import { definitionWordsFor } from '../plain-language/definition-words.ts';
 import { analyticsOf, PlaybookAnalyticsSchema } from './analytics-answer.ts';
 import { DaysField, dayFieldOf, dayOf, longestWindowInDays, windowOf } from './analytics-window.ts';
-import { analyticsWords } from './analytics-words.ts';
 
 const description = [
   'Counts what the runs of the playbook did over a window of days in UTC: how many succeeded, failed or were rejected,',
@@ -48,16 +46,16 @@ const readAnalytics = Effect.fnUntraced(function* (input: AnalyticsInput) {
 
 export function defineGetPlaybookAnalytics(capabilities: readonly Capability[]) {
   const known = knownCapabilities(capabilities);
-  const operation = defineQuery('playbook', {
+  const operation = defineHttpOperation('playbook', 'query', {
     name: 'get_playbook_analytics',
     title: 'Get playbook analytics',
     description,
     route: { method: 'GET', path: '/analytics' },
+    body: { kind: 'none' },
     inputSchema: analyticsInputOf(known.field),
-    outputSchema: PlaybookAnalyticsSchema,
+    answer: { kind: 'json', outputSchema: PlaybookAnalyticsSchema },
     reasons: ['invalid_input'],
     handle: readAnalytics,
-    plainLanguage: analyticsWords(definitionWordsFor(capabilities)),
   });
   return known.publish(operation, 'Only the runs of this type');
 }

@@ -5,7 +5,7 @@ import type { Permission } from '../caller/permission.ts';
 import type { StreamedBytes, StreamedContent } from '../content/streamed-content.ts';
 import type { DeclarableReason, Rejection } from '../outcome/rejection.ts';
 import type { LinkToOpen, PlainLanguage } from '../plain-language/plain-language.ts';
-import type { PathParameters, Route } from './route.ts';
+import type { MethodOf, PathParameters, Route } from './route.ts';
 
 interface ObjectValue {
   readonly [field: string]: unknown;
@@ -70,12 +70,15 @@ export interface StreamedBody {
 
 export type HttpBody = { readonly kind: 'json' } | { readonly kind: 'none' } | StreamedBody;
 
-interface BodyKindsByOperationKind {
-  readonly query: 'none';
-  readonly command: BodyKind;
+interface BodyKindsByRoute {
+  readonly query: { readonly GET: 'none'; readonly POST: 'json' };
+  readonly command: { readonly POST: BodyKind; readonly PUT: BodyKind; readonly DELETE: 'none' };
 }
 
-export type HttpBodyOf<K extends OperationKind> = Extract<HttpBody, { readonly kind: BodyKindsByOperationKind[K] }>;
+export type HttpBodyOf<K extends OperationKind, M extends MethodOf<K>> = Extract<
+  HttpBody,
+  { readonly kind: BodyKindsByRoute[K][M & keyof BodyKindsByRoute[K]] }
+>;
 
 export interface BodyArguments {
   readonly json: readonly [];
@@ -116,15 +119,16 @@ export type OfOneAnswerKind<A extends AnswerKind> = [TheOneKindOf<A>] extends [n
 
 export interface HttpFields<
   K extends OperationKind,
+  M extends MethodOf<K>,
   P extends string,
-  B extends HttpBodyOf<K>,
+  B extends HttpBody,
   In extends ObjectSchema,
   R extends DeclarableReason,
 > {
   readonly name: string;
   readonly title: string;
   readonly description: string;
-  readonly route: Route<K, P>;
+  readonly route: Route<K, P, M>;
   readonly body: B;
   readonly successStatus?: SuccessStatusByKind[K];
   readonly permittedBy?: readonly Permission[];
@@ -147,8 +151,9 @@ export interface HttpHandlerOf<
 
 export interface HttpDefinition<
   K extends OperationKind,
+  M extends MethodOf<K>,
   P extends string,
-  B extends HttpBodyOf<K>,
+  B extends HttpBodyOf<K, M>,
   A extends AnswerKind,
   In extends ObjectSchema,
   Out extends ObjectSchema,
@@ -156,7 +161,7 @@ export interface HttpDefinition<
   Services,
 >
   extends
-    HttpFields<K, P, B, In, R>,
+    HttpFields<K, M, P, B, In, R>,
     HttpHandlerOf<In, B, A extends 'json' ? Out['Type'] : StreamedBytes, R, Services> {
   readonly answer: (A extends 'json' ? JsonAnswer<Out> : StreamAnswer) & { readonly kind: A };
 }

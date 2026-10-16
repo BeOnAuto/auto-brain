@@ -38,11 +38,9 @@ export async function toolServerToolsCalled(
   return [
     ['add_connection', added],
     ['list_connections', await session.callTool('list_connections', {})],
-    ['get_connection', await session.callTool('get_connection', { id })],
     ['remove_connection', await session.callTool('remove_connection', { id })],
     ['search', await session.callTool('search', inPlaybook({ terms: 'rows' }))],
     ['introspect', await session.callTool('introspect', inPlaybook(asked))],
-    ['validate', await session.callTool('validate', inPlaybook(searchedFor))],
     ['dry_run', await session.callTool('dry_run', inPlaybook(searchedFor))],
     ['execute', await session.callTool('execute', inPlaybook(searchedFor))],
   ];

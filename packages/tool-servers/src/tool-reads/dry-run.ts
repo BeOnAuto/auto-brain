@@ -14,7 +14,7 @@ const description = [
   'Answers what execute would check for one tool and its arguments, without calling the tool: whether the caller may execute, whether the playbook is retired, whether whoever runs this server allows the tool, whether it only reads, whether the arguments match its input schema and whether its server can be reached just now.',
   'Use it before execute when a call may change something, or when the arguments are unsure.',
   'Nothing is sent to the tool and nothing is recorded.',
-  '`server` and `tool` name the tool as search lists it, and `arguments`, when given, are checked as validate checks them.',
+  '`server` and `tool` name the tool as search lists it, and `arguments`, when given, are the object to check.',
 ].join(' ');
 
 const DryRunInputSchema = Schema.Struct({

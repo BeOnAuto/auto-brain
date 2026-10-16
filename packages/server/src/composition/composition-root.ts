@@ -32,8 +32,7 @@ export function compositionRootWith(
             workflows,
             identityIssuer,
             ...functions.parts,
-            orgOperations: [...functions.parts.orgOperations, ...connections.operations],
-            orgRoutes: connections.pageRoutes,
+            orgOperations: [...functions.parts.orgOperations, ...connections],
             ...(clock === undefined ? {} : { clock }),
           };
           return stores.withSecretsClosed(functions.closing(await serveWorkflows(runtime, parts)));

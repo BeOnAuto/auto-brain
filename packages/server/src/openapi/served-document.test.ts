@@ -103,7 +103,7 @@ function shapeOf({ path, method, operation }: DocumentedOperation): readonly str
   ];
 }
 
-describe('the five tools over the tool servers in the document', () => {
+describe('the five operations over the tool servers in the document', () => {
   it('carry validate and dry_run by POST with a body, as queries a retired playbook still serves, and execute as a command', () => {
     const toolServers = operationsIn(document).filter(({ path }) => path.includes('/tool-servers/'));
 

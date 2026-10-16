@@ -5,8 +5,6 @@ import { CredentialSchema } from './credential.ts';
 
 const ConnectionStatusSchema = Schema.Literals(['pending', 'connected', 'broken', 'removed']);
 
-export type ConnectionStatus = typeof ConnectionStatusSchema.Type;
-
 export const ConnectionSchema = Schema.Struct({
   id: Schema.String.annotate({ description: 'The id of the connection, a UUIDv7' }),
   name: Schema.String.annotate({ description: 'The name a function gives the connection in server/tool' }),

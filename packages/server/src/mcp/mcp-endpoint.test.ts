@@ -17,7 +17,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
-const playbookTools = ['create_playbook', 'list_playbooks', 'get_playbook', 'update_playbook', 'retire_playbook'];
+const playbookTools = ['create_playbook', 'list_playbooks', 'update_playbook', 'retire_playbook'];
 
 const definitionTools = [
   'create_definition',
@@ -29,14 +29,11 @@ const definitionTools = [
   'get_run',
   'cancel_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'get_event',
   'publish_event',
   'search',
   'introspect',
-  'validate',
   'dry_run',
   'execute',
   'answer_interaction',
@@ -44,7 +41,7 @@ const definitionTools = [
   'send_run_event',
 ];
 
-const connectionTools = ['add_connection', 'list_connections', 'get_connection', 'remove_connection'];
+const connectionTools = ['add_connection', 'list_connections', 'remove_connection'];
 
 const orgTools = [...playbookTools, 'list_models', 'search', ...connectionTools];
 
@@ -215,7 +212,7 @@ function reachingOutside(tools: readonly ListedTool[]): readonly string[] {
 }
 
 describe('the open-world hint of the tools of /mcp', () => {
-  it('is set for list_models and run_definition, which reach model providers, for the five tools over the tool servers, which reach them, and for no other tool', async () => {
+  it('is set for list_models and run_definition, which reach model providers, for the four tools over the tool servers, which reach them, and for no other tool', async () => {
     server = await servingReasoning([]);
 
     expect(reachingOutside(await listingOn('/mcp'))).toEqual([
@@ -223,7 +220,6 @@ describe('the open-world hint of the tools of /mcp', () => {
       'search',
       'run_definition',
       'introspect',
-      'validate',
       'dry_run',
       'execute',
     ]);

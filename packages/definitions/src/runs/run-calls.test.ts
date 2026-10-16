@@ -88,13 +88,13 @@ const deferred = meanwhile({ type: 'run_deferred', data: { record: { run: 'x' } 
 
 const toolsWereCalled = new Conflict({
   detail:
-    'The run called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another run id, and read with get_run_history what it called',
+    'The run called tools and did not succeed, so it is not run again under its id, since a tool may have changed something; start a new run with another run id, and read with list_playbook_events, given its run id, what it called',
   kind: 'tools_called',
 });
 
 const toolsOnlyRead = new Conflict({
   detail:
-    "The run called tools and did not succeed, so it is not run again under its id; every tool it called only reads, by its server's own account, so nothing was changed: start a new run with another run id, and read with get_run_history what it called",
+    "The run called tools and did not succeed, so it is not run again under its id; every tool it called only reads, by its server's own account, so nothing was changed: start a new run with another run id, and read with list_playbook_events, given its run id, what it called",
   kind: 'tools_called',
   because: 'only_read',
 });

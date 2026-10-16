@@ -1,10 +1,10 @@
-import { defineQuery, quoted } from '@on.auto/operations';
+import { defineHttpOperation, defineQuery } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
 import { ConnectionSchema } from '../registry/connection.ts';
 import { newestFirst } from '../registry/registry.ts';
 import { ConnectionIdField } from './connection-fields.ts';
-import { connectionStanding, connectionsListed } from './connection-words.ts';
+import { connectionsListed } from './connection-words.ts';
 import { foundConnection, loadRegistry } from './registry-access.ts';
 
 export const listConnections = defineQuery('org', {
@@ -12,7 +12,7 @@ export const listConnections = defineQuery('org', {
   title: 'List connections',
   description: [
     'Lists the connections of the org, newest first, each with its server and whether it is pending, connected or broken.',
-    'Use it to see which tool servers people added; get_connection reads one by its id.',
+    'Use it to see which tool servers people added, and whether the person approved one add_connection added.',
     '`include_removed` adds the removed ones.',
   ].join(' '),
   route: { method: 'GET', path: '/connections' },
@@ -37,7 +37,7 @@ export const listConnections = defineQuery('org', {
   },
 });
 
-export const getConnection = defineQuery('org', {
+export const getConnection = defineHttpOperation('org', 'query', {
   name: 'get_connection',
   title: 'Get connection',
   description: [
@@ -46,13 +46,9 @@ export const getConnection = defineQuery('org', {
     '`id` is the id add_connection answered.',
   ].join(' '),
   route: { method: 'GET', path: '/connections/{id}' },
+  body: { kind: 'none' },
   inputSchema: Schema.Struct({ id: ConnectionIdField }),
-  outputSchema: ConnectionSchema,
+  answer: { kind: 'json', outputSchema: ConnectionSchema },
   reasons: ['not_found'],
   handle: ({ id }) => Effect.map(foundConnection(id), ({ connection }) => connection),
-  plainLanguage: {
-    task: 'look up a connection',
-    attempt: ({ id }) => `look up the connection ${quoted(id)}`,
-    outcome: (connection) => connectionStanding(connection),
-  },
 });

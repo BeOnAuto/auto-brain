@@ -3,7 +3,7 @@ import { Effect, Schema } from 'effect';
 
 export const longestWindowInDays = 366;
 
-export const defaultDays = 7;
+const defaultDays = 7;
 
 const millisecondsInADay = 86_400_000;
 
