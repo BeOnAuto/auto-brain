@@ -10,4 +10,5 @@ export {
 } from './policy/connection-policy.ts';
 export type { RuntimeAccess } from './policy/policy-rules.ts';
 export { ConnectionSchema, type Connection } from './registry/connection.ts';
-export { makeConnectionSource, type ServingServices } from './serving/connection-source.ts';
+export { makeConnectionSource } from './serving/connection-source.ts';
+export type { ServingServices } from './serving/given-credentials.ts';

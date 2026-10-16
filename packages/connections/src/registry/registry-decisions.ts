@@ -42,6 +42,7 @@ function decideAddition(
     ? Result.fail(
         new Conflict({
           detail: `The org holds ${mostConnectionsOfAnOrg} connections, the most it may; remove one before adding another`,
+          kind: 'connections_full',
         }),
       )
     : Result.succeed([

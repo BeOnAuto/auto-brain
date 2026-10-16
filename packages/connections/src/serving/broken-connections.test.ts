@@ -1,17 +1,17 @@
+import { Conflict } from '@on.auto/operations';
 import type { ConnectionSource, ConnectionUnready, OrgConnection } from '@on.auto/tool-servers';
-import { Effect, Option } from 'effect';
+import { Effect, Logger, Option, type Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { connectionPolicyOf, type ConnectionPolicyFields } from '../policy/connection-policy.ts';
-import type { ConnectionAddition, ConnectionCommand } from '../registry/connection-commands.ts';
-import { connectionsStreamOfOrg, registryDecider } from '../registry/registry-decider.ts';
 import { added, crm, notes } from '../testing/additions.ts';
 import { ada, harness, operationNamed, type Harness } from '../testing/harness.ts';
-import { makeConnectionSource, type ServingServices } from './connection-source.ts';
+import { makeConnectionSource } from './connection-source.ts';
+import type { ServingServices } from './given-credentials.ts';
 
 const sealedElsewhere = 'The secret is sealed under the key k2, which is neither the current key nor the previous one';
 
-function sourceOf(h: Harness, changes: Partial<Omit<ServingServices, 'registry'>> = {}): ConnectionSource {
+function sourceOf(h: Harness, changes: Partial<ServingServices> = {}): ConnectionSource {
   return makeConnectionSource({
     registry: h.ledger.service,
     secrets: h.secrets,
@@ -38,62 +38,55 @@ async function connectionOf(source: ConnectionSource, id: string): Promise<OrgCo
   );
 }
 
-async function refusalOf(source: ConnectionSource, id: string): Promise<ConnectionUnready> {
-  const { state } = await connectionOf(source, id);
-  return state.status === 'connected' ? Effect.runPromise(Effect.flip(state.server)) : state.unready;
+function refusalIn(
+  { state }: OrgConnection,
+  logging: Layer.Layer<never> = Logger.layer([]),
+): Promise<ConnectionUnready> {
+  return state.status === 'connected'
+    ? Effect.runPromise(Effect.provide(Effect.flip(state.server), logging))
+    : Promise.resolve(state.unready);
 }
 
-function recordedDirectly(
-  h: Harness,
-  name: string,
-  changes: Partial<Pick<ConnectionAddition, 'entry' | 'credential'>>,
-) {
-  const acted = { by: 'person:ada', at: '2026-10-15T14:00:00.000Z' };
-  const adding: ConnectionCommand = {
-    type: 'add',
-    connection: name,
-    name,
-    kind: 'mcp',
-    entry: { url: 'https://odd.example.com/mcp' },
-    credential: { kind: 'none' },
-    link: { token_sha256: 'link', expires_at: '2026-10-15T14:10:00.000Z' },
-    ...changes,
-    ...acted,
-  };
-  const approving: ConnectionCommand = {
-    type: 'approve',
-    connection: name,
-    token_sha256: 'link',
-    bindsPerson: false,
-    ...acted,
-  };
-  const stream = connectionsStreamOfOrg('acme');
-  return Effect.runPromise(
-    Effect.andThen(
-      h.ledger.service.execute(stream, registryDecider, adding),
-      h.ledger.service.execute(stream, registryDecider, approving),
-    ),
-  );
+async function refusalOf(
+  source: ConnectionSource,
+  id: string,
+  logging?: Layer.Layer<never>,
+): Promise<ConnectionUnready> {
+  return refusalIn(await connectionOf(source, id), logging);
 }
+
+function loggedLines() {
+  const lines: string[] = [];
+  const logging = Logger.layer([
+    Logger.map(Logger.formatJson, (line: string) => {
+      lines.push(line);
+    }),
+  ]);
+  return { lines, logging };
+}
+
+function unreadableIn(h: Harness) {
+  return { ...h.secrets, read: () => Effect.fail({ detail: sealedElsewhere }) };
+}
+
+const brokenReason = `The credential of the connection crm cannot be read, so the person who added it removes it and adds it again: ${sealedElsewhere}`;
 
 describe('a connection whose credential the secret store cannot read', () => {
   it('is broken by the runtime with the sentence of why, and answered broken from then on', async () => {
     const h = harness();
     const id = await connectedCrm(h);
-    const unreadable = { ...h.secrets, read: () => Effect.fail({ detail: sealedElsewhere }) };
-    const reason = `The credential of the connection crm cannot be read, so the person who added it removes it and adds it again: ${sealedElsewhere}`;
 
-    const refused = await refusalOf(sourceOf(h, { secrets: unreadable }), id);
+    const refused = await refusalOf(sourceOf(h, { secrets: unreadableIn(h) }), id);
 
-    expect(refused).toEqual({ because: 'connection_broken', detail: reason });
+    expect(refused).toEqual({ because: 'connection_broken', detail: brokenReason });
     expect((await h.facts()).at(-1)).toMatchObject({
       type: 'connection_broken',
-      data: { connection: id, reason },
+      data: { connection: id, reason: brokenReason },
       context: { by: 'runtime' },
     });
     expect((await connectionOf(sourceOf(h), id)).state).toEqual({
       status: 'unready',
-      unready: { because: 'connection_broken', detail: reason },
+      unready: { because: 'connection_broken', detail: brokenReason },
     });
   });
 
@@ -129,7 +122,7 @@ describe('a connection the rules of the moment no longer allow', () => {
       },
       {
         because: 'connection_not_allowed',
-        detail: 'People may not add connections on this runtime: its operator sets up its tool servers itself',
+        detail: 'This runtime uses no connection: its operator sets up its tool servers itself',
       },
       {
         because: 'connection_not_allowed',
@@ -138,23 +131,55 @@ describe('a connection the rules of the moment no longer allow', () => {
     ]);
   });
 
-  it('is refused when it takes a credential not available yet, or its entry is no longer one the runtime takes', async () => {
+  it('is refused when its entry is no longer one the runtime takes, as when a provider took its name since', async () => {
     const h = harness();
-    await recordedDirectly(h, 'consent', { credential: { kind: 'authorization' } });
-    await recordedDirectly(h, 'odd', { entry: { url: 'ftp://odd.example.com/mcp' } });
-    const source = sourceOf(h);
+    const { id, token } = await added(h, { ...notes, name: 'mistral' });
+    await h.call(operationNamed(h.operations, 'approve'), ada, { id, token });
 
-    expect([await refusalOf(source, 'consent'), await refusalOf(source, 'odd')]).toEqual([
-      {
-        because: 'connection_not_allowed',
-        detail:
-          'The authorization credential, a consent the person gives the server, is not available yet; give a secret or client credentials instead',
-      },
-      {
-        because: 'connection_not_allowed',
-        detail: 'The entry of the connection odd is not one this runtime takes any more: Expected an http or https URL',
-      },
-    ]);
+    expect(await refusalOf(sourceOf(h, { providers: ['openai', 'mistral'] }), id)).toEqual({
+      because: 'connection_not_allowed',
+      detail:
+        'The entry of the connection mistral is not one this runtime takes any more: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+    });
+  });
+});
+
+describe('a connection the runtime cannot record broken', () => {
+  it('is refused broken all the same, and the runtime logs that it could not record it', async () => {
+    const h = harness();
+    const id = await connectedCrm(h);
+    const unrecorded = { ...h.ledger.service, execute: () => Effect.die(new Error('The ledger is not reachable')) };
+    const { lines, logging } = loggedLines();
+
+    const refused = await refusalOf(sourceOf(h, { secrets: unreadableIn(h), registry: unrecorded }), id, logging);
+
+    expect(refused).toEqual({ because: 'connection_broken', detail: brokenReason });
+    expect(lines).toEqual([expect.stringContaining('could not record it broken')]);
+    expect((await connectionOf(sourceOf(h), id)).state.status).toBe('connected');
+  });
+
+  it('logs nothing when another change of the registry came first', async () => {
+    const h = harness();
+    const id = await connectedCrm(h);
+    const concurrent = new Conflict({ detail: 'The registry changed meanwhile', kind: 'concurrent_change' });
+    const changed = { ...h.ledger.service, execute: () => Effect.fail(concurrent) };
+    const { lines, logging } = loggedLines();
+
+    const refused = await refusalOf(sourceOf(h, { secrets: unreadableIn(h), registry: changed }), id, logging);
+
+    expect([refused.because, lines]).toEqual(['connection_broken', []]);
+  });
+
+  it('logs nothing when the connection was removed meanwhile', async () => {
+    const h = harness();
+    const id = await connectedCrm(h);
+    const listed = await connectionOf(sourceOf(h, { secrets: unreadableIn(h) }), id);
+    await h.call(operationNamed(h.operations, 'remove_connection'), ada, { id });
+    const { lines, logging } = loggedLines();
+
+    const refused = await refusalIn(listed, logging);
+
+    expect([refused.because, lines]).toEqual(['connection_broken', []]);
   });
 });
 

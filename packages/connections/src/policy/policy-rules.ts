@@ -81,15 +81,26 @@ export function bindsPerson(access: RuntimeAccess): boolean {
   return access === 'people';
 }
 
-export function policyRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
-  if (!policy.peopleMayAdd) {
-    return new Forbidden({
-      detail: 'People may not add connections on this runtime: its operator sets up its tool servers itself',
-    });
-  }
+function rulesRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
   return (
     hostRefusal(policy.allowedHosts, addition) ??
     kindRefusal(policy.credentialKinds, addition) ??
     referenceRefusal(policy.variables, addition)
   );
+}
+
+export function policyRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
+  return policy.peopleMayAdd
+    ? rulesRefusalOf(policy, addition)
+    : new Forbidden({
+        detail: 'People may not add connections on this runtime: its operator sets up its tool servers itself',
+      });
+}
+
+export function useRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
+  return policy.peopleMayAdd
+    ? rulesRefusalOf(policy, addition)
+    : new Forbidden({
+        detail: 'This runtime uses no connection: its operator sets up its tool servers itself',
+      });
 }

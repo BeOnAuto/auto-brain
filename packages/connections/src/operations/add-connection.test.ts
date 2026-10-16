@@ -108,6 +108,7 @@ const refusedEntries = [
   ['a name of the wrong shape', { ...notes, name: 'Notes' }, '/name'],
   ['the name of a model provider', { ...notes, name: 'openai' }, '/name'],
   ['a url that is no web address', { ...notes, entry: { url: 'ftp://notes.example.com' } }, '/entry/url'],
+  ['an http url off the loopback', { ...notes, entry: { url: 'http://notes.example.com/mcp' } }, '/entry/url'],
   [
     'a field of another kind',
     { ...notes, entry: { ...notes.entry, base_url: 'https://x.example' } },

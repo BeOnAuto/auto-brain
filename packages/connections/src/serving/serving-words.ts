@@ -1,7 +1,5 @@
 import { listed } from '@on.auto/operations';
 
-import { authorizationNotYet } from '../entries/credential-checks.ts';
-
 const removeAndAdd = 'the person who added it removes it and adds it again';
 
 export const servingWords = {
@@ -13,7 +11,8 @@ export const servingWords = {
     `The credential of the connection ${name} is no longer in the secret store, so ${removeAndAdd}`,
   unset: (name: string, variable: string) =>
     `The variable ${variable} that the connection ${name} sends is not set on this runtime; whoever runs it sets the variable and starts it again`,
+  unrecorded: (name: string) =>
+    `The runtime found the credential of the connection ${name} unreadable but could not record it broken; it reads it again at its next use`,
   unchecked: (name: string, details: readonly string[]) =>
     `The entry of the connection ${name} is not one this runtime takes any more: ${listed(details)}`,
-  authorization: authorizationNotYet,
 } as const;

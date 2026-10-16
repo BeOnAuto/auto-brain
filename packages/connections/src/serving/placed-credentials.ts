@@ -1,7 +1,7 @@
-import type { ServerEntryFields } from '@on.auto/tool-servers';
-import { Option, Redacted } from 'effect';
+import { readEntry, type Environment, type ServerEntryFields } from '@on.auto/tool-servers';
+import { Option, Redacted, Schema } from 'effect';
 
-import type { ConnectionEntry } from '../registry/connection-entry.ts';
+import { ConnectionEntrySchema, type ConnectionEntry, type ConnectionKind } from '../registry/connection-entry.ts';
 import type { Credential } from '../registry/credential.ts';
 
 export interface GivenValue {
@@ -10,56 +10,100 @@ export interface GivenValue {
 }
 
 export interface Placed {
-  readonly fields: ServerEntryFields;
-  readonly secrets: readonly Redacted.Redacted[];
+  readonly written: ServerEntryFields;
+  readonly environment: Environment;
 }
 
 type Placement = NonNullable<Credential['in']>;
 
 type Fields = Pick<ServerEntryFields, 'headers' | 'query_params' | 'security'>;
 
-const schemeAndCredential = /^[A-Za-z][\w!#$%&'*+.^`|~-]* +(\S.*)$/u;
+const givenVariable = 'CONNECTION_CREDENTIAL';
+
+function referenceTo(variable: string): string {
+  return `\${${variable}}`;
+}
 
 function required<A>(value: A | undefined): A {
   return Option.getOrThrow(Option.fromNullishOr(value));
 }
 
-const placedIn: Readonly<Record<Placement, (entry: ConnectionEntry, name: string, value: string) => Fields>> = {
-  header: ({ headers }, name, value) => ({ headers: { ...headers, [name]: value } }),
-  query: ({ query_params: query }, name, value) => ({ query_params: { ...query, [name]: value } }),
-  security: (_entry, name, value) => ({ security: { [name]: value } }),
+const asJson = Schema.decodeUnknownSync(Schema.Json);
+
+const asEntry = Schema.decodeUnknownSync(ConnectionEntrySchema);
+
+function literal(value: Schema.Json): Schema.Json {
+  if (typeof value === 'string') {
+    return value.replaceAll('$', () => '$$');
+  }
+  if (Array.isArray(value)) {
+    return value.map((item: Schema.Json) => literal(item));
+  }
+  return typeof value === 'object' && value !== null
+    ? Object.fromEntries(
+        Object.entries(value).map(([key, item]: readonly [string, Schema.Json]) => [key, literal(item)]),
+      )
+    : value;
+}
+
+const placedIn: Readonly<Record<Placement, (entry: ConnectionEntry, name: string, written: string) => Fields>> = {
+  header: ({ headers }, name, written) => ({ headers: { ...headers, [name]: written } }),
+  query: ({ query_params: query }, name, written) => ({ query_params: { ...query, [name]: written } }),
+  security: (_entry, name, written) => ({ security: { [name]: written } }),
 };
 
-function secretsOfAHeader(value: string): readonly string[] {
-  const [, credential] = schemeAndCredential.exec(value) ?? [];
-  return credential === undefined ? [value] : [value, credential];
+function variableOf(credential: Credential): string {
+  return credential.kind === 'reference' ? required(credential.variable) : givenVariable;
 }
 
-function placedValue(entry: ConnectionEntry, credential: Credential, value: string): Placed {
-  const placement = required(credential.in);
-  const fields = placedIn[placement](entry, required(credential.name), value);
-  const secrets = placement === 'header' ? secretsOfAHeader(value) : [value];
-  return { fields: { ...entry, ...fields }, secrets: secrets.map((secret) => Redacted.make(secret)) };
+function placedValue(entry: ConnectionEntry, credential: Credential): ServerEntryFields {
+  const fields = placedIn[required(credential.in)](
+    entry,
+    required(credential.name),
+    referenceTo(variableOf(credential)),
+  );
+  return { ...entry, ...fields };
 }
 
-function placedClientCredentials(entry: ConnectionEntry, credential: Credential, given: GivenValue): Placed {
-  const value = Redacted.value(given.value);
+function placedClientCredentials(entry: ConnectionEntry, credential: Credential, given: GivenValue): ServerEntryFields {
+  const reference = referenceTo(givenVariable);
   const secret =
-    given.algorithm === undefined ? { client_secret: value } : { private_key: value, algorithm: given.algorithm };
+    given.algorithm === undefined
+      ? { client_secret: reference }
+      : { private_key: reference, algorithm: given.algorithm };
   const scope = credential.scope === undefined ? {} : { scope: credential.scope };
   const auth = { issuer: required(credential.issuer), client_id: required(credential.client_id), ...scope, ...secret };
-  return { fields: { ...entry, auth }, secrets: [given.value] };
+  return { ...entry, auth };
 }
 
 export function placedCredential(
-  entry: ConnectionEntry,
+  written: ConnectionEntry,
   credential: Credential,
   given: GivenValue | undefined,
 ): Placed {
+  const entry = asEntry(literal(asJson(written)));
   if (given === undefined) {
-    return { fields: entry, secrets: [] };
+    return { written: entry, environment: {} };
   }
+  const environment = { [variableOf(credential)]: Redacted.value(given.value) };
   return credential.kind === 'client_credentials'
-    ? placedClientCredentials(entry, credential, given)
-    : placedValue(entry, credential, Redacted.value(given.value));
+    ? { written: placedClientCredentials(entry, credential, given), environment }
+    : { written: placedValue(entry, credential), environment };
+}
+
+interface Named {
+  readonly name: string;
+  readonly kind: ConnectionKind;
+}
+
+interface Reading {
+  readonly org: string;
+  readonly providers: readonly string[];
+}
+
+export function readPlaced({ name, kind }: Named, { written, environment }: Placed, { org, providers }: Reading) {
+  return readEntry(name, { ...written, type: kind, org }, environment, {
+    modelProviders: providers,
+    documentsDirectory: '.',
+  });
 }

@@ -11,7 +11,8 @@ import { describe, expect, it } from 'vitest';
 import { connectionPolicyOf, type ConnectionPolicyFields } from '../policy/connection-policy.ts';
 import { added, billing, crm, notes } from '../testing/additions.ts';
 import { ada, harness, operationNamed, type Harness } from '../testing/harness.ts';
-import { makeConnectionSource, type ServingServices } from './connection-source.ts';
+import { makeConnectionSource } from './connection-source.ts';
+import type { ServingServices } from './given-credentials.ts';
 
 const crmKey = 'Bearer crm-key-0f3c9a71';
 
@@ -161,8 +162,20 @@ describe('a connected connection as a tool server', () => {
   });
 });
 
+describe('the entry of a connected connection', () => {
+  it('is sent as it is written, a $ in it too, and keeps what it says of its content', async () => {
+    const h = harness();
+    const entry = { ...notes.entry, headers: { 'X-Tenant': 'acme$eu$$' }, record_content: false };
+    const id = await connected(h, { ...notes, entry });
+
+    const settings = await settingsOf(sourceOf(h), id);
+
+    expect([placedOf(settings).headers, settings.record_content]).toEqual([{ 'X-Tenant': 'acme$eu$$' }, false]);
+  });
+});
+
 describe('a connected connection to an HTTP API as a tool server', () => {
-  it('holds a secret of an HTTP API in its query or its security scheme, whole', async () => {
+  it('holds a secret of an HTTP API in its query or its security scheme, whole, read as the settings file reads one', async () => {
     const h = harness();
     const inQuery = await connected(
       h,
@@ -184,7 +197,7 @@ describe('a connected connection to an HTTP API as a tool server', () => {
         headers: {},
         query: {},
         security: { apiKeyAuth: 'Basic billing-key-77a1c2' },
-        secrets: ['Basic billing-key-77a1c2'],
+        secrets: ['Basic billing-key-77a1c2', 'Basic billing-key-77a1c2'],
       },
     ]);
   });

@@ -1354,8 +1354,7 @@
                           "none",
                           "reference",
                           "secret",
-                          "client_credentials",
-                          "authorization"
+                          "client_credentials"
                         ]
                       },
                       "variable": {
@@ -1498,8 +1497,7 @@
                             "none",
                             "reference",
                             "secret",
-                            "client_credentials",
-                            "authorization"
+                            "client_credentials"
                           ]
                         },
                         "variable": {
@@ -1814,8 +1812,7 @@
                                 "none",
                                 "reference",
                                 "secret",
-                                "client_credentials",
-                                "authorization"
+                                "client_credentials"
                               ]
                             },
                             "variable": {
@@ -2098,8 +2095,7 @@
                             "none",
                             "reference",
                             "secret",
-                            "client_credentials",
-                            "authorization"
+                            "client_credentials"
                           ]
                         },
                         "variable": {
@@ -2378,8 +2374,7 @@
                             "none",
                             "reference",
                             "secret",
-                            "client_credentials",
-                            "authorization"
+                            "client_credentials"
                           ]
                         },
                         "variable": {
@@ -2674,8 +2669,7 @@
                             "none",
                             "reference",
                             "secret",
-                            "client_credentials",
-                            "authorization"
+                            "client_credentials"
                           ]
                         },
                         "variable": {
@@ -2995,8 +2989,7 @@
                             "none",
                             "reference",
                             "secret",
-                            "client_credentials",
-                            "authorization"
+                            "client_credentials"
                           ]
                         },
                         "variable": {
@@ -3338,8 +3331,7 @@
                             "none",
                             "reference",
                             "secret",
-                            "client_credentials",
-                            "authorization"
+                            "client_credentials"
                           ]
                         },
                         "variable": {

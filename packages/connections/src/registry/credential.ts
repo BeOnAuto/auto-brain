@@ -2,7 +2,7 @@ import { listed } from '@on.auto/operations';
 import { isPinnableUrl } from '@on.auto/tool-servers';
 import { Schema } from 'effect';
 
-const credentialKinds = ['none', 'reference', 'secret', 'client_credentials', 'authorization'] as const;
+const credentialKinds = ['none', 'reference', 'secret', 'client_credentials'] as const;
 
 export const CredentialKindSchema = Schema.Literals(credentialKinds);
 
@@ -55,7 +55,6 @@ const fieldsOfEachKind: Readonly<Record<CredentialKind, TakenFields>> = {
   reference: { required: ['variable', 'name', 'in'], optional: [] },
   secret: { required: ['name', 'in'], optional: [] },
   client_credentials: { required: ['issuer', 'client_id'], optional: ['scope'] },
-  authorization: { required: [], optional: [] },
 };
 
 const variableName = /^[A-Za-z_][A-Za-z0-9_]*$/u;

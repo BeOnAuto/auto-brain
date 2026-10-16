@@ -4,7 +4,7 @@ import { adding, billing, crm, issuesIn, statusesOf } from '../testing/additions
 import { harness } from '../testing/harness.ts';
 
 const refusedCredentials = [
-  ['authorization, not available yet', { kind: 'authorization' }, '/credential/kind'],
+  ['a kind of credential there is not', { kind: 'consent' }, '/credential/kind'],
   ['a field of another kind', { kind: 'none', name: 'CRM_API_KEY' }, '/credential/name'],
   [
     'a reference without its variable',
@@ -66,16 +66,6 @@ describe('a credential that cannot be taken', () => {
           detail: 'Expected no name: a client_credentials credential takes issuer, client_id, and scope',
         },
       ],
-    ]);
-  });
-
-  it('says that authorization is not available yet', async () => {
-    expect(issuesIn(await adding(harness(), { ...crm, credential: { kind: 'authorization' } }))).toEqual([
-      {
-        pointer: '/credential/kind',
-        detail:
-          'The authorization credential, a consent the person gives the server, is not available yet; give a secret or client credentials instead',
-      },
     ]);
   });
 });

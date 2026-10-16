@@ -119,6 +119,7 @@ describe('adding a connection to an org that holds the most it may', () => {
     expect(decided(adding, ...full)).toMatchObject(
       Result.fail({
         detail: `The org holds ${mostConnectionsOfAnOrg} connections, the most it may; remove one before adding another`,
+        kind: 'connections_full',
       }),
     );
     expect(Result.isSuccess(decided(adding, ...full, removedOne))).toBe(true);
