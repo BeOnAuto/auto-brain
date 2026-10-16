@@ -72,6 +72,8 @@ There is no read model: each call folds the stream (`connectionsFold`, the fold 
 
 When functions call through connections, `allowed_hosts` holds every other host a call reaches as well: the server an `openapi` connection's document names, which a call uses where `base_url` is left out, and each host a redirect leads to.
 
+The policy is checked when a connection is added, and the operator may change it after. So a connection added under an earlier policy is checked again against the policy of the moment, its `variables`, `allowed_hosts` and `credential_kinds`, before a call goes through it, and a call it no longer allows is refused.
+
 It also records `connection_broken`, with the sentence of why, when it cannot read a connection's credential. The fact, its fold and the status `broken` are here already; the command that decides it comes with the calls, since nothing breaks a connection before then.
 
 ## Source
