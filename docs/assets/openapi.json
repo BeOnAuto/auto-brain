@@ -1323,160 +1323,51 @@
                     "description": "The tool server, without its credential"
                   },
                   "credential": {
-                    "anyOf": [
-                      {
-                        "type": "object",
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "enum": [
-                              "none"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "kind"
-                        ],
-                        "additionalProperties": false
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "none",
+                          "reference",
+                          "secret",
+                          "client_credentials",
+                          "authorization"
+                        ]
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "enum": [
-                              "reference"
-                            ]
-                          },
-                          "name": {
-                            "type": "string",
-                            "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                            "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                          }
-                        },
-                        "required": [
-                          "kind",
-                          "name"
-                        ],
-                        "additionalProperties": false
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "enum": [
-                              "secret"
-                            ]
-                          },
-                          "placed": {
-                            "anyOf": [
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "header": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": "A header"
-                                  }
-                                },
-                                "required": [
-                                  "header"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "query": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": "A query parameter of an HTTP API"
-                                  }
-                                },
-                                "required": [
-                                  "query"
-                                ],
-                                "additionalProperties": false
-                              },
-                              {
-                                "type": "object",
-                                "properties": {
-                                  "security": {
-                                    "type": "string",
-                                    "minLength": 1,
-                                    "description": "A security scheme of its document"
-                                  }
-                                },
-                                "required": [
-                                  "security"
-                                ],
-                                "additionalProperties": false
-                              }
-                            ],
-                            "description": "Where the value goes"
-                          }
-                        },
-                        "required": [
-                          "kind",
-                          "placed"
+                      "in": {
+                        "type": "string",
+                        "enum": [
+                          "header",
+                          "query",
+                          "security"
                         ],
-                        "additionalProperties": false
+                        "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "enum": [
-                              "client_credentials"
-                            ]
-                          },
-                          "issuer": {
-                            "type": "string",
-                            "description": "The https URL of the authorization server"
-                          },
-                          "client_id": {
-                            "type": "string",
-                            "minLength": 1
-                          },
-                          "scope": {
-                            "type": "string",
-                            "description": "The scopes, separated by spaces"
-                          }
-                        },
-                        "required": [
-                          "kind",
-                          "issuer",
-                          "client_id"
-                        ],
-                        "additionalProperties": false
+                      "issuer": {
+                        "type": "string",
+                        "description": "For client_credentials, the https URL of the authorization server"
                       },
-                      {
-                        "type": "object",
-                        "properties": {
-                          "kind": {
-                            "type": "string",
-                            "enum": [
-                              "authorization"
-                            ]
-                          }
-                        },
-                        "required": [
-                          "kind"
-                        ],
-                        "additionalProperties": false
+                      "client_id": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "For client_credentials, the id of the client"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                       }
-                    ],
-                    "description": "How the server is credentialled, never its value, which the person gives on the page"
-                  },
-                  "playbooks": {
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "pattern": "^[a-z][a-z0-9-]{2,47}$"
                     },
-                    "description": "The playbooks that may use it, in place of the entry’s"
+                    "required": [
+                      "kind"
+                    ],
+                    "additionalProperties": false,
+                    "description": "How the server is credentialled, never its value, which the person gives on the page"
                   }
                 },
                 "required": [
@@ -1571,151 +1462,50 @@
                       "description": "The tool server, without its credential"
                     },
                     "credential": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "none"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "reference",
+                            "secret",
+                            "client_credentials",
+                            "authorization"
+                          ]
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "reference"
-                              ]
-                            },
-                            "name": {
-                              "type": "string",
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                              "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
-                          "additionalProperties": false
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "secret"
-                              ]
-                            },
-                            "placed": {
-                              "anyOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "header": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A header"
-                                    }
-                                  },
-                                  "required": [
-                                    "header"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "query": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A query parameter of an HTTP API"
-                                    }
-                                  },
-                                  "required": [
-                                    "query"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "security": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A security scheme of its document"
-                                    }
-                                  },
-                                  "required": [
-                                    "security"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ],
-                              "description": "Where the value goes"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "placed"
+                        "in": {
+                          "type": "string",
+                          "enum": [
+                            "header",
+                            "query",
+                            "security"
                           ],
-                          "additionalProperties": false
+                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "client_credentials"
-                              ]
-                            },
-                            "issuer": {
-                              "type": "string",
-                              "description": "The https URL of the authorization server"
-                            },
-                            "client_id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "scope": {
-                              "type": "string",
-                              "description": "The scopes, separated by spaces"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "issuer",
-                            "client_id"
-                          ],
-                          "additionalProperties": false
+                        "issuer": {
+                          "type": "string",
+                          "description": "For client_credentials, the https URL of the authorization server"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "authorization"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                        "client_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For client_credentials, the id of the client"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                         }
+                      },
+                      "required": [
+                        "kind"
                       ],
+                      "additionalProperties": false,
                       "description": "How the server is credentialled, never its value, which the person gives on the page"
                     },
                     "status": {
@@ -1959,151 +1749,50 @@
                           "description": "The tool server, without its credential"
                         },
                         "credential": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "none"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "kind"
-                              ],
-                              "additionalProperties": false
+                          "type": "object",
+                          "properties": {
+                            "kind": {
+                              "type": "string",
+                              "enum": [
+                                "none",
+                                "reference",
+                                "secret",
+                                "client_credentials",
+                                "authorization"
+                              ]
                             },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "reference"
-                                  ]
-                                },
-                                "name": {
-                                  "type": "string",
-                                  "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                                  "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "name"
-                              ],
-                              "additionalProperties": false
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                             },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "secret"
-                                  ]
-                                },
-                                "placed": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "header": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "description": "A header"
-                                        }
-                                      },
-                                      "required": [
-                                        "header"
-                                      ],
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "query": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "description": "A query parameter of an HTTP API"
-                                        }
-                                      },
-                                      "required": [
-                                        "query"
-                                      ],
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "security": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "description": "A security scheme of its document"
-                                        }
-                                      },
-                                      "required": [
-                                        "security"
-                                      ],
-                                      "additionalProperties": false
-                                    }
-                                  ],
-                                  "description": "Where the value goes"
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "placed"
+                            "in": {
+                              "type": "string",
+                              "enum": [
+                                "header",
+                                "query",
+                                "security"
                               ],
-                              "additionalProperties": false
+                              "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                             },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "client_credentials"
-                                  ]
-                                },
-                                "issuer": {
-                                  "type": "string",
-                                  "description": "The https URL of the authorization server"
-                                },
-                                "client_id": {
-                                  "type": "string",
-                                  "minLength": 1
-                                },
-                                "scope": {
-                                  "type": "string",
-                                  "description": "The scopes, separated by spaces"
-                                }
-                              },
-                              "required": [
-                                "kind",
-                                "issuer",
-                                "client_id"
-                              ],
-                              "additionalProperties": false
+                            "issuer": {
+                              "type": "string",
+                              "description": "For client_credentials, the https URL of the authorization server"
                             },
-                            {
-                              "type": "object",
-                              "properties": {
-                                "kind": {
-                                  "type": "string",
-                                  "enum": [
-                                    "authorization"
-                                  ]
-                                }
-                              },
-                              "required": [
-                                "kind"
-                              ],
-                              "additionalProperties": false
+                            "client_id": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "For client_credentials, the id of the client"
+                            },
+                            "scope": {
+                              "type": "string",
+                              "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                             }
+                          },
+                          "required": [
+                            "kind"
                           ],
+                          "additionalProperties": false,
                           "description": "How the server is credentialled, never its value, which the person gives on the page"
                         },
                         "status": {
@@ -2315,151 +2004,50 @@
                       "description": "The tool server, without its credential"
                     },
                     "credential": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "none"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "reference",
+                            "secret",
+                            "client_credentials",
+                            "authorization"
+                          ]
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "reference"
-                              ]
-                            },
-                            "name": {
-                              "type": "string",
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                              "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
-                          "additionalProperties": false
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "secret"
-                              ]
-                            },
-                            "placed": {
-                              "anyOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "header": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A header"
-                                    }
-                                  },
-                                  "required": [
-                                    "header"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "query": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A query parameter of an HTTP API"
-                                    }
-                                  },
-                                  "required": [
-                                    "query"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "security": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A security scheme of its document"
-                                    }
-                                  },
-                                  "required": [
-                                    "security"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ],
-                              "description": "Where the value goes"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "placed"
+                        "in": {
+                          "type": "string",
+                          "enum": [
+                            "header",
+                            "query",
+                            "security"
                           ],
-                          "additionalProperties": false
+                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "client_credentials"
-                              ]
-                            },
-                            "issuer": {
-                              "type": "string",
-                              "description": "The https URL of the authorization server"
-                            },
-                            "client_id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "scope": {
-                              "type": "string",
-                              "description": "The scopes, separated by spaces"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "issuer",
-                            "client_id"
-                          ],
-                          "additionalProperties": false
+                        "issuer": {
+                          "type": "string",
+                          "description": "For client_credentials, the https URL of the authorization server"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "authorization"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                        "client_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For client_credentials, the id of the client"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                         }
+                      },
+                      "required": [
+                        "kind"
                       ],
+                      "additionalProperties": false,
                       "description": "How the server is credentialled, never its value, which the person gives on the page"
                     },
                     "status": {
@@ -2667,151 +2255,50 @@
                       "description": "The tool server, without its credential"
                     },
                     "credential": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "none"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "reference",
+                            "secret",
+                            "client_credentials",
+                            "authorization"
+                          ]
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "reference"
-                              ]
-                            },
-                            "name": {
-                              "type": "string",
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                              "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
-                          "additionalProperties": false
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "secret"
-                              ]
-                            },
-                            "placed": {
-                              "anyOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "header": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A header"
-                                    }
-                                  },
-                                  "required": [
-                                    "header"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "query": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A query parameter of an HTTP API"
-                                    }
-                                  },
-                                  "required": [
-                                    "query"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "security": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A security scheme of its document"
-                                    }
-                                  },
-                                  "required": [
-                                    "security"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ],
-                              "description": "Where the value goes"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "placed"
+                        "in": {
+                          "type": "string",
+                          "enum": [
+                            "header",
+                            "query",
+                            "security"
                           ],
-                          "additionalProperties": false
+                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "client_credentials"
-                              ]
-                            },
-                            "issuer": {
-                              "type": "string",
-                              "description": "The https URL of the authorization server"
-                            },
-                            "client_id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "scope": {
-                              "type": "string",
-                              "description": "The scopes, separated by spaces"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "issuer",
-                            "client_id"
-                          ],
-                          "additionalProperties": false
+                        "issuer": {
+                          "type": "string",
+                          "description": "For client_credentials, the https URL of the authorization server"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "authorization"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                        "client_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For client_credentials, the id of the client"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                         }
+                      },
+                      "required": [
+                        "kind"
                       ],
+                      "additionalProperties": false,
                       "description": "How the server is credentialled, never its value, which the person gives on the page"
                     },
                     "status": {
@@ -3035,151 +2522,50 @@
                       "description": "The tool server, without its credential"
                     },
                     "credential": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "none"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "reference",
+                            "secret",
+                            "client_credentials",
+                            "authorization"
+                          ]
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "reference"
-                              ]
-                            },
-                            "name": {
-                              "type": "string",
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                              "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
-                          "additionalProperties": false
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "secret"
-                              ]
-                            },
-                            "placed": {
-                              "anyOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "header": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A header"
-                                    }
-                                  },
-                                  "required": [
-                                    "header"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "query": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A query parameter of an HTTP API"
-                                    }
-                                  },
-                                  "required": [
-                                    "query"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "security": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A security scheme of its document"
-                                    }
-                                  },
-                                  "required": [
-                                    "security"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ],
-                              "description": "Where the value goes"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "placed"
+                        "in": {
+                          "type": "string",
+                          "enum": [
+                            "header",
+                            "query",
+                            "security"
                           ],
-                          "additionalProperties": false
+                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "client_credentials"
-                              ]
-                            },
-                            "issuer": {
-                              "type": "string",
-                              "description": "The https URL of the authorization server"
-                            },
-                            "client_id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "scope": {
-                              "type": "string",
-                              "description": "The scopes, separated by spaces"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "issuer",
-                            "client_id"
-                          ],
-                          "additionalProperties": false
+                        "issuer": {
+                          "type": "string",
+                          "description": "For client_credentials, the https URL of the authorization server"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "authorization"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                        "client_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For client_credentials, the id of the client"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                         }
+                      },
+                      "required": [
+                        "kind"
                       ],
+                      "additionalProperties": false,
                       "description": "How the server is credentialled, never its value, which the person gives on the page"
                     },
                     "status": {
@@ -3428,151 +2814,50 @@
                       "description": "The tool server, without its credential"
                     },
                     "credential": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "none"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "reference",
+                            "secret",
+                            "client_credentials",
+                            "authorization"
+                          ]
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "reference"
-                              ]
-                            },
-                            "name": {
-                              "type": "string",
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                              "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
-                          "additionalProperties": false
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "secret"
-                              ]
-                            },
-                            "placed": {
-                              "anyOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "header": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A header"
-                                    }
-                                  },
-                                  "required": [
-                                    "header"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "query": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A query parameter of an HTTP API"
-                                    }
-                                  },
-                                  "required": [
-                                    "query"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "security": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A security scheme of its document"
-                                    }
-                                  },
-                                  "required": [
-                                    "security"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ],
-                              "description": "Where the value goes"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "placed"
+                        "in": {
+                          "type": "string",
+                          "enum": [
+                            "header",
+                            "query",
+                            "security"
                           ],
-                          "additionalProperties": false
+                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "client_credentials"
-                              ]
-                            },
-                            "issuer": {
-                              "type": "string",
-                              "description": "The https URL of the authorization server"
-                            },
-                            "client_id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "scope": {
-                              "type": "string",
-                              "description": "The scopes, separated by spaces"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "issuer",
-                            "client_id"
-                          ],
-                          "additionalProperties": false
+                        "issuer": {
+                          "type": "string",
+                          "description": "For client_credentials, the https URL of the authorization server"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "authorization"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                        "client_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For client_credentials, the id of the client"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                         }
+                      },
+                      "required": [
+                        "kind"
                       ],
+                      "additionalProperties": false,
                       "description": "How the server is credentialled, never its value, which the person gives on the page"
                     },
                     "status": {
@@ -3843,151 +3128,50 @@
                       "description": "The tool server, without its credential"
                     },
                     "credential": {
-                      "anyOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "none"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "none",
+                            "reference",
+                            "secret",
+                            "client_credentials",
+                            "authorization"
+                          ]
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "reference"
-                              ]
-                            },
-                            "name": {
-                              "type": "string",
-                              "pattern": "^[A-Za-z_][A-Za-z0-9_]*$",
-                              "description": "The variable of the runtime that holds it, such as CRM_API_KEY"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "name"
-                          ],
-                          "additionalProperties": false
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "secret"
-                              ]
-                            },
-                            "placed": {
-                              "anyOf": [
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "header": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A header"
-                                    }
-                                  },
-                                  "required": [
-                                    "header"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "query": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A query parameter of an HTTP API"
-                                    }
-                                  },
-                                  "required": [
-                                    "query"
-                                  ],
-                                  "additionalProperties": false
-                                },
-                                {
-                                  "type": "object",
-                                  "properties": {
-                                    "security": {
-                                      "type": "string",
-                                      "minLength": 1,
-                                      "description": "A security scheme of its document"
-                                    }
-                                  },
-                                  "required": [
-                                    "security"
-                                  ],
-                                  "additionalProperties": false
-                                }
-                              ],
-                              "description": "Where the value goes"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "placed"
+                        "in": {
+                          "type": "string",
+                          "enum": [
+                            "header",
+                            "query",
+                            "security"
                           ],
-                          "additionalProperties": false
+                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "client_credentials"
-                              ]
-                            },
-                            "issuer": {
-                              "type": "string",
-                              "description": "The https URL of the authorization server"
-                            },
-                            "client_id": {
-                              "type": "string",
-                              "minLength": 1
-                            },
-                            "scope": {
-                              "type": "string",
-                              "description": "The scopes, separated by spaces"
-                            }
-                          },
-                          "required": [
-                            "kind",
-                            "issuer",
-                            "client_id"
-                          ],
-                          "additionalProperties": false
+                        "issuer": {
+                          "type": "string",
+                          "description": "For client_credentials, the https URL of the authorization server"
                         },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "kind": {
-                              "type": "string",
-                              "enum": [
-                                "authorization"
-                              ]
-                            }
-                          },
-                          "required": [
-                            "kind"
-                          ],
-                          "additionalProperties": false
+                        "client_id": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For client_credentials, the id of the client"
+                        },
+                        "scope": {
+                          "type": "string",
+                          "description": "For client_credentials, the scopes, separated by spaces; none when left out"
                         }
+                      },
+                      "required": [
+                        "kind"
                       ],
+                      "additionalProperties": false,
                       "description": "How the server is credentialled, never its value, which the person gives on the page"
                     },
                     "status": {

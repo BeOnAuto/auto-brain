@@ -11,7 +11,7 @@ const crm = {
   name: 'crm',
   kind: 'mcp',
   entry: { url: 'https://crm.example.com/mcp', headers: { 'X-Tenant': 'acme-eu' } },
-  credential: { kind: 'secret', placed: { header: 'Authorization' } },
+  credential: { kind: 'secret', name: 'Authorization', in: 'header' },
 };
 
 const AddedSchema = Schema.Struct({

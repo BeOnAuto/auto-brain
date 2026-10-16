@@ -19,7 +19,7 @@ describe('the answer to adding a connection', () => {
           allowed: ['search'],
           playbooks: ['sales'],
         },
-        credential: { kind: 'secret', placed: { header: 'Authorization' } },
+        credential: { kind: 'secret', name: 'Authorization', in: 'header' },
         status: 'pending',
         added_by: 'person:ada',
         added_at: '2026-10-15T14:00:00.000Z',
@@ -63,8 +63,10 @@ describe('the facts of adding a connection', () => {
     expect(JSON.stringify(facts)).not.toContain(token);
   });
 
-  it('hold an openapi entry, with the playbooks beside the entry in place of its own', async () => {
-    expect(await adding(harness(), { ...billing, playbooks: ['billing-runs'] })).toMatchObject({
+  it('hold an openapi entry, with the playbooks it names', async () => {
+    expect(
+      await adding(harness(), { ...billing, entry: { ...billing.entry, playbooks: ['billing-runs'] } }),
+    ).toMatchObject({
       status: 'succeeded',
       output: { kind: 'openapi', entry: { playbooks: ['billing-runs'] }, credential: { kind: 'client_credentials' } },
     });
@@ -106,7 +108,11 @@ const refusedEntries = [
   ],
   ['an mcp connection without its url', { ...notes, entry: {} }, '/entry'],
   ['a document on the disk of the runtime', { ...billing, entry: { document: 'openapi.json' } }, '/entry/document'],
-  ['playbooks given twice', { ...crm, entry: { ...crm.entry, playbooks: ['sales'] } }, '/playbooks'],
+  [
+    'a playbook that is no playbook id',
+    { ...notes, entry: { ...notes.entry, playbooks: ['Sales'] } },
+    '/entry/playbooks/0',
+  ],
   ['a tool listed twice', { ...notes, entry: { ...notes.entry, allowed: ['search', 'search'] } }, '/entry/allowed/1'],
 ] as const;
 
@@ -117,66 +123,6 @@ describe('an entry the checks of a file entry refuse', () => {
       reason: 'invalid_input',
       issues: [{ pointer }],
     });
-  });
-});
-
-const refusedCredentials = [
-  ['authorization, not available yet', { kind: 'authorization' }, '/credential/kind'],
-  [
-    'a secret in a query parameter of an mcp server',
-    { kind: 'secret', placed: { query: 'key' } },
-    '/credential/placed',
-  ],
-  [
-    'a secret in a header the entry sends',
-    { kind: 'secret', placed: { header: 'x-tenant' } },
-    '/credential/placed/header',
-  ],
-  ['a secret in no header', { kind: 'secret', placed: { header: 'a header' } }, '/credential/placed/header'],
-  [
-    'client credentials of an issuer that is not pinned',
-    { kind: 'client_credentials', issuer: 'http://auth.example.com', client_id: 'acme' },
-    '/credential/issuer',
-  ],
-] as const;
-
-describe('a credential that cannot be taken', () => {
-  it.each(refusedCredentials)('is refused for %s', async (_, credential, pointer) => {
-    expect(await adding(harness(), { ...crm, credential })).toMatchObject({
-      status: 'rejected',
-      reason: 'invalid_input',
-      issues: [{ pointer }],
-    });
-  });
-
-  it('says that authorization is not available yet', async () => {
-    expect(issuesIn(await adding(harness(), { ...crm, credential: { kind: 'authorization' } }))).toEqual([
-      {
-        pointer: '/credential/kind',
-        detail:
-          'The authorization credential, a consent the person gives the server, is not available yet; give a secret or client credentials instead',
-      },
-    ]);
-  });
-});
-
-describe('a secret of an HTTP API', () => {
-  it('is taken in a header, a query parameter or a security scheme the entry leaves free', async () => {
-    const api = { ...billing, entry: { ...billing.entry, query_params: { tenant: 'acme' } } };
-    const placedIn = (name: string, placed: Readonly<Record<string, string>>) => ({
-      ...api,
-      name,
-      credential: { kind: 'secret', placed },
-    });
-
-    const statuses = await statusesOf(harness(), [
-      placedIn('billing-header', { header: 'X-Api-Key' }),
-      placedIn('billing-key', { query: 'key' }),
-      placedIn('billing-scheme', { security: 'apiKey' }),
-      placedIn('billing-tenant', { query: 'Tenant' }),
-    ]);
-
-    expect(statuses).toEqual(['succeeded', 'succeeded', 'succeeded', 'rejected']);
   });
 });
 

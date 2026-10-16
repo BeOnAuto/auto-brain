@@ -1,4 +1,3 @@
-import { PlaybookIdSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
 import { ConnectionEntrySchema, ConnectionKindSchema } from '../registry/connection-entry.ts';
@@ -18,9 +17,6 @@ export const AdditionSchema = Schema.Struct({
   kind: ConnectionKindSchema,
   entry: ConnectionEntrySchema,
   credential: CredentialSchema,
-  playbooks: Schema.optionalKey(
-    Schema.Array(PlaybookIdSchema).annotate({ description: 'The playbooks that may use it, in place of the entry’s' }),
-  ),
 });
 
 export const ConnectionIdField = Schema.String.check(Schema.isMinLength(1)).annotate({

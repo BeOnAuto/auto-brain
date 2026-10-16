@@ -171,11 +171,11 @@ The bound on a listing is bytes because a listing is what an agent's client load
 
 | Endpoint                                    | Tools | Bytes on the wire | Bound  |
 | ------------------------------------------- | ----- | ----------------- | ------ |
-| `POST /mcp`                                 | 28    | 43,918            | 48,000 |
-| `POST /orgs/{org}/mcp`                      | 10    | 13,373            | 16,000 |
+| `POST /mcp`                                 | 28    | 43,094            | 48,000 |
+| `POST /orgs/{org}/mcp`                      | 10    | 12,549            | 16,000 |
 | `POST /orgs/{org}/playbooks/{playbook}/mcp` | 20    | 30,769            | 40,000 |
 
-A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
+The org endpoint keeps the bound of 16,000 bytes it took with the tools of connections: its listing takes 12,549, above the 12,000 it had without them. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
 
 **Which errors look how.** An MCP endpoint answers in three shapes:
 

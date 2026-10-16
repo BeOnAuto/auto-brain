@@ -16,7 +16,7 @@ const crm = {
   name: 'crm',
   kind: 'mcp',
   entry: { url: 'https://crm.example.com/mcp', headers: { 'X-Tenant': 'acme-eu' } },
-  credential: { kind: 'secret', placed: { header: 'Authorization' } },
+  credential: { kind: 'secret', name: 'Authorization', in: 'header' },
 } as const;
 
 const crmAdded: ConnectionEvent = { type: 'connection_added', data: crm };
@@ -53,7 +53,7 @@ describe('an added connection, as the stream folds it', () => {
         name: 'crm',
         kind: 'mcp',
         entry: { url: 'https://crm.example.com/mcp', headers: { 'X-Tenant': 'acme-eu' } },
-        credential: { kind: 'secret', placed: { header: 'Authorization' } },
+        credential: { kind: 'secret', name: 'Authorization', in: 'header' },
         status: 'pending',
         added_by: 'person:ada',
         added_at: '2026-10-15T14:00:00.000Z',

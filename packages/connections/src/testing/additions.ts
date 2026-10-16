@@ -6,9 +6,13 @@ import { ada, operationNamed, type Harness } from './harness.ts';
 export const crm = {
   name: 'crm',
   kind: 'mcp',
-  entry: { url: 'https://crm.example.com/mcp', headers: { 'X-Tenant': 'acme-eu' }, allowed: ['search'] },
-  credential: { kind: 'secret', placed: { header: 'Authorization' } },
-  playbooks: ['sales'],
+  entry: {
+    url: 'https://crm.example.com/mcp',
+    headers: { 'X-Tenant': 'acme-eu' },
+    allowed: ['search'],
+    playbooks: ['sales'],
+  },
+  credential: { kind: 'secret', name: 'Authorization', in: 'header' },
 } as const;
 
 export const billing = {

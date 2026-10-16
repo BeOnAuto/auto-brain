@@ -45,8 +45,7 @@ export function defineAddConnection({ policy, fileEntries, providers, pages }: C
         return yield* Effect.fail(takenByTheFile(input.name));
       }
       const { token, ...link } = yield* issuedLink;
-      const { name, kind, credential, playbooks } = input;
-      const entry = playbooks === undefined ? input.entry : { ...input.entry, playbooks };
+      const { name, kind, entry, credential } = input;
       const connection = randomUUIDv7();
       const kept = yield* recordInRegistry({ type: 'add', connection, name, kind, entry, credential, link }).pipe(
         Effect.catchTags({ not_found: Effect.die, forbidden: Effect.die }),

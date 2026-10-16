@@ -12,7 +12,6 @@ export interface AdditionInput {
   readonly kind: ConnectionKind;
   readonly entry: ConnectionEntry;
   readonly credential: Credential;
-  readonly playbooks?: readonly string[];
 }
 
 export interface EntryChecking {
@@ -63,16 +62,9 @@ function documentIssues({ kind, entry }: AdditionInput): readonly Issue[] {
     : [];
 }
 
-function playbooksIssues({ entry, playbooks }: AdditionInput): readonly Issue[] {
-  return entry.playbooks !== undefined && playbooks !== undefined
-    ? [{ pointer: '/playbooks', detail: 'Give playbooks once, beside the entry or in it' }]
-    : [];
-}
-
 function servedIssues(input: AdditionInput, { org, providers }: EntryChecking): readonly Issue[] {
-  const { name, kind, entry, playbooks = entry.playbooks } = input;
-  const fields = { ...entry, ...(playbooks === undefined ? {} : { playbooks }), type: kind, org };
-  const checked = checkedEntry(name, fields, { providers, directory: '.', secrets: [] });
+  const { name, kind, entry } = input;
+  const checked = checkedEntry(name, { ...entry, type: kind, org }, { providers, directory: '.', secrets: [] });
   return Result.isFailure(checked) ? issuesOf(checked.failure, `/${JsonPointer.escapeToken(name)}`, '/entry') : [];
 }
 
@@ -84,7 +76,6 @@ export function additionIssuesOf(input: AdditionInput, checking: EntryChecking):
   );
   return [
     ...named,
-    ...playbooksIssues(input),
     ...documentIssues(input),
     ...writtenIssues(input.name, input.entry),
     ...(named.length === 0 && documentIssues(input).length === 0 ? servedIssues(input, checking) : []),
