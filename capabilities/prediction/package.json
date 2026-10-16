@@ -27,7 +27,6 @@
     "onnxruntime-node": "1.30.0"
   },
   "devDependencies": {
-    "@on.auto/api": "workspace:*",
     "@on.auto/interaction": "workspace:*",
     "@on.auto/ledger": "workspace:*",
     "@types/pg": "8.23.1",

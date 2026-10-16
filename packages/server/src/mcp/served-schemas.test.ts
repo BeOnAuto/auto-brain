@@ -1,6 +1,5 @@
 import { mostListingBytes } from '@on.auto/api';
 import {
-  internalTermsIn,
   listedTools,
   mcpClientKinds,
   plainTextIn,
@@ -9,6 +8,7 @@ import {
   type ListedTool,
   type ToolResult,
 } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Option, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';

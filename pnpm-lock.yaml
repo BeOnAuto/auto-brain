@@ -325,9 +325,6 @@ importers:
         specifier: 2.9.1
         version: 2.9.1
     devDependencies:
-      '@on.auto/api':
-        specifier: workspace:*
-        version: link:../../packages/api
       '@on.auto/prediction':
         specifier: workspace:*
         version: link:../prediction
@@ -396,9 +393,6 @@ importers:
         specifier: 1.30.0
         version: 1.30.0
     devDependencies:
-      '@on.auto/api':
-        specifier: workspace:*
-        version: link:../../packages/api
       '@on.auto/interaction':
         specifier: workspace:*
         version: link:../interaction

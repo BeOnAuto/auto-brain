@@ -1,4 +1,5 @@
-import { internalTermsIn, plainTextIn, withMcpSession, type ToolResult } from '@on.auto/api/testing';
+import { plainTextIn, withMcpSession, type ToolResult } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';

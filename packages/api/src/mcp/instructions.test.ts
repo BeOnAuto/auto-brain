@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -11,7 +12,6 @@ import {
   queriesInsideAPlaybook,
   recipes,
 } from '../testing/served-instructions.ts';
-import { internalTermsIn } from '../testing/vocabulary/internal-terms.ts';
 import { instructionsFor, type ServedTools } from './instructions.ts';
 
 const recordOnMcp =

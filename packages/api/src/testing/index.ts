@@ -11,7 +11,6 @@ export {
   type McpSession,
   type ToolResult,
 } from './mcp-clients.ts';
-export { internalTerms, internalTermsIn } from './vocabulary/internal-terms.ts';
 export { foundIn, oldWords, oldWordsIn } from './vocabulary/old-words.ts';
 export {
   openApiErrorsIn,

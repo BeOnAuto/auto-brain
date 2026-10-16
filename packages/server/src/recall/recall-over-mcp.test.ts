@@ -1,11 +1,5 @@
-import {
-  internalTermsIn,
-  listedTools,
-  plainTextIn,
-  textOf,
-  withMcpSession,
-  type McpSession,
-} from '@on.auto/api/testing';
+import { listedTools, plainTextIn, textOf, withMcpSession, type McpSession } from '@on.auto/api/testing';
+import { internalTermsIn } from '@on.auto/operations/testing';
 import { campaignReviews, foldOf, recallDocument } from '@on.auto/recall/testing';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 

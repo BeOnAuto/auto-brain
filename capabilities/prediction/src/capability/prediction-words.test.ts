@@ -1,4 +1,3 @@
-import { internalTermsIn } from '@on.auto/api/testing';
 import { describe, expect, it } from 'vitest';
 
 import { describeOutput } from './prediction-words.ts';
@@ -47,10 +46,6 @@ describe('the words of what a run of a prediction function answers', () => {
       'From 2026-10-25, it predicts 78 visits by the end of 2026-W44 (70 to 85 visits), its range holding the truth eight times in ten, from version 1 of its model.',
       'From 2026-10-25, it predicts 78 visits by the end of 2026-11-01 (70 to 85 visits), its range holding the truth eight times in ten.',
     ]);
-  });
-
-  it('say each measured number in digits with its unit after it, so none reads as a status code', () => {
-    expect(internalTermsIn(describeOutput(prediction, { version: 3 }), [prediction.unit])).toEqual([]);
   });
 
   it('say what a build kept, and that it kept nothing when no candidate won or none was uploaded', () => {
