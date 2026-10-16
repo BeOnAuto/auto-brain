@@ -7,7 +7,7 @@ This page lists every setting of the runtime, the configuration file, and the to
 - Every setting is an environment variable. Keys and other secrets go in the environment alone.
 - A container takes its variables from its platform, or from a file of them with `docker run --env-file`.
 - `npx @on.auto/runtime` also reads `.env` in the folder it starts in. A variable set in the shell wins over `.env`.
-- Settings that are lists or maps can also go in a YAML configuration file: `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `tool_servers`, `api_keys` and `allowed_origins`.
+- Settings that are lists or maps can also go in a YAML configuration file: `model_gateways`, `model_aliases`, `declared_models`, `allowed_models`, `tool_servers`, `connections`, `api_keys` and `allowed_origins`.
 - `CONFIG_FILE` names that file. `npx @on.auto/runtime` reads `auto-runtime.yaml` in the folder it starts in when it is there, unless `.env` or the shell sets `CONFIG_FILE`. A container reads a file only when `CONFIG_FILE` names it, as [Use a configuration file](docker.md#use-a-configuration-file) shows.
 - Each key of the file stands for the environment variable of the same name in upper case. A variable that is set wins over the key, whole: `MODEL_GATEWAYS` replaces the file's `model_gateways`, and the two are not merged.
 - Precedence, highest first: the shell, `.env` (with `npx`), the configuration file, the default.
@@ -44,7 +44,7 @@ The server stops at start with one line that names the file, the line, the colum
 
 A value counts as a credential written out when:
 
-- its key names a credential, such as `api_key`, `Authorization`, `client_secret`, `password` or `token`, and it holds no reference;
+- its key names a credential, such as `api_key`, `Authorization`, `client_secret`, `password` or `token`, and it holds no reference. A key whose last word is `kind`, `kinds`, `type` or `types`, such as `credential_kinds` or `token_type`, names a sort of credential and not one, so its value is judged by its shape alone;
 - the text written out in it has the shape of one, such as `Bearer ...`, an `sk-...` provider key or an `abk_...` API key;
 - it is a URL with a password, or whose user or query value has that shape;
 - it is an argument whose part after its `=` has that shape.
@@ -441,3 +441,22 @@ The server checks every entry at start. It stops at any of these, naming the set
 An unknown key in an entry is refused, like any other unknown key.
 
 The server does not connect to an MCP server or start a process until a run or one of the five tools needs one. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.
+
+## Connections
+
+A connection is a tool server that a person adds to an org through their agent, which every playbook of the org may use; [Let people add connections](connections.md) sets out how a person adds and approves one. The `connections` section of the configuration file says what people may add; `CONNECTIONS`, the same object as JSON, wins over it. Every rule has a default, so leaving the section out lets people add any connection.
+
+```yaml
+connections:
+  people_may_add: true
+  allowed_hosts: ['*.example.com', 'crm.example.com']
+  credential_kinds: [none, reference, secret, client_credentials]
+```
+
+| Key                | Default    | Purpose                                                                                                                                                                                       |
+| ------------------ | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `people_may_add`   | `true`     | `false` refuses every connection                                                                                                                                                              |
+| `allowed_hosts`    | every host | The hosts a connection may reach, each a host or `*.` and a host for every host under it; the host of an `mcp` connection's `url`, and of an `openapi` connection's `document` and `base_url` |
+| `credential_kinds` | every kind | The kinds of credential a connection may take: `none`, `reference`, `secret`, `client_credentials` and `authorization`, which the runtime refuses until a later release adds it               |
+
+`add_connection` refuses with `403` a connection one of these rules does not take, with the sentence of the rule, and with `409` a connection named as an entry of `tool_servers`. A key the section does not know, a pattern that is not a host and a kind there is not stop the server at start, naming the line.

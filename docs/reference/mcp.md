@@ -15,7 +15,7 @@ A reasoning function can call tools itself, through tool servers the runtime's o
 | Path                                   | Acts on                                                                | Tools                                                                                                                      |
 | -------------------------------------- | ---------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | `/mcp`                                 | The caller's own org and, through a `playbook` argument, its playbooks | Every tool. A tool that works inside a playbook takes a required `playbook` argument; `search` takes it as an optional one |
-| `/orgs/{org}/mcp`                      | One org's playbooks                                                    | Playbook management, `list_models`, `search` and `get_guide`                                                               |
+| `/orgs/{org}/mcp`                      | One org's playbooks                                                    | Playbook management, `list_models`, `search`, the connection tools and `get_guide`                                         |
 | `/orgs/{org}/playbooks/{playbook}/mcp` | One playbook                                                           | The tools that work inside a playbook, with no `playbook` argument, and `search` and `get_guide`                           |
 
 - Every endpoint uses streamable HTTP without sessions and accepts `POST`.
@@ -24,7 +24,7 @@ A reasoning function can call tools itself, through tool servers the runtime's o
 - A connection lists only the tools its key or token may call. A read-only key sees the tools that read, and none that creates or runs a function. A key that may only read inside some playbooks is offered `list_playbooks`, which lists those playbooks.
 - Which tools a connection lists depends on both the endpoint and the caller's permissions. A missing `create_definition` can mean either. The connection may be to the org endpoint, or its key or token may lack `playbook:write`.
 - The org and playbook a scoped endpoint names stay subject to the caller's access. Choosing a more specific endpoint grants no extra permission.
-- Five prediction routes are served only over [HTTP](http.md#prediction-functions): the three a build's trainer calls, the upload of a dataset and the activation of a version. No endpoint offers them as tools.
+- Five prediction routes are served only over [HTTP](http.md#prediction-functions): the three a build's trainer calls, the upload of a dataset and the activation of a version. So are the three routes of Studio's page that approves a [connection](#connections): `read_link`, `approve` and `give_credential`. No endpoint offers them as tools.
 
 ### What a connecting agent is told
 
@@ -34,8 +34,9 @@ An agent that connects receives instructions written for the tools its key or to
 - what the connection acts on: the caller's own org on `/mcp`, one org's playbooks on `/orgs/{org}/mcp`, or one playbook on `/orgs/{org}/playbooks/{playbook}/mcp`;
 - that `get_guide` returns the format of each definition and the recipes;
 - how a reasoning function names its model and its tools;
+- where `add_connection` is listed, that it adds a tool server, which the person approves;
 - that `get_run` shows whether a run that finishes later has ended or is still waiting;
-- that when the person answers what a run waits on, such as an approval, the agent answers the request with `answer_interaction` and starts no new run for it. The answer takes the shape the function's answer takes;
+- that when the person answers what a run waits on, such as an approval, the agent answers the request with `answer_interaction` and starts no new run for it;
 - that runs, history, events and requests come one page at a time;
 - how to reply to the person: what was done and what they can do next, in the words of playbooks, functions, workflows and runs. An id or a status appears only when the person needs it to act.
 
@@ -79,12 +80,12 @@ Every tool supplies a description and the JSON Schema of its input. No tool has 
 
 Each tool's annotations tell a client how careful to be:
 
-| Annotation        | Means                                                          | `true` for                                                                                                                                             |
-| ----------------- | -------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `readOnlyHint`    | The tool only reads                                            | Every tool that reads, including `validate` and `dry_run`, although their HTTP routes use `POST`                                                       |
-| `destructiveHint` | What it does cannot be undone, or may change something outside | `retire_playbook`, `retire_definition`, `cancel_run` and `answer_interaction`; `run_definition` and `execute` while any tool server is configured      |
-| `idempotentHint`  | Calling it again with the same input changes nothing           | Every tool that reads, and `update_playbook`, `retire_playbook`, `update_definition`, `retire_definition`, `cancel_run` and `answer_interaction`       |
-| `openWorldHint`   | It reaches outside the runtime                                 | `list_models` and `run_definition`, which reach model providers; `search`, `introspect`, `validate`, `dry_run` and `execute`, which reach tool servers |
+| Annotation        | Means                                                          | `true` for                                                                                                                                                             |
+| ----------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readOnlyHint`    | The tool only reads                                            | Every tool that reads, including `validate` and `dry_run`, although their HTTP routes use `POST`                                                                       |
+| `destructiveHint` | What it does cannot be undone, or may change something outside | `retire_playbook`, `remove_connection`, `retire_definition`, `cancel_run` and `answer_interaction`; `run_definition` and `execute` while any tool server is configured |
+| `idempotentHint`  | Calling it again with the same input changes nothing           | Every tool that reads, and `update_playbook`, `retire_playbook`, `remove_connection`, `update_definition`, `retire_definition`, `cancel_run` and `answer_interaction`  |
+| `openWorldHint`   | It reaches outside the runtime                                 | `list_models` and `run_definition`, which reach model providers; `search`, `introspect`, `validate`, `dry_run` and `execute`, which reach tool servers                 |
 
 `run_definition` is marked destructive while a tool server is configured, because a function's tools may then change something. An agent can ask the person before it runs a function.
 
@@ -177,6 +178,23 @@ Five tools work with the tool servers set up for the playbook, whether MCP serve
 - A call that names a server or a tool the playbook may not use is refused, and the refusal's words say what `search` shows.
 
 [Tool servers](http.md#tool-servers) gives the fields, limits and refusals of all five.
+
+### Connections
+
+A connection is a tool server that a person adds to the org through their agent, which every playbook of the org may use, or the playbooks its entry names. These tools are listed on `/mcp` and the org endpoint. Their routes are relative to `/v1/orgs/{org}`.
+
+| Tool                | HTTP operation             | What it is for                                                                     |
+| ------------------- | -------------------------- | ---------------------------------------------------------------------------------- |
+| `add_connection`    | `POST /connections`        | Add a tool server to the org, pending, and answer the link that approves it        |
+| `list_connections`  | `GET /connections`         | List the org's connections, newest first, and whether each is pending or connected |
+| `get_connection`    | `GET /connections/{id}`    | Read one connection, to see whether the person approved it                         |
+| `remove_connection` | `DELETE /connections/{id}` | Remove a connection for good, which forgets its credential                         |
+
+- The agent adds a connection without its credential: an entry that holds a value that looks like a credential, or a reference such as `${CRM_API_KEY}`, is refused. The person approves the connection, and gives its credential where it takes one, on Studio's page, which `connect.url` of the answer opens within ten minutes.
+- `add_connection` always puts the link in its answer. To a client of the `2026-07-28` revision that declares in its request that it opens links, the `url` form of elicitation, it also asks for the link to be opened, with a message that says what to do. The client opens the page or declines, and retries the call, which answers the connection added once and never adds a second one. The retry carries state the server signed with a key it makes at start, so it must reach the same server: behind several, a retry that another server takes is refused, and the connection stays added. A client of an earlier revision, whose requests carry no capabilities on this stateless server, is not asked; it shows the person the link from the answer.
+- `add_connection` and `remove_connection` need `org:write`, and `list_connections` and `get_connection` need `org:read`.
+
+[Connections](http.md#connections) gives the fields, limits and refusals, and [Let people add connections](../self-host/connections.md) the flow and the rules the operator sets.
 
 ## Guides and prompts
 

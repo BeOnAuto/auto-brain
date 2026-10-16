@@ -126,6 +126,10 @@
             "link": "/self-host/tool-servers"
           },
           {
+            "text": "Let people add connections",
+            "link": "/self-host/connections"
+          },
+          {
             "text": "Authentication and security",
             "link": "/self-host/security"
           },

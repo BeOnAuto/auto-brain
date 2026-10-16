@@ -12,14 +12,14 @@ Send requests to the server's address, such as `http://localhost:5555`, with a c
 - Send the credential, an [API key](../self-host/security.md#api-keys) or a signed-in person's token, as `Authorization: Bearer <key>`. Keep credentials out of prompts and source documents.
 - A server in [local mode](../self-host/security.md#local-mode) asks for no credential. The [Sign-in and token reference](authentication.md) gives the rules the server applies to credentials.
 - Send command bodies as UTF-8 JSON with `Content-Type: application/json`, at most 1 MiB. Compressed bodies are not accepted.
-- Query parameters are for `GET` requests. A field may be supplied in only one place.
+- Query parameters are for `GET` and `DELETE` requests, which take no body. A field may be supplied in only one place.
 
 Each API key belongs to one org and has permissions for a set of playbooks:
 
 | Permission       | Lets the caller                                                                                                                |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `org:read`       | Read the org's playbooks, list models and search the org's tool servers                                                        |
-| `org:write`      | Create, update and retire playbooks                                                                                            |
+| `org:read`       | Read the org's playbooks and connections, list models and search the org's tool servers                                        |
+| `org:write`      | Create, update and retire playbooks, and add and remove connections                                                            |
 | `playbook:read`  | Read definitions, runs, history, events, requests and analytics, and search and read tools                                     |
 | `playbook:write` | Create, change, retire or run a function or workflow, cancel a run, send or publish an event, answer a request and call a tool |
 
@@ -1043,6 +1043,39 @@ Each call is recorded in the playbook's history: as `tool_call_started` before i
 - The arguments and the result are kept unless the operator turns `record_content` off for the server.
 - A caller that disconnects during the call leaves a start without an answer.
 - When no run holds a connection to the server, each call opens one and closes it once the call ends.
+
+## Connections
+
+A connection is a tool server that a person adds to the org through their agent, which every playbook of the org may use, or the playbooks its entry names. The agent adds it without its credential; the person approves it, and gives its credential where it takes one, on Studio's page, which its link opens. [Let people add connections](../self-host/connections.md) sets out the flow, the kinds of credential and the rules the operator sets. These routes are relative to `/v1/orgs/{org}`:
+
+| Operation           | Method and route                     | Permission                                         | Input                                                                                                                |
+| ------------------- | ------------------------------------ | -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
+| `add_connection`    | `POST /connections`                  | `org:write`                                        | `name`, `kind`, `entry`, `credential`, optional `playbooks`                                                          |
+| `list_connections`  | `GET /connections`                   | `org:read`                                         | Optional `include_removed`                                                                                           |
+| `get_connection`    | `GET /connections/{id}`              | `org:read`                                         | Connection id in path                                                                                                |
+| `remove_connection` | `DELETE /connections/{id}`           | `org:write`                                        | Connection id in path                                                                                                |
+| `read_link`         | `GET /connections/{id}/link/{token}` | any, with the link's token                         | Connection id and token in path                                                                                      |
+| `approve`           | `POST /connections/{id}/approve`     | any, with the link's token and the adder's session | `token`                                                                                                              |
+| `give_credential`   | `POST /connections/{id}/credential`  | any, with the link's token and the adder's session | `token`, and `value` for a `secret`, or `client_secret`, or `private_key` with `algorithm`, for `client_credentials` |
+
+Every operation answers the connection: `id`, a UUIDv7; `name`; `kind`, `mcp` or `openapi`; `entry`; `credential`, how it is credentialled, never its value; `status`, `pending`, `connected`, `broken` or `removed`; `added_by`; `added_at`; `connected_at`; and `broken`, why it is broken, or `null`. `add_connection` answers `201` with the connection and `connect`, `{ url, expires_at }`: `url` is Studio's page, `https://studio.on.auto/connect?server=<the runtime's origin>&org=<org>&connection=<id>&token=<token>`, whose origin is `PUBLIC_URL`, or the server's own address in local mode, and the link expires ten minutes on. `list_connections` answers them newest first in `connections`, the removed ones only with `include_removed`.
+
+- `entry` holds the server without its credential: `url` for `mcp`; `document` and `base_url` for `openapi`; and `headers`, `query_params`, `allowed`, `playbooks`, `record_content` and `request_id`, as an entry of the configuration file has them. `playbooks` beside `entry` takes the place of the entry's; giving both is `invalid_input`.
+- `credential` is `{ kind: none }`; `{ kind: reference, name }`, a variable of the runtime; `{ kind: secret, placed }`, where `placed` is `{ header }`, or for an HTTP API `{ query }` or `{ security }`; `{ kind: client_credentials, issuer, client_id, scope }`; or `{ kind: authorization }`, which is refused until a later release adds it.
+- The three routes of the link are Studio's page's alone, and no MCP endpoint serves them. Each takes the token, which the runtime keeps only as its SHA-256, and matches it to the open link of the connection: one given less than ten minutes ago that nothing has used up.
+- `approve` connects a connection whose credential is `none` or `reference` and uses its link up. `give_credential` keeps the value sealed in the runtime's secret store, connects the connection and uses its link up: giving the credential is its approval.
+- On a runtime that signs people in, `approve` and `give_credential` need the session of the person who added the connection. In local mode the token alone binds.
+- `remove_connection` removes a connection for good, and the runtime forgets its credential. Removing a removed connection succeeds and records nothing. Its name may then be given to a new connection.
+
+| Case                                                                                                                           | Response                                   |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------ |
+| An entry that holds a value that looks like a credential, a reference such as `${NAME}`, or a field another entry would refuse | `invalid_input`                            |
+| The credential `authorization`, or a credential given in the wrong fields                                                      | `invalid_input`                            |
+| A connection the operator's rules do not take: no one may add one, its host or its kind of credential                          | `forbidden`, with the sentence of the rule |
+| A name of an entry of `tool_servers`, or of a connection of the org that is not removed                                        | `conflict`                                 |
+| A token that is unknown, used up or expired, or an id the org does not have                                                    | `not_found`                                |
+| `approve` or `give_credential` with the session of another person, where people sign in                                        | `forbidden`                                |
+| `approve` of a connection whose credential is to be given, or `give_credential` of one that takes none                         | `conflict`                                 |
 
 ## Responses and errors
 
