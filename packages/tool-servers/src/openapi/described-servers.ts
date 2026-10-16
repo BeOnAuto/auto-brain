@@ -1,4 +1,4 @@
-import type { SettingProblem } from '@on.auto/config';
+import { settingProblemText, type SettingProblem } from '@on.auto/config';
 import { Data, Effect } from 'effect';
 
 import type { ServerSettings, ToolServerSettings } from '../settings/server-settings.ts';
@@ -25,7 +25,7 @@ function refusedOrLinked([servers, refusals]: readonly [
   readonly Problems[],
 ]): Effect.Effect<ToolServers, ToolServerDocumentRefused> {
   const problems = refusals.flat();
-  const listed = problems.map(({ setting, detail }) => `${setting}: ${detail}`).join('; ');
+  const listed = problems.map((problem) => settingProblemText(problem)).join('; ');
   return problems.length > 0
     ? Effect.fail(
         new ToolServerDocumentRefused({

@@ -1,3 +1,4 @@
+import { settingProblemText } from '@on.auto/config';
 import { Config, Data, Effect } from 'effect';
 
 import { aliasReading } from './alias-settings.ts';
@@ -65,7 +66,7 @@ const sources = Config.all({
 });
 
 function invalid(problems: readonly SettingProblem[]): ModelSettingsInvalid {
-  const listed = problems.map(({ setting, detail }) => `${setting}: ${detail}`).join('; ');
+  const listed = problems.map((problem) => settingProblemText(problem)).join('; ');
   return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listed}`, problems });
 }
 

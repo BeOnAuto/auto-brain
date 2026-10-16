@@ -19,6 +19,7 @@ export {
   decodedJsonSettingWith,
   pointerOf,
   problem,
+  settingProblemText,
   strictly,
   type SettingDecoder,
   type SettingProblem,

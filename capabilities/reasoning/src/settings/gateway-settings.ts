@@ -4,7 +4,7 @@ import { Effect, Redacted, Result, Schema } from 'effect';
 import { allowedOptionProblems } from './allowed-provider-options.ts';
 import {
   optionalSecret,
-  problem,
+  problemAt,
   settingsFrom,
   urlProblems,
   type Environment,
@@ -118,15 +118,16 @@ const decodeGateways = Schema.decodeUnknownResult(
 
 function nameProblems(name: string, index: number, names: readonly string[]): readonly SettingProblem[] {
   if (!gatewayName.test(name)) {
-    return problem(
+    return problemAt(
       setting,
-      `/${index}/name: Expected 1 to 32 lowercase letters, digits and hyphens, starting with a letter`,
+      `/${index}/name`,
+      `Expected 1 to 32 lowercase letters, digits and hyphens, starting with a letter`,
     );
   }
   if (builtInProviders.has(name)) {
-    return problem(setting, `/${index}/name: ${name} is a built-in provider`);
+    return problemAt(setting, `/${index}/name`, `${name} is a built-in provider`);
   }
-  return names.indexOf(name) < index ? problem(setting, `/${index}/name: ${name} is used twice`) : [];
+  return names.indexOf(name) < index ? problemAt(setting, `/${index}/name`, `${name} is used twice`) : [];
 }
 
 function secretsOf(values: Readonly<Record<string, string>> = {}): ReadonlyMap<string, Redacted.Redacted> {
@@ -147,10 +148,10 @@ function keyProblems(
   named: Redacted.Redacted | undefined,
 ): readonly SettingProblem[] {
   if (entry.api_key !== undefined && entry.api_key_env !== undefined) {
-    return problem(setting, `/${index}/api_key: Set api_key or api_key_env, not both`);
+    return problemAt(setting, `/${index}/api_key`, `Set api_key or api_key_env, not both`);
   }
   return entry.api_key_env !== undefined && named === undefined
-    ? problem(setting, `/${index}/api_key_env: The variable it names is not set`)
+    ? problemAt(setting, `/${index}/api_key_env`, `The variable it names is not set`)
     : [];
 }
 
@@ -159,10 +160,7 @@ const gatewayFrom = Effect.fnUntraced(function* (environment: Environment, entry
   const api_key = entry.api_key === undefined ? named : Redacted.make(entry.api_key);
   const read: ReadGateway = {
     problems: [
-      ...urlProblems(setting, entry.base_url).map(({ detail }) => ({
-        setting,
-        detail: `/${index}/base_url: ${detail}`,
-      })),
+      ...urlProblems(setting, entry.base_url).map(({ detail }) => ({ setting, pointer: `/${index}/base_url`, detail })),
       ...keyProblems(entry, index, named),
       ...allowedOptionProblems(entry.allowed_provider_options ?? [], index),
     ],

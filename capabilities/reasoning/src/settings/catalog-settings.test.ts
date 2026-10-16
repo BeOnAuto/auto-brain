@@ -19,12 +19,12 @@ function declaring(declarations: object): Environment {
   return { MODEL_GATEWAYS: gateway, DECLARED_MODELS: JSON.stringify(declarations) };
 }
 
-function declaredProblem(detail: string): SettingProblem {
-  return { setting: 'DECLARED_MODELS', detail };
+function declaredProblem(pointer: string, detail: string): SettingProblem {
+  return { setting: 'DECLARED_MODELS', pointer, detail };
 }
 
-function allowedProblem(detail: string): SettingProblem {
-  return { setting: 'ALLOWED_MODELS', detail };
+function allowedProblem(pointer: string, detail: string): SettingProblem {
+  return { setting: 'ALLOWED_MODELS', pointer, detail };
 }
 
 describe('the models declared for a provider in DECLARED_MODELS', () => {
@@ -54,9 +54,9 @@ describe('DECLARED_MODELS that stops the start', () => {
       'models are declared for bedrock, bedrock-anthropic, azure, vertex, vertex-anthropic or a gateway of MODEL_GATEWAYS';
 
     expect(await problemsOf(declaring({ anthropic: ['claude-sonnet-4-5'], mistral: ['large'], 'a/b': [] }))).toEqual([
-      declaredProblem(`/anthropic: anthropic lists its own models; ${declaringProviders}`),
-      declaredProblem(`/mistral: There is no provider named mistral; ${declaringProviders}`),
-      declaredProblem(`/a~1b: There is no provider named a/b; ${declaringProviders}`),
+      declaredProblem('/anthropic', `anthropic lists its own models; ${declaringProviders}`),
+      declaredProblem('/mistral', `There is no provider named mistral; ${declaringProviders}`),
+      declaredProblem('/a~1b', `There is no provider named a/b; ${declaringProviders}`),
     ]);
   });
 
@@ -75,22 +75,24 @@ describe('DECLARED_MODELS that stops the start', () => {
     expect(await problemsOf(declaring({ azure: ids }))).toEqual([
       ...[0, 1, 2, 3].map((position) =>
         declaredProblem(
-          `/azure/${position}: Expected a model id of 1 to 256 characters, without spaces or control characters`,
+          `/azure/${position}`,
+          `Expected a model id of 1 to 256 characters, without spaces or control characters`,
         ),
       ),
-      declaredProblem('/azure/4: A declared model is one model id, without a *'),
+      declaredProblem('/azure/4', 'A declared model is one model id, without a *'),
       declaredProblem(
-        '/azure/5: An ARN names an account and a region, which the list of models never shows; give it an alias in MODEL_ALIASES, which is listed by its own name',
+        '/azure/5',
+        'An ARN names an account and a region, which the list of models never shows; give it an alias in MODEL_ALIASES, which is listed by its own name',
       ),
-      declaredProblem('/azure/7: gpt-5 is declared twice'),
+      declaredProblem('/azure/7', 'gpt-5 is declared twice'),
     ]);
   });
 
   it('names where it is not a map of lists of text, never quoting a value', async () => {
     expect(await problemsOf({ DECLARED_MODELS: '{"azure": "gpt-5-secret-deployment"}' })).toEqual([
-      declaredProblem('/azure: Expected array'),
+      declaredProblem('/azure', 'Expected array'),
     ]);
-    expect(await problemsOf({ DECLARED_MODELS: 'not json' })).toEqual([declaredProblem('/: Expected JSON')]);
+    expect(await problemsOf({ DECLARED_MODELS: 'not json' })).toEqual([declaredProblem('', 'Expected JSON')]);
   });
 });
 
@@ -119,12 +121,12 @@ describe('the models a definition may name, in ALLOWED_MODELS', () => {
 
   it('are refused when the list is empty, since leaving the setting out offers every model', async () => {
     expect(await problemsOf({ ALLOWED_MODELS: '[]' })).toEqual([
-      allowedProblem('/: Expected at least one model; leave ALLOWED_MODELS out to offer every model'),
+      allowedProblem('', 'Expected at least one model; leave ALLOWED_MODELS out to offer every model'),
     ]);
   });
 
   it('are refused when the setting is not a list of text', async () => {
-    expect(await problemsOf({ ALLOWED_MODELS: '{"anthropic": true}' })).toEqual([allowedProblem('/: Expected array')]);
+    expect(await problemsOf({ ALLOWED_MODELS: '{"anthropic": true}' })).toEqual([allowedProblem('', 'Expected array')]);
   });
 });
 
@@ -140,12 +142,15 @@ describe('an entry of ALLOWED_MODELS that stops the start', () => {
     ];
 
     expect(await problemsOf(allowing(entries))).toEqual([
-      allowedProblem(`/0: ${shape}`),
-      allowedProblem(`/1: ${shape}`),
-      allowedProblem(`/2: ${shape}`),
-      allowedProblem('/3: Expected a reference without spaces or control characters'),
-      allowedProblem('/4: Expected a reference without spaces or control characters'),
-      allowedProblem('/5: Expected a provider prefix of lowercase letters, digits and hyphens, starting with a letter'),
+      allowedProblem('/0', shape),
+      allowedProblem('/1', shape),
+      allowedProblem('/2', shape),
+      allowedProblem('/3', 'Expected a reference without spaces or control characters'),
+      allowedProblem('/4', 'Expected a reference without spaces or control characters'),
+      allowedProblem(
+        '/5',
+        'Expected a provider prefix of lowercase letters, digits and hyphens, starting with a letter',
+      ),
     ]);
   });
 
@@ -160,10 +165,11 @@ describe('an entry of ALLOWED_MODELS that stops the start', () => {
 
     expect(await problemsOf(allowing(entries))).toEqual([
       allowedProblem(
-        '/0: An ARN names an account and a region; allow the name of an alias in MODEL_ALIASES that is sent to it instead',
+        '/0',
+        'An ARN names an account and a region; allow the name of an alias in MODEL_ALIASES that is sent to it instead',
       ),
-      allowedProblem('/2: anthropic/* is listed twice'),
-      allowedProblem('/3: There is no provider named mistral, nor an alias that mistral/large matches'),
+      allowedProblem('/2', 'anthropic/* is listed twice'),
+      allowedProblem('/3', 'There is no provider named mistral, nor an alias that mistral/large matches'),
     ]);
   });
 });

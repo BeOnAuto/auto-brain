@@ -1,4 +1,4 @@
-import { decodedJsonSetting, type SettingProblem } from '@on.auto/config';
+import { decodedJsonSetting, settingProblemText, type SettingProblem } from '@on.auto/config';
 import { Data, Effect, Result, Schema } from 'effect';
 
 import { CredentialKindSchema, type CredentialKind } from '../registry/credential.ts';
@@ -58,7 +58,7 @@ export function connectionPolicyOf({
 }
 
 function invalid(problems: readonly SettingProblem[]): ConnectionPolicyInvalid {
-  const listed = problems.map(({ setting, detail }) => `${setting}: ${detail}`).join('; ');
+  const listed = problems.map((problem) => settingProblemText(problem)).join('; ');
   return new ConnectionPolicyInvalid({ message: `The connection settings are invalid. ${listed}`, problems });
 }
 

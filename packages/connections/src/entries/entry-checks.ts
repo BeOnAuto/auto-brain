@@ -31,10 +31,7 @@ const fileOnly =
 const asJson = Schema.decodeUnknownSync(Schema.Json);
 
 function issuesOf(problems: readonly SettingProblem[], from: string, to: string): readonly Issue[] {
-  return problems.map(({ detail }) => {
-    const end = detail.indexOf(': ');
-    return { pointer: `${to}${detail.slice(from.length, end)}`, detail: detail.slice(end + 2) };
-  });
+  return problems.map(({ pointer = '', detail }) => ({ pointer: `${to}${pointer.slice(from.length)}`, detail }));
 }
 
 function placed(pointers: readonly string[], detail: string): readonly Issue[] {

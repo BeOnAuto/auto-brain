@@ -1,6 +1,6 @@
 import { dirname } from 'node:path';
 
-import type { Environment, FileUse } from '@on.auto/config';
+import { settingProblemText, type Environment, type FileUse } from '@on.auto/config';
 import { readConnectionPolicy, type ConnectionPolicy } from '@on.auto/connections';
 import {
   defaultMostInputTokens,
@@ -40,8 +40,8 @@ interface Problems {
 }
 
 function listedIn({ problems }: Problems, file: FileUse | undefined): string {
-  const listed = problems.map(({ setting, detail }) =>
-    file !== undefined && file.fromFile.includes(setting) ? file.placed(setting, detail) : `${setting}: ${detail}`,
+  const listed = problems.map((problem) =>
+    file !== undefined && file.fromFile.includes(problem.setting) ? file.placed(problem) : settingProblemText(problem),
   );
   return listed.join('; ');
 }
