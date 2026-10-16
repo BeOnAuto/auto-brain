@@ -10,6 +10,8 @@ import { anthropicToolCall } from '../testing/tool-call-replies.ts';
 
 const model = 'anthropic/claude-sonnet-4-5';
 
+const stepDeadlineMs = 50;
+
 const callThenAnswer: Responder = (_request, attempt) =>
   jsonResponse(attempt === 1 ? anthropicToolCall(searchTool, { query: 'acme' }) : anthropicMessage('Acme has 2 rows.'));
 
@@ -106,10 +108,10 @@ describe('the deadlines of a run that calls tools', () => {
     const { tools } = scriptedTools();
     const { access, aborted } = await run(refuse);
 
-    expect(await failed(access, textRequest(model, { tools, timeout_ms: 50 }))).toMatchObject({
+    expect(await failed(access, textRequest(model, { tools, timeout_ms: stepDeadlineMs }))).toMatchObject({
       _tag: 'definition_invalid',
     });
-    await setTimeout(150);
+    await setTimeout(stepDeadlineMs);
 
     expect(aborted()).toEqual([false]);
   });
