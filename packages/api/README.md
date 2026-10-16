@@ -171,11 +171,11 @@ The bound on a listing is bytes because a listing is what an agent's client load
 
 | Endpoint                                    | Tools | Bytes on the wire | Bound  |
 | ------------------------------------------- | ----- | ----------------- | ------ |
-| `POST /mcp`                                 | 28    | 43,094            | 48,000 |
-| `POST /orgs/{org}/mcp`                      | 10    | 12,549            | 13,000 |
+| `POST /mcp`                                 | 28    | 43,095            | 48,000 |
+| `POST /orgs/{org}/mcp`                      | 10    | 12,550            | 13,000 |
 | `POST /orgs/{org}/playbooks/{playbook}/mcp` | 20    | 30,769            | 40,000 |
 
-The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, as decision 0031 records: its listing takes 12,549 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
+The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, since its listing takes 12,550 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
 
 **Which errors look how.** An MCP endpoint answers in three shapes:
 
@@ -209,6 +209,7 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
       "object": "model",
       "created": 0,
       "owned_by": "gateway",
+      "alias": true,
       "resolved_to": "gateway/llama-3.3-70b"
     },
     {
@@ -216,6 +217,7 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
       "object": "model",
       "created": 0,
       "owned_by": "gateway",
+      "alias": true,
       "resolved_to": "gateway/openai/*",
       "pattern": true
     }
@@ -226,7 +228,7 @@ The server serves `list_models`, an org query of [`@on.auto/reasoning`](../../ca
 }
 ```
 
-`id` is the model as a definition names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `resolved_to` only for an alias, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, `narrowed` is `true` when the operator allows only some models, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
+`id` is the model as a definition names it, `owned_by` the provider prefix that serves it, and `created` the provider's release time in seconds, or 0. `name`, `context_window` and `max_tokens` appear only when the provider reports them, `alias: true` for every alias and only for one, `resolved_to` for an alias whose target is not a Bedrock ARN, and `pattern: true` only for an id ending in `*`, which stands for any model id. `catalog_status` is `partial` when a provider could not be asked, `narrowed` is `true` when the operator allows only some models, and `listed_at` is when the oldest list in the answer was read. Its plain words name the models, such as `This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It can also call any openai model.`
 
 ## Lifecycle
 

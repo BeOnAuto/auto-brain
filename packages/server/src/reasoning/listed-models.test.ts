@@ -78,6 +78,7 @@ const listedModels = {
       object: 'model',
       created: 0,
       owned_by: 'gateway',
+      alias: true,
       resolved_to: 'gateway/anthropic/claude-haiku-4-5',
     },
   ],
