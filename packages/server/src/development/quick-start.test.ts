@@ -8,7 +8,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { tcpPort } from '../lifecycle/http-server.ts';
 import { developmentFiles, startDevelopment, untilListening } from '../testing/processes/development-process.ts';
-import { until } from '../testing/servers/http-client.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const playbook = 'support';
 

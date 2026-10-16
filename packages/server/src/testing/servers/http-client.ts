@@ -1,7 +1,3 @@
-import { expect, vi } from 'vitest';
-
-export const longerThanTheTestMs = 120_000;
-
 export interface TestResponse {
   readonly status: number;
   readonly headers: Headers;
@@ -39,15 +35,4 @@ export async function request(
   });
   const text = await response.text();
   return { status: response.status, headers: response.headers, text, body: JSON.parse(text) };
-}
-
-export function until<A>(read: () => A | Promise<A>, holds: (value: A) => boolean): Promise<A> {
-  return vi.waitFor(
-    async () => {
-      const value = await read();
-      expect(holds(value)).toBe(true);
-      return value;
-    },
-    { timeout: longerThanTheTestMs, interval: 10 },
-  );
 }

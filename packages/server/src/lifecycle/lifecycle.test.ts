@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest';
 import { optionsComposing, optionsServing } from '../testing/entries/serving-options.ts';
 import { heldRequests } from '../testing/entries/test-routes.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
-import { longerThanTheTestMs } from '../testing/servers/http-client.ts';
+import { longerThanTheTestMs } from '../testing/waiting/until.ts';
 import { startServer, defaultServerOptions, servedBy, type Served, type ServerOptions } from './lifecycle.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };

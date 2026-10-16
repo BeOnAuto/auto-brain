@@ -2,7 +2,6 @@ import { callDocument } from '@on.auto/interaction/testing';
 import { fakeStdioServerPath } from '@on.auto/tool-servers/testing';
 import { describe, expect, it } from 'vitest';
 
-import { until } from '../testing/servers/http-client.ts';
 import { interactionServerOn } from '../testing/servers/interaction-server.ts';
 import { alpha } from '../testing/servers/reasoning-server.ts';
 import {
@@ -13,6 +12,7 @@ import {
   type SystemServer,
 } from '../testing/servers/system-calls.ts';
 import { settledRun } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const measured = { NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '' };
 

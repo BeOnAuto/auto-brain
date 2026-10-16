@@ -7,8 +7,8 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { chatEnvironment, chatServer, deliveryHistoryOf } from '../testing/servers/chat-deliveries.ts';
-import { until } from '../testing/servers/http-client.ts';
 import { interactionServerOn, servingInteractions } from '../testing/servers/interaction-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const aNumber: unknown = expect.any(Number);
 

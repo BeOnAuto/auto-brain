@@ -1,10 +1,11 @@
 import { uploadedWeeklyOrders } from '@on.auto/prediction/testing';
 import { Option, Schema } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { blocksInOrderOf } from '../testing/servers/tutorial-calls.ts';
 import { runIdIn, settledRun } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 import { askedBuild, candidateFile, digestOf, endedRun, sentCandidate, standingWhen } from './build-calls.ts';
 import { sha256Of, uploaded } from './dataset-uploads.ts';
 
@@ -81,15 +82,12 @@ const ListedSchema = Schema.Struct({
 });
 
 function requestOfSendBuild(): Promise<{ readonly run_id: string; readonly message: string }> {
-  return vi.waitFor(
-    async () => {
-      const listed = await server.call('GET', `${alpha}/interactions?function=send-build`);
-      const [request] = Schema.decodeUnknownSync(ListedSchema)(listed.body).interactions;
-      expect(request).toBeDefined();
-      return Option.getOrThrow(Option.fromNullishOr(request));
-    },
-    { timeout: 30_000, interval: 50 },
-  );
+  return until(async () => {
+    const listed = await server.call('GET', `${alpha}/interactions?function=send-build`);
+    const [request] = Schema.decodeUnknownSync(ListedSchema)(listed.body).interactions;
+    expect(request).toBeDefined();
+    return Option.getOrThrow(Option.fromNullishOr(request));
+  });
 }
 
 describe('the function a build of the prediction function format is sent through', { timeout: testTimeoutMs }, () => {

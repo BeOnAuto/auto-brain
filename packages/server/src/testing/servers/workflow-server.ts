@@ -4,10 +4,9 @@ import type { HostClock } from '@on.auto/workflow-host';
 import { Option, Schema } from 'effect';
 
 import type { ProgramPoolOf } from '../../composition/served-computation.ts';
-import { until, type RequestOptions, type TestResponse } from './http-client.ts';
+import { until } from '../waiting/until.ts';
+import { type RequestOptions, type TestResponse } from './http-client.ts';
 import { servingReasoning, type ReasoningServer } from './reasoning-server.ts';
-
-export const workflowTestTimeoutMs = 60_000;
 
 const statusOf = Schema.decodeUnknownOption(Schema.Struct({ status: Schema.String }));
 

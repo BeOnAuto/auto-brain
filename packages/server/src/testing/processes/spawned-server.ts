@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { onTestFinished } from 'vitest';
 
 import { callInFlightFileVariable } from '../entries/calls-in-flight.ts';
-import { until } from '../servers/http-client.ts';
+import { until } from '../waiting/until.ts';
 
 export interface SpawnedServer {
   readonly port: Promise<number>;

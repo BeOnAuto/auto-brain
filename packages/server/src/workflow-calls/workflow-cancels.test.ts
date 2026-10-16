@@ -2,10 +2,10 @@ import { withMcpSession } from '@on.auto/api/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { until } from '../testing/servers/http-client.ts';
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { ended, runsOf, servingCalls, startedRunOf } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, settledRun, settledOverMcp } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 let server: ReasoningServer;
 

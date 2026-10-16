@@ -8,9 +8,7 @@ import { fileURLToPath } from 'node:url';
 import { Option, Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import { until } from '../servers/http-client.ts';
-
-export const developmentTestTimeoutMs = 60_000;
+import { until } from '../waiting/until.ts';
 
 export interface DevelopmentFiles {
   readonly directory: string;
@@ -120,9 +118,8 @@ export function pidsOf({ files }: Development): readonly number[] {
     .map((line) => Number(pidLine(line).pid));
 }
 
-export async function untilWritten(read: () => string, wanted: Readonly<RegExp>): Promise<RegExpExecArray> {
-  const written = await until(read, (text) => wanted.test(text));
-  return Option.getOrThrow(Option.fromNullishOr(wanted.exec(written)));
+export async function untilWritten(read: () => string, wanted: Readonly<RegExp>): Promise<void> {
+  await until(read, (text) => text.search(wanted) !== -1);
 }
 
 const logLineOf = Schema.decodeUnknownOption(

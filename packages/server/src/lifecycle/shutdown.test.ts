@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { untilRefusingConnections } from '../testing/processes/accepting-connections.ts';
 import { shortShutdownTimeoutMs, shutdownTimeoutVariable } from '../testing/processes/shutdown-timeouts.ts';
 import { serverHoldingARequest, spawnServer } from '../testing/processes/spawned-server.ts';
-import { longerThanTheTestMs } from '../testing/servers/http-client.ts';
+import { longerThanTheTestMs } from '../testing/waiting/until.ts';
 import { defaultServerOptions } from './lifecycle.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));

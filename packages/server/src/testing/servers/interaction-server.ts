@@ -2,7 +2,7 @@ import { approvalDocument, notificationDocument } from '@on.auto/interaction/tes
 import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
-import { until } from './http-client.ts';
+import { until } from '../waiting/until.ts';
 import { alpha, noNetwork, servingReasoning, type ReasoningServer, type ServedParts } from './reasoning-server.ts';
 import { runIdIn, settledRun, workflowSource } from './workflow-server.ts';
 

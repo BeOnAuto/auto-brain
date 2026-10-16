@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { spawnServer, type SpawnedServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
-import { until } from '../testing/servers/http-client.ts';
+import { until } from '../testing/waiting/until.ts';
 import { logIncident } from './logging.ts';
 
 const serveWithSelfCausedError = fileURLToPath(

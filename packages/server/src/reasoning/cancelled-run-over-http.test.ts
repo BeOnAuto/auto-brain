@@ -1,8 +1,8 @@
 import { Effect, Option, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { until } from '../testing/servers/http-client.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 

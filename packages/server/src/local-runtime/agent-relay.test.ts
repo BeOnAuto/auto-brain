@@ -5,12 +5,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { Function, Schema } from 'effect';
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { aPortNothingListensOn } from '../testing/processes/free-port.ts';
 import { ranToEnd, spawnRuntimeCommand, type RuntimeCommandRun } from '../testing/processes/runtime-command.ts';
-
-const patiently = { timeout: 30_000, interval: 10 };
+import { until } from '../testing/waiting/until.ts';
 
 let home: string;
 
@@ -39,9 +38,9 @@ function isRunning(pid: number): boolean {
 
 async function stoppedAndGone({ port, pid }: Runtime): Promise<void> {
   await fetch(`http://127.0.0.1:${port}/runtime/stop`, { method: 'POST' }).catch(Function.constVoid);
-  await vi.waitFor(() => {
+  await until(() => {
     expect(isRunning(pid)).toBe(false);
-  }, patiently);
+  });
 }
 
 beforeEach(() => {
@@ -76,9 +75,9 @@ function lineOf(message: object): string {
 }
 
 async function answered(relay: Readonly<RuntimeCommandRun>, count: number): Promise<readonly unknown[]> {
-  await vi.waitFor(() => {
+  await until(() => {
     expect(answersIn(relay.stdout())).toHaveLength(count);
-  }, patiently);
+  });
   return answersIn(relay.stdout());
 }
 
@@ -149,9 +148,9 @@ describe('an agent whose runtime restarts', () => {
     relay.write(lineOf({ jsonrpc: '2.0', method: 'notifications/initialized' }));
 
     await fetch(`http://127.0.0.1:${port}/runtime/restart`, { method: 'POST' });
-    await vi.waitFor(async () => {
+    await until(async () => {
       await expect(fetch(`http://127.0.0.1:${port}/health`)).rejects.toThrow('fetch failed');
-    }, patiently);
+    });
     relay.write(lineOf({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} }));
     const answers = await answered(relay, 2);
     relay.end();

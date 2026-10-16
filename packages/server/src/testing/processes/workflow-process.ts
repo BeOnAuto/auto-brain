@@ -7,8 +7,8 @@ import { Schema } from 'effect';
 import { onTestFinished } from 'vitest';
 
 import { tcpPort } from '../../lifecycle/http-server.ts';
-import { until } from '../servers/http-client.ts';
 import { runIdIn, isStarted, workflowSource } from '../servers/workflow-server.ts';
+import { until } from '../waiting/until.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
 
 export interface LogLine {

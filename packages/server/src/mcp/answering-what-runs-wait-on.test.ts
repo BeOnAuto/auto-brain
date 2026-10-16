@@ -1,6 +1,6 @@
 import { textOf, type McpSession } from '@on.auto/api/testing';
 import { Schema } from 'effect';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   descriptionIn,
@@ -9,7 +9,8 @@ import {
   servingMeetings,
   type MeetingsServer,
 } from '../testing/servers/meetings-server.ts';
-import { runIdIn, workflowSource, workflowTestTimeoutMs } from '../testing/servers/workflow-server.ts';
+import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 let meetings: MeetingsServer;
 
@@ -105,25 +106,19 @@ async function openRequestsIn(session: McpSession): Promise<readonly OpenRequest
 }
 
 function deliveredRequestsIn(session: McpSession, count: number): Promise<readonly OpenRequest[]> {
-  return vi.waitFor(
-    async () => {
-      const open = await openRequestsIn(session);
-      expect(open.filter(({ standing }) => standing === 'delivered')).toHaveLength(count);
-      return open;
-    },
-    { timeout: workflowTestTimeoutMs - 10_000, interval: 50 },
-  );
+  return until(async () => {
+    const open = await openRequestsIn(session);
+    expect(open.filter(({ standing }) => standing === 'delivered')).toHaveLength(count);
+    return open;
+  });
 }
 
 function endedIn(session: McpSession, runId: string): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const read = await session.callTool('get_run', { ...inMeetings, run_id: runId });
-      expect(read.structuredContent).not.toMatchObject({ status: 'started' });
-      return read.structuredContent;
-    },
-    { timeout: workflowTestTimeoutMs - 10_000, interval: 50 },
-  );
+  return until(async () => {
+    const read = await session.callTool('get_run', { ...inMeetings, run_id: runId });
+    expect(read.structuredContent).not.toMatchObject({ status: 'started' });
+    return read.structuredContent;
+  });
 }
 
 function draftFor(session: McpSession, month: string): Promise<string> {

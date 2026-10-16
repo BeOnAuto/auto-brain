@@ -4,12 +4,11 @@ import { join } from 'node:path';
 
 import { createApiKey } from '@on.auto/identity';
 import { Schema } from 'effect';
-import { afterEach, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, onTestFinished } from 'vitest';
 
 import { aPortNothingListensOn } from '../testing/processes/free-port.ts';
 import { spawnRuntimeCommand } from '../testing/processes/runtime-command.ts';
-
-const patiently = { timeout: 30_000, interval: 10 };
+import { until } from '../testing/waiting/until.ts';
 
 let home: string;
 
@@ -38,15 +37,15 @@ describe('a runtime started in a terminal', () => {
     const port = await aPortNothingListensOn();
     const runtime = spawnRuntimeCommand([], { home, port });
     onTestFinished(runtime.kill);
-    await vi.waitFor(() => {
+    await until(() => {
       expect(readiesIn(runtime.stdout())).toBe(1);
-    }, patiently);
+    });
     const before = await statusAt(port);
 
     await fetch(`http://127.0.0.1:${port}/runtime/restart`, { method: 'POST' });
-    await vi.waitFor(() => {
+    await until(() => {
       expect(readiesIn(runtime.stdout())).toBe(2);
-    }, patiently);
+    });
     const after = await statusAt(port);
     await fetch(`http://127.0.0.1:${port}/runtime/stop`, { method: 'POST' });
 
@@ -66,9 +65,9 @@ describe('a runtime started in a terminal', () => {
       settings: { HOST: '0.0.0.0', API_KEYS: JSON.stringify([entry]) },
     });
     onTestFinished(runtime.kill);
-    await vi.waitFor(() => {
+    await until(() => {
       expect(readiesIn(runtime.stdout())).toBe(1);
-    }, patiently);
+    });
 
     const answer = await fetch(`http://127.0.0.1:${port}/runtime`);
     runtime.interrupt();
@@ -83,9 +82,9 @@ describe('a runtime started in a terminal on a taken port', () => {
     const port = await aPortNothingListensOn();
     const first = spawnRuntimeCommand([], { home, port });
     onTestFinished(first.kill);
-    await vi.waitFor(() => {
+    await until(() => {
       expect(readiesIn(first.stdout())).toBe(1);
-    }, patiently);
+    });
 
     const second = spawnRuntimeCommand([], { home, port });
 

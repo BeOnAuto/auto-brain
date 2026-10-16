@@ -1,4 +1,4 @@
-import { until } from '../servers/http-client.ts';
+import { until } from '../waiting/until.ts';
 
 export async function isAcceptingConnections(port: number): Promise<boolean> {
   try {
