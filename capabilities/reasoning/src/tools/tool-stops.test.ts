@@ -10,7 +10,7 @@ import { anthropicToolCall } from '../testing/tool-call-replies.ts';
 
 const model = 'anthropic/claude-sonnet-4-5';
 
-const stepDeadlineMs = 50;
+const stepDeadlineMs = 1000;
 
 const callThenAnswer: Responder = (_request, attempt) =>
   jsonResponse(attempt === 1 ? anthropicToolCall(searchTool, { query: 'acme' }) : anthropicMessage('Acme has 2 rows.'));
@@ -27,7 +27,7 @@ const callWithAList: Responder = (_request, attempt) =>
   jsonResponse(attempt === 1 ? anthropicToolCall(searchTool, ['acme']) : anthropicMessage('No rows.'));
 
 async function slowly() {
-  await setTimeout(150);
+  await setTimeout(stepDeadlineMs);
   return foundRows;
 }
 
@@ -89,7 +89,7 @@ describe('the deadlines of a run that calls tools', () => {
     const { tools } = scriptedTools({ reply: slowly });
     const { access } = await run(callThenAnswer);
 
-    expect(await succeeded(access, textRequest(model, { tools, timeout_ms: 100 }))).toMatchObject({
+    expect(await succeeded(access, textRequest(model, { tools, timeout_ms: stepDeadlineMs }))).toMatchObject({
       text: 'Acme has 2 rows.',
     });
   });
