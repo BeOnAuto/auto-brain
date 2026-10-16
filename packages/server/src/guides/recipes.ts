@@ -17,7 +17,8 @@ const outlines: readonly RecipeOutline[] = [
   {
     name: 'remember',
     title: 'Make the playbook remember something',
-    description: "Keeps what a function's runs answered in a recall function, so that the playbook can tell it later.",
+    description:
+      "Keeps what the playbook's runs answered or its events recorded in a recall function, so that the playbook can tell it later.",
     arguments: [
       {
         name: 'what',
@@ -26,7 +27,7 @@ const outlines: readonly RecipeOutline[] = [
       },
     ],
     formatGuide: 'recall-function',
-    calls: ['list_definitions', 'create_definition', 'update_definition', 'run_definition'],
+    calls: ['list_definitions', 'create_definition', 'update_definition', 'publish_event', 'run_definition'],
     request: ({ what }) => `Make the playbook remember ${String(what)}.`,
   },
   {

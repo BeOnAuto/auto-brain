@@ -215,8 +215,8 @@ describe('the recipes of a server that serves interaction functions', () => {
       bytesOf(texts, 'first-playbook', 'remember', 'give-tools', 'schedule'),
       bytesOf(recipeTextsOf(everyType), 'first-playbook', 'remember', 'give-tools', 'schedule'),
     ]).toEqual([
-      [1988, 1783, 2807, 1294],
-      [1898, 1783, 2246, 1294],
+      [1988, 2327, 2807, 1294],
+      [1898, 2327, 2246, 1294],
     ]);
   });
 

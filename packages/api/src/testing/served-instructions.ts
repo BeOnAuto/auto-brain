@@ -67,7 +67,10 @@ export const recipes: readonly RecipeCalls[] = [
     name: 'first-playbook',
     calls: ['list_playbooks', 'create_playbook', 'create_definition', 'execute', 'run_definition'],
   },
-  { name: 'remember', calls: ['list_definitions', 'create_definition', 'update_definition', 'run_definition'] },
+  {
+    name: 'remember',
+    calls: ['list_definitions', 'create_definition', 'update_definition', 'publish_event', 'run_definition'],
+  },
   {
     name: 'give-tools',
     calls: ['search', 'introspect', 'execute', 'create_definition', 'run_definition', 'list_playbook_events'],

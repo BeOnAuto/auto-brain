@@ -157,7 +157,7 @@ describe('episode 7: the person approves, in the chat, a draft a workflow sent t
     const guide = await meetings.onMcp((session) => session.callTool('get_guide', { guide: 'interaction-function' }));
 
     expect(sentenceNaming(instructions, 'answer_interaction')).toBe(
-      'When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction and start no new run for it.',
+      'When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, not with a new run.',
     );
     expect(sentenceNaming(instructions, 'get_run')).toBe(
       'A run of a workflow answers started; get_run shows whether it ended or still waits.',
@@ -166,7 +166,9 @@ describe('episode 7: the person approves, in the chat, a draft a workflow sent t
     expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
       'Use it when the person approves, rejects, revises or otherwise answers a request list_interactions shows, wherever it reached them; a new run asks again and answers nothing,',
     );
-    expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain('such as {"decision": "approve"}.');
+    expect(descriptionIn(meetings.surfaces, 'answer_interaction')).toContain(
+      '`answer` takes the shape of the request\'s answer_schema, which list_interactions shows, such as {"decision": "approve"}.',
+    );
     expect(textOf(guide)).toContain('it is `{ "decision": "approve" }`.');
     expect(textOf(guide)).toContain('Running the function or its workflow again answers nothing:');
   });

@@ -61,18 +61,20 @@ export function steppedClock(start: number): SteppedClock {
   return {
     now: () => time.now,
     sleep: (milliseconds) =>
-      Effect.callback<void>((resume) => {
-        const sleeper: Sleeper = {
-          until: time.now + milliseconds,
-          wake: () => {
-            resume(Effect.void);
-          },
-        };
-        sleepers.add(sleeper);
-        return Effect.sync(() => {
-          sleepers.delete(sleeper);
-        });
-      }),
+      milliseconds <= 0
+        ? Effect.void
+        : Effect.callback<void>((resume) => {
+            const sleeper: Sleeper = {
+              until: time.now + milliseconds,
+              wake: () => {
+                resume(Effect.void);
+              },
+            };
+            sleepers.add(sleeper);
+            return Effect.sync(() => {
+              sleepers.delete(sleeper);
+            });
+          }),
     step: (milliseconds) => {
       time.now += milliseconds;
       for (const sleeper of [...sleepers].filter(({ until }) => until <= time.now)) {

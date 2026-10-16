@@ -13,10 +13,10 @@ import {
 import { instructionsFor } from './instructions.ts';
 
 describe('the length of the instructions with every tool', () => {
-  it('take 1,987 characters on /mcp, 1,644 on the org endpoint and 1,871 on the playbook endpoint', () => {
+  it('take 1,993 characters on /mcp, 1,671 on the org endpoint and 1,881 on the playbook endpoint', () => {
     expect(
       everyEndpoint.map(([endpoint, served]) => instructionsFor(endpoint, served, definitionTypes, recipes).length),
-    ).toEqual([1644, 1871, 1987]);
+    ).toEqual([1671, 1881, 1993]);
   });
 });
 
@@ -28,7 +28,7 @@ describe('what the instructions say of calling a tool', () => {
 
   it('say what execute and dry_run do in the sentence on tools, where they are listed, and keep the closing sentence', () => {
     const sentence =
-      'may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.';
+      'may name tools that search finds; execute calls one and shows its answer, and dry_run what it would check.';
 
     expect(instructionsFor('own org', ownOrg, definitionTypes, recipes)).toContain(
       `A reasoning function names a model that list_models lists and ${sentence}`,
@@ -61,7 +61,7 @@ describe('what the instructions say of calling a tool', () => {
 
     expect(lengths.filter((instructions) => /\bexecute\b/u.test(instructions))).toEqual([]);
     expect(lengths[0]).toContain('may name tools that search finds; dry_run shows what a call of one would check.');
-    expect(lengths.map(({ length }) => length)).toEqual([1650, 1687, 1547, 1647]);
+    expect(lengths.map(({ length }) => length)).toEqual([1673, 1710, 1578, 1670]);
   });
 });
 
@@ -70,20 +70,20 @@ describe('what the instructions say of calling a tool, to a key that may only wr
     const writing = { orgTools: ['list_models', 'search'], playbookTools: ['execute'] };
 
     expect(instructionsFor('own org', writing, definitionTypes, [])).toContain(
-      'may name tools that search finds; execute calls one and shows what it answers.',
+      'may name tools that search finds; execute calls one and shows its answer.',
     );
   });
 });
 
 describe('the instructions of an endpoint that lists add_connection', () => {
-  const connectionSentence = 'To add a tool server, call add_connection; the person approves it.';
+  const connectionSentence = 'Add a tool server with add_connection; the person approves it.';
 
   it('say what a connection is after the sentence on tools, and an endpoint that does not list it does not', () => {
     const listing = instructionsFor('own org', withConnections(ownOrg), definitionTypes, recipes);
 
     expect(listing).toContain(`and dry_run what it would check. ${connectionSentence} A run of a workflow`);
     expect(instructionsFor('org', withConnections(orgEndpoint), definitionTypes, recipes)).toContain(
-      `may name tools that search finds. ${connectionSentence} When you tell`,
+      `may name tools that search finds. ${connectionSentence} Say what was done`,
     );
     expect(instructionsFor('own org', ownOrg, definitionTypes, recipes)).not.toContain('add_connection');
   });
