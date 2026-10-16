@@ -4,7 +4,7 @@ import { Effect, Fiber } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { recordingCallJournal, reportingAccess, serveFakeMcp, toolRun, type FakeMcpServer } from '../testing/index.ts';
-import { until } from '../testing/waiting.ts';
+import { until } from '../testing/tool-runs.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -34,19 +34,22 @@ async function noSessionOpen(fake: FakeMcpServer): Promise<number> {
   return fake.openSessions();
 }
 
-async function initializing(fake: FakeMcpServer): Promise<void> {
-  if (fake.seen().some(({ rpc }) => rpc === 'initialize')) {
-    return;
-  }
-  await setTimeout(1);
-  await initializing(fake);
-}
-
 async function interruptedOpening(fake: FakeMcpServer, interrupting: () => Promise<void>): Promise<number> {
   const access = accessTo(fake);
   const opening = Effect.runFork(access.open(toolRun(recordingCallJournal()), [{ server: 'graph', tool: 'search' }]));
   await interrupting();
   await Effect.runPromise(Fiber.interrupt(opening));
+  return noSessionOpen(fake);
+}
+
+async function interruptedOnceItsSessionOpened(fake: FakeMcpServer): Promise<number> {
+  const release = fake.holdNextOf('notifications/initialized');
+  const access = accessTo(fake);
+  const opening = Effect.runFork(access.open(toolRun(recordingCallJournal()), [{ server: 'graph', tool: 'search' }]));
+  await until(() => fake.seen().some(({ rpc }) => rpc === 'notifications/initialized'));
+  const interrupted = Effect.runPromise(Fiber.interrupt(opening));
+  release();
+  await interrupted;
   return noSessionOpen(fake);
 }
 
@@ -60,7 +63,7 @@ describe('a run interrupted while it opens its tools', () => {
   it('ends the session its server was opening when it was interrupted, which no run holds any more', async () => {
     const fake = await fakeServer();
 
-    expect(await interruptedOpening(fake, () => initializing(fake))).toBe(0);
+    expect(await interruptedOnceItsSessionOpened(fake)).toBe(0);
     expect(fake.endedSessions()).toBe(1);
   });
 });

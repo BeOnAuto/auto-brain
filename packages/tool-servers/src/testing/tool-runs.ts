@@ -1,4 +1,5 @@
 import { Effect } from 'effect';
+import { expect, vi } from 'vitest';
 
 import type { CallerContext } from '../access/caller-context.ts';
 import type { CallEnded, CallStarted } from '../calls/call-facts.ts';
@@ -20,6 +21,17 @@ export interface RecordingCallJournal extends CallJournal {
 export interface ControlledSignals extends CallSignals {
   readonly end: () => void;
   readonly cancel: () => void;
+}
+
+const longerThanTheTestMs = 120_000;
+
+export function until(holds: () => boolean): Promise<void> {
+  return vi.waitFor(
+    () => {
+      expect(holds()).toBe(true);
+    },
+    { timeout: longerThanTheTestMs, interval: 10 },
+  );
 }
 
 export function inTurn<A, B>(items: readonly A[], step: (item: A) => Promise<B>): Promise<readonly B[]> {

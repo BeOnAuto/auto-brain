@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Effect, Fiber } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -12,7 +10,7 @@ import {
   type AccessOptions,
   type FakeMcpServer,
 } from '../testing/index.ts';
-import { until } from '../testing/waiting.ts';
+import { until } from '../testing/tool-runs.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -193,14 +191,6 @@ describe('a tool server that is a process', () => {
   });
 });
 
-async function initializing(fake: FakeMcpServer): Promise<void> {
-  if (fake.seen().some(({ rpc }) => rpc === 'initialize')) {
-    return;
-  }
-  await setTimeout(1);
-  await initializing(fake);
-}
-
 async function sessionsEnded(fake: FakeMcpServer): Promise<number> {
   await until(() => fake.endedSessions() > 0);
   return fake.endedSessions();
@@ -234,9 +224,12 @@ describe('the session a listing opens', () => {
     const fake = await fakeServer();
     const access = accessTo({ graph: remote(fake) });
 
+    const release = fake.holdNextOf('initialize');
     const listing = Effect.runFork(access.listServers(alpha));
-    await initializing(fake);
-    await Effect.runPromise(Fiber.interrupt(listing));
+    await until(() => fake.seen().some(({ rpc }) => rpc === 'initialize'));
+    const interrupted = Effect.runPromise(Fiber.interrupt(listing));
+    release();
+    await interrupted;
 
     expect(await sessionsEnded(fake)).toBe(1);
     expect(fake.openSessions()).toBe(0);

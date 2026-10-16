@@ -4,7 +4,7 @@ import type { ServerSlot } from '../calls/server-slot.ts';
 import type { ServerConnection } from '../connections/server-connection.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { StdioServerSettings } from '../settings/server-settings.ts';
-import { until } from '../testing/waiting.ts';
+import { until } from '../testing/tool-runs.ts';
 import { boundedSlot, takenWithin } from './connection-bound.ts';
 
 const connection: ServerConnection = {

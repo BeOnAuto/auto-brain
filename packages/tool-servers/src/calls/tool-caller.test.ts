@@ -1,3 +1,5 @@
+import { getEventListeners } from 'node:events';
+
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -9,7 +11,7 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
-import { isWatched, until } from '../testing/waiting.ts';
+import { until } from '../testing/tool-runs.ts';
 import type { CallJournal } from './recorded-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
@@ -91,7 +93,7 @@ describe('a run that ends while it calls', () => {
 
     fake.answerNextOf('tools/call', 429, 1, { 'retry-after': '5' });
     const replied = call('search', { query: 'waiting' }, signals);
-    await until(() => isWatched(signals.signal));
+    await until(() => getEventListeners(signals.signal, 'abort').length > 0);
     signals.end();
 
     expect(await replied).toMatchObject({ isError: true });
