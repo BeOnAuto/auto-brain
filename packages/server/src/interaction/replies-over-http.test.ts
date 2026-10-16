@@ -60,7 +60,7 @@ describe('a request whose function reads the replies to its message, over HTTP',
       },
     ]);
     expect(events).toContain(
-      'The playbook looked for new replies in the conversation “#approvals-ada/1699.000001” through the thread replies tool of chat and found 2, took 1 as an answer and refused 0.',
+      'The playbook looked for new replies in the conversation “#approvals-ada/1699.000001” through the thread replies tool of chat and found 1, took 1 as an answer and refused 0.',
     );
   });
 });

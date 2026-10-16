@@ -331,6 +331,7 @@ An answer with no list at `list`, or larger than 64 KiB, is a failed read. The r
 | `to`     | No       | The message it replies to, such as the first message of its thread                                |
 
 - A message whose `id` or `sender` is not a text or a whole number of at most 256 bytes, without a control character, is passed over.
+- A message whose `id` is one the playbook sent in the conversation, such as the first message of a thread it started, is the playbook's own and not a reply. It is passed over and not counted, so a read that finds nothing else has found nothing and records no `replies_read`.
 - With `to`, a message answers the open request whose `sent.id` it names. It is passed over when it names none of them.
 - A message with nothing at `to`, or any message when `each` has no `to`, answers the conversation's one open request. It is refused when several are open.
 
