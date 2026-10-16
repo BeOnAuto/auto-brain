@@ -1,5 +1,6 @@
 import { setTimeout as sleep } from 'node:timers/promises';
 
+import type { RecordedContent } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -34,12 +35,36 @@ const oneMoving = dailyRows('visits', ['north', 'south'], 40, southMoving);
 
 const stillWhileTrained = dailyRows('visits', ['north', 'south'], 40, movingOnlyWhenHeldBack);
 
+interface KeptTypes {
+  readonly content: (kept: RecordedContent) => RecordedContent;
+  readonly types: () => readonly string[];
+}
+
+function keptTypes(): KeptTypes {
+  const types: string[] = [];
+  return {
+    content: (kept) => ({
+      ...kept,
+      put: (playbook, content) =>
+        Effect.andThen(
+          Effect.sync(() => {
+            types.push(content.mediaType);
+          }),
+          kept.put(playbook, content),
+        ),
+    }),
+    types: () => [...types],
+  };
+}
+
 const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
 
 describe('a build whose baseline already predicts every period held back exactly', () => {
-  it('is refused as it starts, before its brief is rendered or its trainer asked, and takes none of the builds of the day', async () => {
-    const playbook = buildPlaybook({ bounds: { buildsPerDay: 1 } });
+  it('is refused once its rows are written, before its brief is kept or its trainer asked, and takes none of the builds of the day', async () => {
+    const kept = keptTypes();
+    const playbook = buildPlaybook({ bounds: { buildsPerDay: 1 }, content: kept.content });
     await savedFunction(playbook, { rows: still });
+    const keptBefore = kept.types().length;
     const refused = [
       await asked(playbook, { build: {} }, { runId: String(runIds[0]) }),
       await asked(playbook, { build: {} }, { runId: String(runIds[1]) }),
@@ -54,6 +79,7 @@ describe('a build whose baseline already predicts every period held back exactly
           'The baseline persistence already scores 0 on mase at every period held back where mase scores it, the best a score can be, so no candidate can beat it; ask for a build once the series moves',
       })),
     );
+    expect(kept.types().slice(keptBefore)).toEqual(['text/csv', 'text/csv', 'text/csv', 'text/csv']);
     expect(await Promise.all(runIds.map((runId) => workOf(playbook, runId)))).toEqual([[], []]);
     expect(await runOf(playbook, String(runIds[0]))).not.toHaveProperty('output.record');
     expect(await playbook.call(playbook.operations.interactions, {})).toMatchObject({
