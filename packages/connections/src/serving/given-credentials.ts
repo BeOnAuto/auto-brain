@@ -1,6 +1,6 @@
 import type { StreamReader, StreamWriter } from '@on.auto/operations';
 import type { ConnectionUnready } from '@on.auto/tool-servers';
-import { DateTime, Effect, Option, Predicate, type Redacted } from 'effect';
+import { DateTime, Effect, Option, type Redacted } from 'effect';
 
 import type { SecretKeeping } from '../operations/connection-services.ts';
 import type { ConnectionPolicy } from '../policy/connection-policy.ts';
@@ -36,7 +36,6 @@ function broken({ org, kept, services }: Serving, reason: string): Given {
     const at = DateTime.formatIso(yield* DateTime.now);
     const breaking = { type: 'break', connection: kept.connection.id, reason, by: theRuntime, at } as const;
     yield* services.registry.execute(connectionsStreamOfOrg(org), registryDecider, breaking).pipe(
-      Effect.catchIf(Predicate.isTagged('not_found'), () => Effect.void),
       Effect.orDie,
       Effect.catchCause((cause) => Effect.logError(servingWords.unrecorded(kept.connection.name), cause)),
     );

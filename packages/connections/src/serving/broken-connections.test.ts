@@ -188,17 +188,6 @@ describe('a break the registry does not take', () => {
     expect([reads.made, lines.length]).toEqual([2, 2]);
   });
 
-  it('logs nothing when the stream it records the break on holds no such connection', async () => {
-    const h = harness();
-    const id = await connectedCrm(h);
-    const forgotten = { ...h.ledger.service, execute: harness().ledger.service.execute };
-    const { lines, logging } = loggedLines();
-
-    const refused = await refusalOf(sourceOf(h, { secrets: unreadableIn(h), registry: forgotten }), id, logging);
-
-    expect([refused.because, lines]).toEqual(['connection_broken', []]);
-  });
-
   it('logs nothing when the connection was removed meanwhile', async () => {
     const h = harness();
     const id = await connectedCrm(h);
