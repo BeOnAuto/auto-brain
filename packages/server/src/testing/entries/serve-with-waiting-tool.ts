@@ -1,4 +1,3 @@
-import { waitForeverAnnouncing } from '@on.auto/api/testing';
 import type { DispatcherServices } from '@on.auto/operations';
 import { playbookOperations } from '@on.auto/playbooks';
 
@@ -8,7 +7,7 @@ import { servedBy } from '../../lifecycle/lifecycle.ts';
 import { exitOnStartupFailure, runServer } from '../../lifecycle/run-server.ts';
 import { stopInsistedBy, stopRequestedBy } from '../../lifecycle/stop-request.ts';
 import { shortShutdownTimeoutMs } from '../processes/shutdown-timeouts.ts';
-import { callInFlightAnnouncedIn } from './calls-in-flight.ts';
+import { waitForeverAnnouncedIn } from './calls-in-flight.ts';
 
 await runServer<DispatcherServices>(
   process,
@@ -18,10 +17,7 @@ await runServer<DispatcherServices>(
       ...compositionRoot.composed(settings, telemetry),
       serve: (runtime) =>
         servedBy(
-          routesServing(
-            [...playbookOperations, waitForeverAnnouncing(callInFlightAnnouncedIn(process.env))],
-            settings.identityIssuer,
-          )(runtime),
+          routesServing([...playbookOperations, waitForeverAnnouncedIn(process.env)], settings.identityIssuer)(runtime),
         ),
     }),
     shutdownTimeoutMs: shortShutdownTimeoutMs,
