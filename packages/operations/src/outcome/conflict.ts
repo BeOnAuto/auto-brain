@@ -20,6 +20,7 @@ export const ConflictKindSchema = Schema.Literals([
   'not_a_build',
   'build_ended',
   'already_active',
+  'connections_full',
 ]);
 
 export type ConflictKind = typeof ConflictKindSchema.Type;
