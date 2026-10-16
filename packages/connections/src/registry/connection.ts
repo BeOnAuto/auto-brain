@@ -17,6 +17,9 @@ export const ConnectionSchema = Schema.Struct({
   added_by: Schema.String.annotate({ description: 'The id of the caller who added it' }),
   added_at: Schema.String.annotate({ description: 'When it was added, in ISO 8601 UTC' }),
   connected_at: Schema.NullOr(Schema.String).annotate({ description: 'When it was connected, in ISO 8601 UTC' }),
+  connected_by: Schema.NullOr(Schema.String).annotate({
+    description: 'The id of the caller who connected it, approving it or giving its credential',
+  }),
   credential_ends_with: Schema.NullOr(Schema.String).annotate({
     description:
       'The last four characters of the secret or client secret the person gave, where it holds twelve or more, kept beside the sealed value',

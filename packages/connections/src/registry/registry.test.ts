@@ -9,7 +9,7 @@ const recorded = recordingOf(registryDecider.eventSchema);
 
 const added: ActedContext = { by: 'person:ada', at: '2026-10-15T14:00:00.000Z' };
 
-const later: ActedContext = { by: 'person:ada', at: '2026-10-15T14:05:00.000Z' };
+const later: ActedContext = { by: 'person:grace', at: '2026-10-15T14:05:00.000Z' };
 
 const crm = {
   connection: '0199-crm',
@@ -58,6 +58,7 @@ describe('an added connection, as the stream folds it', () => {
         added_by: 'person:ada',
         added_at: '2026-10-15T14:00:00.000Z',
         connected_at: null,
+        connected_by: null,
         broken: null,
       },
       link: { token_sha256: 'a1b2', expires_at: '2026-10-15T14:10:00.000Z' },
@@ -68,7 +69,12 @@ describe('an added connection, as the stream folds it', () => {
   it('takes an approval, then a connection with its secret, which closes the link', () => {
     expect(crmAfter(approval)).toMatchObject({ connection: { status: 'pending' }, link: { token_sha256: 'a1b2' } });
     expect(crmAfter(approval, connection)).toMatchObject({
-      connection: { status: 'connected', connected_at: '2026-10-15T14:05:00.000Z', broken: null },
+      connection: {
+        status: 'connected',
+        connected_at: '2026-10-15T14:05:00.000Z',
+        connected_by: 'person:grace',
+        broken: null,
+      },
       link: undefined,
       secretId: 'secret-1',
     });

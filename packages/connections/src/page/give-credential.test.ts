@@ -25,6 +25,22 @@ describe('giving the credential of a connection', () => {
     expect(await giving(h, { id, token, value: 'Bearer crm-again' })).toMatchObject({ reason: 'not_found' });
   });
 
+  it('names who gave the value as who connected it, beside when, which in local mode need not be who added it', async () => {
+    const h = harness({ access: 'local' });
+    const { id, token } = await added(h, crm);
+
+    expect(await giving(h, { id, token, value: 'Bearer crm-0f3c' }, grace, '2026-10-15T14:04:00.000Z')).toMatchObject({
+      output: {
+        added_by: 'person:ada',
+        connected_at: '2026-10-15T14:04:00.000Z',
+        connected_by: 'person:grace',
+      },
+    });
+    expect(await h.call(operationNamed(h.operations, 'get_connection'), ada, { id })).toMatchObject({
+      output: { connected_by: 'person:grace' },
+    });
+  });
+
   it('takes the client secret of client credentials, or a private key with its algorithm, which the fact names', async () => {
     const h = harness();
     const secret = await added(h, billing);

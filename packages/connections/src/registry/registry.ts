@@ -35,6 +35,7 @@ function addedConnection({ data, context }: ConnectionAdded): KeptConnection {
       added_by: context.by,
       added_at: context.at,
       connected_at: null,
+      connected_by: null,
       broken: null,
     },
     link: undefined,
@@ -48,7 +49,13 @@ function withLink(kept: KeptConnection, { data }: LinkIssued): KeptConnection {
 
 function connected(kept: KeptConnection, { data, context }: ConnectionConnected): KeptConnection {
   return {
-    connection: { ...kept.connection, status: 'connected', connected_at: context.at, broken: null },
+    connection: {
+      ...kept.connection,
+      status: 'connected',
+      connected_at: context.at,
+      connected_by: context.by,
+      broken: null,
+    },
     link: undefined,
     secretId: data.secret_id,
   };

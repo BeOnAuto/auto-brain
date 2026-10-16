@@ -1537,6 +1537,17 @@
                       ],
                       "description": "When it was connected, in ISO 8601 UTC"
                     },
+                    "connected_by": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The id of the caller who connected it, approving it or giving its credential"
+                    },
                     "credential_ends_with": {
                       "anyOf": [
                         {
@@ -1588,6 +1599,7 @@
                     "added_by",
                     "added_at",
                     "connected_at",
+                    "connected_by",
                     "credential_ends_with",
                     "broken",
                     "connect"
@@ -1836,6 +1848,17 @@
                           ],
                           "description": "When it was connected, in ISO 8601 UTC"
                         },
+                        "connected_by": {
+                          "anyOf": [
+                            {
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "The id of the caller who connected it, approving it or giving its credential"
+                        },
                         "credential_ends_with": {
                           "anyOf": [
                             {
@@ -1869,6 +1892,7 @@
                         "added_by",
                         "added_at",
                         "connected_at",
+                        "connected_by",
                         "credential_ends_with",
                         "broken"
                       ],
@@ -2103,6 +2127,17 @@
                       ],
                       "description": "When it was connected, in ISO 8601 UTC"
                     },
+                    "connected_by": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The id of the caller who connected it, approving it or giving its credential"
+                    },
                     "credential_ends_with": {
                       "anyOf": [
                         {
@@ -2136,6 +2171,7 @@
                     "added_by",
                     "added_at",
                     "connected_at",
+                    "connected_by",
                     "credential_ends_with",
                     "broken"
                   ],
@@ -2366,6 +2402,17 @@
                       ],
                       "description": "When it was connected, in ISO 8601 UTC"
                     },
+                    "connected_by": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The id of the caller who connected it, approving it or giving its credential"
+                    },
                     "credential_ends_with": {
                       "anyOf": [
                         {
@@ -2399,6 +2446,7 @@
                     "added_by",
                     "added_at",
                     "connected_at",
+                    "connected_by",
                     "credential_ends_with",
                     "broken"
                   ],
@@ -2645,6 +2693,17 @@
                       ],
                       "description": "When it was connected, in ISO 8601 UTC"
                     },
+                    "connected_by": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The id of the caller who connected it, approving it or giving its credential"
+                    },
                     "credential_ends_with": {
                       "anyOf": [
                         {
@@ -2678,6 +2737,7 @@
                     "added_by",
                     "added_at",
                     "connected_at",
+                    "connected_by",
                     "credential_ends_with",
                     "broken"
                   ],
@@ -2949,6 +3009,17 @@
                       ],
                       "description": "When it was connected, in ISO 8601 UTC"
                     },
+                    "connected_by": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The id of the caller who connected it, approving it or giving its credential"
+                    },
                     "credential_ends_with": {
                       "anyOf": [
                         {
@@ -2982,6 +3053,7 @@
                     "added_by",
                     "added_at",
                     "connected_at",
+                    "connected_by",
                     "credential_ends_with",
                     "broken"
                   ],
@@ -3275,6 +3347,17 @@
                       ],
                       "description": "When it was connected, in ISO 8601 UTC"
                     },
+                    "connected_by": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "The id of the caller who connected it, approving it or giving its credential"
+                    },
                     "credential_ends_with": {
                       "anyOf": [
                         {
@@ -3308,6 +3391,7 @@
                     "added_by",
                     "added_at",
                     "connected_at",
+                    "connected_by",
                     "credential_ends_with",
                     "broken"
                   ],

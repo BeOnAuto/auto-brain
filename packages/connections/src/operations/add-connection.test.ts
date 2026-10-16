@@ -24,6 +24,7 @@ describe('the answer to adding a connection', () => {
         added_by: 'person:ada',
         added_at: '2026-10-15T14:00:00.000Z',
         connected_at: null,
+        connected_by: null,
         broken: null,
         connect: { expires_at: '2026-10-15T14:10:00.000Z' },
       },
