@@ -2,10 +2,11 @@ import type { Schema } from 'effect';
 
 import { orderPlaced } from '../dataset-testing/orders.ts';
 import { closeOf } from '../periods/enclosing.ts';
-import { periodOfMoment } from '../periods/moments.ts';
+import { periodOfDay } from '../periods/grains.ts';
 import { dailyTotalsWith, dailyVisitsWith } from '../testing/daily-documents.ts';
 import { weeklyOrdersWith } from '../testing/weekly-orders.ts';
-import { day, type Sales } from './projected-visits.ts';
+import type { Sales } from './projected-visits.ts';
+import { today } from './suite-clock.ts';
 
 export const visits: Sales = {
   name: 'daily-visits',
@@ -36,8 +37,8 @@ export const totals: Sales = {
 
 const regions = ['north', 'south'];
 
-function weeklyOrdersFrom(today: number): readonly Schema.JsonObject[] {
-  const week = periodOfMoment('week', today * day);
+function weeklyOrdersPlaced(): readonly Schema.JsonObject[] {
+  const week = periodOfDay('week', today);
   return regions.flatMap((region) =>
     Array.from({ length: 20 }, (_, at) => week - 20 + at).map((each) =>
       orderPlaced({
@@ -54,22 +55,20 @@ export const orders: Sales = {
   ...visits,
   name: 'weekly-orders',
   source: weeklyOrdersWith(['  holdout: 12', '  holdout: 12\n  baselines: [seasonal-naive]']),
-  events: weeklyOrdersFrom,
+  events: weeklyOrdersPlaced(),
 };
 
-function quietAfterToday(level: number, each: number, today: number): number | undefined {
+function quietAfterToday(level: number, each: number): number | undefined {
   return level === 40 && each >= today ? undefined : level + (each % 3);
 }
 
-export function quietVisits(today: number): Sales {
-  return {
-    ...visits,
-    base: { north: 10, south: 20, west: 40 },
-    valueOf: (level, each) => quietAfterToday(level, each, today),
-  };
-}
+export const quietVisits: Sales = {
+  ...visits,
+  base: { north: 10, south: 20, west: 40 },
+  valueOf: quietAfterToday,
+};
 
-function gappyValue(level: number, each: number, today: number): number | null | undefined {
+function gappyValue(level: number, each: number): number | null | undefined {
   if (level === 50) {
     return level;
   }
@@ -82,11 +81,9 @@ function gappyValue(level: number, each: number, today: number): number | null |
   return each % 2 === 0 ? level : undefined;
 }
 
-export function gappyVisits(today: number): Sales {
-  return {
-    ...visits,
-    source: visits.source.replace('  target: { of: /value, as: sum }', '  target: { of: /value, as: last }'),
-    base: { north: 10, south: 20, east: 30, flat: 50 },
-    valueOf: (level, each) => gappyValue(level, each, today),
-  };
-}
+export const gappyVisits: Sales = {
+  ...visits,
+  source: visits.source.replace('  target: { of: /value, as: sum }', '  target: { of: /value, as: last }'),
+  base: { north: 10, south: 20, east: 30, flat: 50 },
+  valueOf: gappyValue,
+};

@@ -102,7 +102,7 @@ describe('a candidate whose walk ends without an answer', { timeout: testTimeout
       Promise.resolve(),
     );
     scripted.next('real');
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect(
       (await workOf(playbook, build)).slice(5, 9).map(({ data }) => [data['because'], typeof data['detail']]),
