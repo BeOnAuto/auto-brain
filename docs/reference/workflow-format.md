@@ -151,6 +151,7 @@ An approval, or any other question for a person or a system, is an interaction f
 | `use.errors`, `use.retries`, `use.timeouts` | Optional named errors, retry policies and timeouts that tasks name              |
 
 - The runtime does not check a run's input or output against these schemas; they tell callers what the workflow takes and gives. A run whose input lacks a value still starts, and a step that depends on the value fails, as a reasoning function rejects input that does not match its own schema.
+- A workflow's input schema carries the rules of the fields its steps need, so a form or an agent refuses the input before a run starts. The field's `description` and `examples` are what a person is shown when it is refused.
 - `output.shape`, the runtime's own beside the DSL's keys, names an [output shape](output-shapes.md): `series`, `categories`, `table` or `text`. Its schema is published as the definition's `output_schema`, and `output.schema` beside it is refused. When the run ends, its output, after `output.as`, is checked against the shape; one that does not match ends the run `rejected` as `conflict` of the kind `unworkable`, naming the issues. A task's `output` takes no shape.
 - Schemas are written inline under `document`, as JSON Schema.
 - `document.version` is part of the document you write. The definition's `version` counts saved changes: it is 1 when the workflow is created and increases each time `update_definition` changes the document.
@@ -430,7 +431,7 @@ The usual way to handle a step that may fail for a moment is to retry it, then g
 2. Its `retry` runs the `try` list again after each such error. The `patient` policy retries at most three times, after 5, 10 and 20 seconds.
 3. When no retry remains, `catch.do` runs. Its `raise` task raises the workflow's own error: here the type `https://example.com/errors/review-unavailable`, status 503 and the title `The review could not be run`. The `type` is a URI you choose to name the error; nothing fetches it.
 
-That error is not caught, so the run ends `rejected` as `unavailable`, by its status 503; see [How a run ends](#how-a-run-ends). The rejection's `detail` reads `The review could not be run (at /do/0/review/catch/do/0/give-up)`, and the steps after it never run.
+That error is not caught, so the run ends `rejected` as `unavailable`, by its status 503; see [How a run ends](#how-a-run-ends). The rejection's `detail` reads `The review could not be run, at the step give-up.`, and the steps after it never run.
 
 Without `catch.do`, a task whose retries ran out hands on its own input as its output. The next step then receives that input in place of the function's output, and the run goes on with the wrong data. So give every retrying `catch` a `do` that raises an error, unless the workflow should go on without the output.
 
@@ -612,7 +613,7 @@ These are refused when a document is saved, each for the reason given:
 
 1. The `summary`, or else the `title`, or that the workflow has no description yet.
 2. What starts it: each trigger of its `schedule` in words, and a call of `run_definition`, which can always start it. A `cron` reads as a time in UTC and its days where it reads plainly, and as written otherwise.
-3. What it needs and produces: each field of `input.schema.document` and `output.schema.document`, with its type, or the shape `output.shape` names, in a sentence.
+3. What it needs and produces: each field of `input.schema.document` and `output.schema.document`, with its type and its `examples` unless its `description` gives one, or the shape `output.shape` names, in a sentence.
 4. What it does: a flowchart of its tasks, with the same steps beneath it as a numbered list in words.
 5. What it calls: each definition a `call: run_definition` names, with its type.
 6. **Used by**: the active definitions of the playbook that use this workflow, read each time it is returned, and left out when there are none.
@@ -652,7 +653,8 @@ The rejection gives a `reason`, and a `kind` where it has one:
 | `cancelled`     | `parent_ended`                   | The workflow waiting for it ended first, or its waiting branch lost a race   |
 | `unanswered`    | `expired`, `undelivered`         | It did not catch an unanswered request of an interaction function or a build |
 
-- A rejection of the kind `tools_unfinished`, `effect_unknown` or `rebuilding` keeps the error's `because`. A rejection's `detail` gives the error's title, or else its type, then its detail and the task that raised it, such as `The brief is not usable: Missing: audience (at /do/0/stop)`.
+- A rejection of the kind `tools_unfinished`, `effect_unknown` or `rebuilding` keeps the error's `because`. A rejection's `detail` gives the error's detail, then the step that raised it by its name, then the error's title, or else its type, such as `Missing: audience, at the step stop. The brief is not usable.`
+- A step whose function refused its input keeps its `issues`, each at its pointer and in the field's words, such as `month, the month to report on: expected at least 6 characters.`
 - A cancelled run's `detail` says why, in the words of whoever cancelled it.
 - A timeout that is not caught therefore rejects the run as `unavailable`. A call rejected with `invalid_input`, or a cancellation of a run it called, that is not caught rejects it as `invalid_input`.
 

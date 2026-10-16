@@ -214,16 +214,16 @@ Every number is an IEEE 754 double:
 
 A run checks the input against `input.schema`, then calls the program. It checks that the returned value is JSON, then checks it against `output.schema`, or against the shape `output.shape` names with the rules the shape adds, such as the order of a series' points. It ends in one of these ways:
 
-| Ending                        | When                                                                                                       |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `succeeded`                   | The program returned a value that is JSON and matches the output schema                                    |
-| `invalid_input`               | The input does not match the input schema, with a pointer to each problem, or nests deeper than 512 levels |
-| `conflict`, kind `unworkable` | The program raised an error, including a stack overflow                                                    |
-| `conflict`, kind `unworkable` | The program did more work or used more memory than a run may                                               |
-| `conflict`, kind `unworkable` | The program returned what JSON cannot carry, or a value deeper than 512 levels                             |
-| `conflict`, kind `unworkable` | The program returned what the output schema refuses, or what does not fit the run's record                 |
-| `unavailable`                 | The run took longer than a run may, or found no turn to run within its time                                |
-| `failed`                      | The runtime itself broke down                                                                              |
+| Ending                        | When                                                                                                                       |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `succeeded`                   | The program returned a value that is JSON and matches the output schema                                                    |
+| `invalid_input`               | The input does not match the input schema, with a sentence and a pointer for each problem, or nests deeper than 512 levels |
+| `conflict`, kind `unworkable` | The program raised an error, including a stack overflow                                                                    |
+| `conflict`, kind `unworkable` | The program did more work or used more memory than a run may                                                               |
+| `conflict`, kind `unworkable` | The program returned what JSON cannot carry, or a value deeper than 512 levels                                             |
+| `conflict`, kind `unworkable` | The program returned what the output schema refuses, or what does not fit the run's record                                 |
+| `unavailable`                 | The run took longer than a run may, or found no turn to run within its time                                                |
+| `failed`                      | The runtime itself broke down                                                                                              |
 
 A `conflict` of the kind `unworkable` says what went wrong:
 
@@ -379,7 +379,7 @@ do:
                   type: https://example.com/errors/pace-unavailable
                   status: 503
                   title: The campaigns' pace could not be computed
-                  detail: the computation function was still unavailable after two retries
+                  detail: The computation function was still unavailable after two retries
   - write:
       call: run_definition
       with:
