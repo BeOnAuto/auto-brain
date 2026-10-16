@@ -61,7 +61,7 @@ A model call reports a message for every `APICallError` whose message is not emp
 - a failed read is remembered for a minute (`failureKeptForMs`); within it, the last list is served as not current and the provider is not asked;
 - a catalog belongs to one model access, whose settings never change, so a list read with one credential is never served for another.
 
-`catalogListing` (`src/catalog/catalog-listing.ts`) builds the answer: alias entries offered under the allow list and whose target provider is configured, then the listed and declared entries that resolve to themselves through the aliases and are offered, deduplicated by `id` and sorted. `catalog_status` is `complete` only when every source answered from a current list; `narrowed` is `true` when `allowed`, the allow list of the settings, is not `null`; `listed_at` is the oldest `listedAt`, or now when none was read.
+`catalogListing` (`src/catalog/catalog-listing.ts`) builds the answer: alias entries, each `alias: true` and the only entries that carry it, offered under the allow list and whose target provider is configured, then the listed and declared entries that resolve to themselves through the aliases and are offered, deduplicated by `id` and sorted. `catalog_status` is `complete` only when every source answered from a current list; `narrowed` is `true` when `allowed`, the allow list of the settings, is not `null`; `listed_at` is the oldest `listedAt`, or now when none was read.
 
 ### Reading a list
 
