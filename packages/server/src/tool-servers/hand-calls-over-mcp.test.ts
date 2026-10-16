@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { listedTools, plainTextIn, problemIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { createApiKey } from '@on.auto/identity';
 import { allPermissions } from '@on.auto/operations';
@@ -7,6 +5,7 @@ import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing'
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/servers/workflow-calls.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -127,14 +126,6 @@ describe('execute for a key that may only read', () => {
   });
 });
 
-async function until(holds: () => boolean, waited = 0): Promise<boolean> {
-  if (holds() || waited >= 5000) {
-    return holds();
-  }
-  await setTimeout(10);
-  return until(holds, waited + 10);
-}
-
 describe('a call made by hand whose caller goes away over MCP while the tool is called', () => {
   it('records a start and no answer, sends no second call, and still lets the session go', async () => {
     const { server, graph } = await serving();
@@ -152,11 +143,19 @@ describe('a call made by hand whose caller goes away over MCP while the tool is 
       body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/call', params: call }),
       signal: leaving.signal,
     }).catch((error: unknown) => error);
-    await until(() => graph.received().length === 1);
+    await until(
+      () => Promise.resolve(graph.received().length),
+      (received) => received === 1,
+    );
     leaving.abort();
     await gone;
 
-    expect(await until(() => graph.endedSessions() === 1)).toBe(true);
+    expect(
+      await until(
+        () => Promise.resolve(graph.endedSessions()),
+        (ended) => ended === 1,
+      ),
+    ).toBe(1);
     const events = await server.call('GET', `${alpha}/events?order=asc`, { key: builder.key });
     expect(events.body).toMatchObject({ events: [{ type: 'tool_call_started' }] });
     expect(events.body).not.toMatchObject({ events: [{}, {}] });

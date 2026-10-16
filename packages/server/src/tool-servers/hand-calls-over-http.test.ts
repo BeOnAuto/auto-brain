@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { createApiKey } from '@on.auto/identity';
 import { allPermissions } from '@on.auto/operations';
 import { serveFakeMcp, type FakeMcpServer } from '@on.auto/tool-servers/testing';
@@ -7,6 +5,7 @@ import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/servers/workflow-calls.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -54,14 +53,6 @@ async function serving(): Promise<Serving> {
 
 function executeOf(server: ReasoningServer, tool: string, body: unknown = {}, key = builder.key) {
   return server.call('POST', `${alpha}/tool-servers/graph/tools/${tool}/execute`, { key, body });
-}
-
-async function until(holds: () => boolean, waited = 0): Promise<boolean> {
-  if (holds() || waited >= 5000) {
-    return holds();
-  }
-  await setTimeout(10);
-  return until(holds, waited + 10);
 }
 
 const decodeRun = Schema.decodeUnknownSync(Schema.Struct({ run_id: Schema.String }));
@@ -210,11 +201,19 @@ describe('a call made by hand whose caller goes away over HTTP while the tool is
       body: JSON.stringify({ arguments: { ms: 5000 } }),
       signal: leaving.signal,
     }).catch((error: unknown) => error);
-    await until(() => graph.received().length === 1);
+    await until(
+      () => Promise.resolve(graph.received().length),
+      (received) => received === 1,
+    );
     leaving.abort();
 
     expect(await gone).toMatchObject({ name: 'AbortError' });
-    expect(await until(() => graph.endedSessions() === 1)).toBe(true);
+    expect(
+      await until(
+        () => Promise.resolve(graph.endedSessions()),
+        (ended) => ended === 1,
+      ),
+    ).toBe(1);
     const events = await server.call('GET', `${alpha}/events?order=asc`, { key: builder.key });
     expect(events.body).toMatchObject({ events: [{ type: 'tool_call_started' }] });
     expect(graph.received()).toHaveLength(1);

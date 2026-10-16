@@ -1,18 +1,25 @@
 import { get } from 'node:http';
-import { setTimeout } from 'node:timers/promises';
 
+import type { RegisterRoutes } from '@on.auto/api';
 import { createApiKey } from '@on.auto/identity';
 import { Effect, Layer } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { optionsComposing, optionsServing } from '../testing/entries/serving-options.ts';
-import { testRoutes } from '../testing/entries/test-routes.ts';
+import { heldRequests } from '../testing/entries/test-routes.ts';
 import { isAcceptingConnections } from '../testing/processes/accepting-connections.ts';
-import { startServer, defaultServerOptions, servedBy, type Served } from './lifecycle.ts';
+import { shutdownLongerThanATestMs } from '../testing/processes/shutdown-timeouts.ts';
+import { startServer, defaultServerOptions, servedBy, type Served, type ServerOptions } from './lifecycle.ts';
 
 const loopback = { HOST: '127.0.0.1', PORT: '0' };
 
-const servingTestRoutes = optionsServing(() => servedBy([testRoutes]));
+function serving(routes: RegisterRoutes, shutdownTimeoutMs = shutdownLongerThanATestMs): ServerOptions<never> {
+  return { ...optionsServing(() => servedBy([routes])), shutdownTimeoutMs };
+}
+
+function heldAt(port: number): Promise<Response> {
+  return fetch(`http://127.0.0.1:${port}/held`);
+}
 
 function recordingDisposal(): { services: Layer.Layer<never>; events: string[] } {
   const events: string[] = [];
@@ -143,7 +150,6 @@ describe('the work a started server does besides answering requests', () => {
       routes: [],
       stopWork: async () => {
         const accepting = await isAcceptingConnections(listening.port);
-        await setTimeout(50);
         events.push(`work stopped, accepting connections: ${String(accepting)}`);
       },
     };
@@ -197,16 +203,18 @@ describe('startServer validates requests from browsers', () => {
 
 describe('startServer with routes', () => {
   it('serves the routes it is given', async () => {
-    const server = await startServer(loopback, servingTestRoutes);
+    const held = heldRequests();
+    const server = await startServer(loopback, serving(held.routes));
+    held.release();
 
-    const response = await fetch(`http://127.0.0.1:${server.port}/slow?ms=1`);
+    const response = await heldAt(server.port);
     await server.stop();
 
-    expect({ status: response.status, body: await response.json() }).toEqual({ status: 200, body: { slept: 1 } });
+    expect({ status: response.status, body: await response.json() }).toEqual({ status: 200, body: { held: true } });
   });
 
   it('answers an unexpected error with a 500 problem document', async () => {
-    const server = await startServer(loopback, servingTestRoutes);
+    const server = await startServer(loopback, serving(heldRequests().routes));
 
     const response = await fetch(`http://127.0.0.1:${server.port}/fail`);
     await server.stop();
@@ -220,70 +228,70 @@ describe('startServer with routes', () => {
 
 describe('stopping a started server', () => {
   it('lets a request in flight finish, then stops without waiting for the shutdown timeout', async () => {
-    const server = await startServer(loopback, servingTestRoutes);
-    const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`);
-    await setTimeout(50);
-    const stopping = performance.now();
+    const held = heldRequests();
+    const server = await startServer(loopback, serving(held.routes));
+    const inFlight = heldAt(server.port);
+    await held.arrived;
 
-    await server.stop();
+    const stopping = server.stop();
+    held.release();
+    await stopping;
     const response = await inFlight;
 
-    expect({ status: response.status, body: await response.json() }).toEqual({ status: 200, body: { slept: 300 } });
-    expect(performance.now() - stopping).toBeLessThan(2000);
+    expect({ status: response.status, body: await response.json() }).toEqual({ status: 200, body: { held: true } });
   });
 });
 
 describe('the work a stopping server does besides answering requests', () => {
   it('stops while the requests in flight finish, not after them', async () => {
-    const events: string[] = [];
-    const server = await startServer(
-      loopback,
-      optionsServing(() => ({
-        routes: [testRoutes],
-        stopWork: async () => {
-          events.push('work stopping');
-          await setTimeout(50);
-          events.push('work stopped');
+    const held = heldRequests();
+    const workStopping = Promise.withResolvers<void>();
+    const server = await startServer(loopback, {
+      ...optionsServing(() => ({
+        routes: [held.routes],
+        stopWork: () => {
+          workStopping.resolve();
+          return Promise.resolve();
         },
       })),
-    );
-    const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=300`).then(() => {
-      events.push('request answered');
-      return events;
+      shutdownTimeoutMs: shutdownLongerThanATestMs,
     });
-    await setTimeout(50);
+    const inFlight = heldAt(server.port);
+    await held.arrived;
 
-    await server.stop();
-    await inFlight;
+    const stopping = server.stop();
+    await workStopping.promise;
+    held.release();
+    await stopping;
 
-    expect(events.toSorted()).toEqual(['request answered', 'work stopped', 'work stopping']);
-    expect(events.indexOf('work stopping')).toBeLessThan(events.indexOf('request answered'));
+    expect((await inFlight).status).toBe(200);
   });
 });
 
 describe('stopping a started server with connections still open', () => {
   it('closes a keep-alive connection that is idle, instead of waiting for it until the shutdown timeout', async () => {
-    const server = await startServer(loopback, defaultServerOptions);
+    const server = await startServer(loopback, {
+      ...defaultServerOptions,
+      shutdownTimeoutMs: shutdownLongerThanATestMs,
+    });
     await (await fetch(`http://127.0.0.1:${server.port}/health`)).text();
-    const stopping = performance.now();
 
     await server.stop();
 
-    expect(performance.now() - stopping).toBeLessThan(2000);
+    expect(await isAcceptingConnections(server.port)).toBe(false);
   });
 
   it('cuts off a request still running at the shutdown timeout', async () => {
-    const server = await startServer(loopback, { ...servingTestRoutes, shutdownTimeoutMs: 100 });
-    const inFlight = fetch(`http://127.0.0.1:${server.port}/slow?ms=60000`).then(
+    const held = heldRequests();
+    const server = await startServer(loopback, serving(held.routes, 100));
+    const inFlight = heldAt(server.port).then(
       () => 'answered',
       () => 'cut off',
     );
-    await setTimeout(50);
-    const stopping = performance.now();
+    await held.arrived;
 
     await server.stop();
 
-    expect(performance.now() - stopping).toBeLessThan(1000);
     expect(await inFlight).toBe('cut off');
   });
 });

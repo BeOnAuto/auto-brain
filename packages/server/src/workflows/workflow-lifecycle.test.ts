@@ -3,8 +3,15 @@ import { setTimeout } from 'node:timers/promises';
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { logLinesOf, requestTo, settledOver, workflowProcess } from '../testing/processes/workflow-process.ts';
+import {
+  logLinesOf,
+  requestTo,
+  settledOver,
+  workflowProcess,
+  type Answer,
+} from '../testing/processes/workflow-process.ts';
 import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
+import { until } from '../testing/servers/workflow-calls.ts';
 import { runIdIn, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const ledger = temporaryLedger();
@@ -21,6 +28,17 @@ const approval = workflowSource(
 const pausing = workflowSource('pausing', 'do:\n  - pause: { wait: PT1S }\n  - done: { set: { paused: true } }\n');
 
 const timing = workflowSource('timing', 'do:\n  - slow: { timeout: { after: PT1S }, wait: PT1H }\n');
+
+const timersMs = 1000;
+
+const historyOf = Schema.decodeUnknownSync(
+  Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
+);
+
+async function isWaiting(port: number, run: Answer): Promise<boolean> {
+  const { body } = await requestTo(port, 'GET', `/gamma/runs/${runIdIn(run.body)}/history`);
+  return historyOf(body).events.some(({ type }) => type === 'step_waiting');
+}
 
 const inputsOf = Schema.decodeUnknownSync(
   Schema.Struct({
@@ -74,9 +92,11 @@ describe('a server started again on the ledger of its workflows', () => {
     const waiting = await requestTo(firstPort, 'POST', '/gamma/definitions/workflow/approval/run', { input: {} });
     const paused = await requestTo(firstPort, 'POST', '/gamma/definitions/workflow/pausing/run', { input: {} });
     const timed = await requestTo(firstPort, 'POST', '/gamma/definitions/workflow/timing/run', { input: {} });
+    await Promise.all([paused, timed].map((run) => until(() => isWaiting(firstPort, run), Boolean)));
+    const timersDueBy = Date.now() + timersMs;
     first.signal('SIGTERM');
     await first.exited;
-    await setTimeout(1500);
+    await setTimeout(Math.max(0, timersDueBy - Date.now()));
 
     const second = workflowProcess(ledger.fileName);
     const port = await second.port;

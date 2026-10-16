@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { setTimeout } from 'node:timers/promises';
 
 import { Schema } from 'effect';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -99,8 +98,7 @@ async function startedEach(port: number): Promise<ReadonlyMap<string, string>> {
   return new Map(await Promise.all(definitions.map(({ name }) => started(port, name))));
 }
 
-async function stopped(child: SpawnedServer): Promise<unknown> {
-  await setTimeout(1000);
+function stopped(child: SpawnedServer): Promise<unknown> {
   child.signal('SIGTERM');
   return child.exited;
 }
