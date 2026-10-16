@@ -35,7 +35,7 @@ function endedWork(performing: Performing, document: PredictionFunctionDefinitio
   if (row.staged) {
     return Effect.andThen(
       ports.ledger.content.unstage({ org, playbook }, id),
-      advanced(performing, build.address, { staged: false, next_due_at: now }),
+      advanced(performing, { staged: false, next_due_at: now }),
     );
   }
   return row.open ? lifecycleStep(performing, document) : childrenCancelled(performing);
