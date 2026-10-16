@@ -77,7 +77,7 @@ async function scoredOnce(models: ModelProcesses, files: MeasuredFiles): Promise
   const started = performance.now();
   const rows = await seriesRowsIn(files.rows, { features: 0 });
   const grid = scoringGridOf(
-    { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits' },
+    { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits', history: 4 },
     { window: daysMeasured, holdout: 8, firstPeriod: '2026-03-01' },
   );
   const scoring = { grid, rows, evaluation, seed: 1 };

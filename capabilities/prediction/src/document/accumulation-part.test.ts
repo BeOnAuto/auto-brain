@@ -66,6 +66,7 @@ describe('a prediction function that sums its target to the end of an enclosing 
       horizons: [],
       accumulates: 'week',
       unit: 'sales',
+      history: 14,
     });
   });
 

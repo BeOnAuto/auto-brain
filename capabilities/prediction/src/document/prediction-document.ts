@@ -18,6 +18,7 @@ export interface Predicts {
   readonly horizons: readonly number[];
   readonly accumulates?: Enclosing;
   readonly unit: string;
+  readonly history: number;
 }
 
 export interface Measure {

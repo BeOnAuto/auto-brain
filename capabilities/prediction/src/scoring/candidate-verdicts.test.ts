@@ -8,13 +8,13 @@ import { originDifferences, primaryOf, scoredOf } from './metrics.ts';
 import { meanOf, rounded } from './score-math.ts';
 import { remainingOfTheOrigins, scoringGridOf } from './scoring-grid.ts';
 
-const daily: Predicts = { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits' };
+const daily: Predicts = { target: 'visits', period: 'day', horizons: [1, 2], unit: 'visits', history: 4 };
 
 const grid = scoringGridOf(daily, { window: 12, holdout: 4, firstPeriod: '2026-10-01' });
 
 const values = Float64Array.from([1, 2, 3, 4, 5, 6, 7, 8, 10, 9, 12, 11]);
 
-const toTheWeek: Predicts = { ...daily, season: 7, horizons: [], accumulates: 'week' };
+const toTheWeek: Predicts = { ...daily, season: 7, horizons: [], accumulates: 'week', history: 14 };
 
 const weeks = scoringGridOf(toTheWeek, { window: 21, holdout: 7, firstPeriod: '2026-10-05' });
 
