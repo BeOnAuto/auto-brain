@@ -1,7 +1,6 @@
 import { dirname } from 'node:path';
 
 import { settingProblemText, type Environment, type FileUse } from '@on.auto/config';
-import { readConnectionPolicy, type ConnectionPolicy } from '@on.auto/connections';
 import {
   defaultMostInputTokens,
   ModelSettingsInvalid,
@@ -22,7 +21,6 @@ interface ReasoningBounds {
 export interface ReasoningSettings {
   readonly models: ModelSettings;
   readonly toolServers: ToolServerSettings;
-  readonly connections: ConnectionPolicy;
   readonly reasoning: ReasoningBounds;
 }
 
@@ -75,6 +73,5 @@ export function readReasoningSettings(environment: Environment, file: FileUse | 
     }).pipe(Effect.mapError((invalid: Problems) => serversPlaced(invalid, file))),
   );
   const reasoning = Effect.runSync(countsIn(environment, { settings: 'reasoning function settings', bounds }));
-  const connections = Effect.runSync(readConnectionPolicy(environment));
-  return { models, toolServers, connections, reasoning };
+  return { models, toolServers, reasoning };
 }

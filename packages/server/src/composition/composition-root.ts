@@ -1,12 +1,12 @@
 import type { DispatcherServices } from '@on.auto/operations';
 
+import { storesAndConnectionsOf } from '../connections/served-connections.ts';
 import { ledgerDatabaseOf } from '../database/ledger-database.ts';
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
 import { serveWorkflows, type WorkflowParts } from '../workflows/workflows.ts';
 import { applicationLayer } from './application-layer.ts';
 import { functionWiringOf, type FunctionWiring } from './function-wiring.ts';
 import { ledgerLayerFor } from './ledger-store.ts';
-import { storesAndConnectionsOf } from './served-connections.ts';
 import { functionsServedBy } from './served-functions.ts';
 import { loggedModelAccess } from './served-reasoning.ts';
 

@@ -3,7 +3,6 @@ import { proxySettingsOf, type ProxySettings } from '@on.auto/outbound';
 import { Effect, Result } from 'effect';
 
 import { fileSettings } from '../config-file/file-settings.ts';
-import { readFunctionSettings, type FunctionSettings } from '../function-settings/function-settings.ts';
 import { readTelemetrySettings, type TelemetrySettings } from '../telemetry/telemetry-settings.ts';
 import {
   readAccessSettings,
@@ -13,7 +12,7 @@ import {
 } from './access-settings.ts';
 import { readContentSettings, type ContentSettings } from './content-settings.ts';
 import { readLedgerAndSecrets, type LedgerAndSecrets } from './secrets-settings.ts';
-import { readWorkflowSettings, type WorkflowSettings } from './workflow-settings.ts';
+import { readServedSettings, type ServedSettings } from './served-settings.ts';
 
 interface ConfigFileSources {
   readonly path: string;
@@ -21,12 +20,11 @@ interface ConfigFileSources {
   readonly overridden: readonly string[];
 }
 
-export interface Settings extends FunctionSettings, AccessSettings, CredentialSettings, LedgerAndSecrets {
+export interface Settings extends ServedSettings, AccessSettings, CredentialSettings, LedgerAndSecrets {
   readonly host: string;
   readonly port: number;
   readonly content: ContentSettings;
   readonly proxy: ProxySettings;
-  readonly workflows: WorkflowSettings;
   readonly telemetry: TelemetrySettings | undefined;
   readonly configFile: ConfigFileSources | undefined;
   readonly providerSetup?: string | undefined;
@@ -43,8 +41,7 @@ export function readSettings(given: Environment): Settings {
   const { apiKeys, identityIssuer, signIn } = readCredentialSettings(environment);
   const { ledger, secrets } = Effect.runSync(readLedgerAndSecrets(environment));
   const content = Effect.runSync(readContentSettings(environment));
-  const functions = readFunctionSettings(environment, file);
-  const workflows = Effect.runSync(readWorkflowSettings(environment));
+  const served = readServedSettings(environment, file);
   const telemetry = Effect.runSync(readTelemetrySettings(environment));
   return {
     host,
@@ -59,8 +56,7 @@ export function readSettings(given: Environment): Settings {
     proxy: proxySettingsOf(environment),
     logFormat,
     logLevel,
-    ...functions,
-    workflows,
+    ...served,
     telemetry,
     configFile: sourcesOf(file),
   };
