@@ -1,5 +1,6 @@
 import {
   isStreamedBody,
+  takesNoBody,
   type HttpBody,
   type InputEncoding,
   type RouteRegistration,
@@ -62,7 +63,7 @@ export async function parseCallInput(
 ): Promise<Result.Result<CallInput, Problem>> {
   const pathFields = Object.fromEntries(registration.pathParameters.map((name) => [name, c.req.param(name)]));
   const query = new URL(c.req.url).searchParams;
-  if (registration.route.method === 'GET') {
+  if (takesNoBody(registration.route)) {
     return Result.flatMap(queryFieldsOf(query), (given) => combined(pathFields, given, 'strings'));
   }
   if (query.size > 0) {

@@ -81,7 +81,7 @@ describe('episode 3: asked to use Slack', () => {
     const listed = await onMcp((session) => session.callTool('search', { playbook: 'meetings' }));
 
     expect(sentenceNaming(surfaces.instructions, 'search finds')).toBe(
-      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
+      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows its answer, and dry_run what it would check.',
     );
     expect(plainTextIn(listed)).toMatch(/^This playbook's functions may use 2 tool servers\. /u);
     expect(plainTextIn(listed)).toContain('“slack” offers');
@@ -152,7 +152,7 @@ describe('episode 4: asked to make the playbook remember what it posted today', 
       await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
     );
 
-    expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain('excluding run inputs and tool calls.');
+    expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain('never run inputs or tool calls.');
     expect(String(prompt.messages[0]?.content.text)).toContain(
       'a function whose job is to post must answer what it posted.',
     );
@@ -247,7 +247,7 @@ describe('episode 8: asked what a gateway-style tool server offers, and then to 
     const seen = await onMcp(lookedAtOverMcp);
 
     expect(sentenceNaming(surfaces.instructions, 'search finds', 'execute')).toBe(
-      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
+      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows its answer, and dry_run what it would check.',
     );
     expect(seen.found.structuredContent).toMatchObject({
       servers: [{ name: 'slack' }],

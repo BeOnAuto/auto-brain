@@ -226,7 +226,7 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
     ]),
   },
   'command-gets.ts': {
-    because: 'Type \'"GET"\' is not assignable to type \'"POST" | "PUT"\'',
+    because: 'Type \'"GET"\' is not assignable to type \'"DELETE" | "POST" | "PUT"\'',
     source: defined('defineCommand', 'playbook', [get, ...emptyInputAndOutput, answering]),
   },
   'query-created.ts': {

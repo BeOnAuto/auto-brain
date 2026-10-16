@@ -56,6 +56,7 @@ With PostgreSQL, the container keeps nothing of its own. [Run with PostgreSQL](s
 - [Authentication and security](self-host/security.md): sign-in, API keys, local mode and calls from a browser
 - [Set up a model provider](self-host/models.md): choose a provider, set its credentials, and check that Auto can call a model
 - [Add a tool server](self-host/tool-servers.md): give functions the tools of a business system, a program or an HTTP API, and check that Auto lists them
+- [Let people add connections](self-host/connections.md): the tool servers people add to an org through their agents and approve in Studio, their credentials, and the rules you set for them
 - [Workflow storage and failover](self-host/workflows.md): where runs are kept, how a server stops and restarts, and how several servers share the workflows
 - [Send telemetry](self-host/telemetry.md): traces, metrics and logs over OTLP, what they record and leave out, and Grafana on your machine to read them
 - [Troubleshooting](self-host/troubleshooting.md): common problems, from a busy port to error responses

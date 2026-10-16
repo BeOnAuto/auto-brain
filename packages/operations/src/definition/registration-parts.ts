@@ -49,7 +49,7 @@ type RegisteredDefinition<K extends OperationKind> = Pick<
 
 type RegisteredFields<S extends OperationScope, K extends OperationKind> = Omit<
   RegisteredFieldsOf<S, K>,
-  'plainLanguage'
+  'plainLanguage' | 'linkToOpen'
 >;
 
 export function registeredFieldsOf<S extends OperationScope, K extends OperationKind>(

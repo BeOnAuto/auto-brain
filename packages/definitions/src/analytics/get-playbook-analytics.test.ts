@@ -108,6 +108,16 @@ const schemaRefusals: readonly (readonly [Readonly<Record<string, unknown>>, str
 ];
 
 describe('get_playbook_analytics', () => {
+  it('is a playbook query at GET /analytics, served over HTTP alone', () => {
+    expect(getPlaybookAnalytics.registration).toMatchObject({
+      scope: 'playbook',
+      kind: 'query',
+      route: { method: 'GET', path: '/analytics' },
+      reasons: ['invalid_input'],
+      servedOverHttpAlone: { kind: 'none' },
+    });
+  });
+
   it('answers the last seven days by default, with every day, the runs that ended and what they used', async () => {
     const definitions = await aPlaybookWithRuns();
 

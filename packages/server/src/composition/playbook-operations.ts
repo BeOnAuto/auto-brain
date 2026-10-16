@@ -2,12 +2,16 @@ import {
   definePublishEvent,
   makeDefinitionOperations,
   makeDefinitionPresenters,
-  type PlaybookOperation,
   type Capability,
 } from '@on.auto/definitions';
+import type { RouteRegistration } from '@on.auto/operations';
 import { defineGetEvent, defineListPlaybookEvents } from '@on.auto/playbooks';
 
 import type { ComposedFacts } from './composed-facts.ts';
+
+interface PlaybookOperation {
+  readonly registration: RouteRegistration<'playbook'>;
+}
 
 export function playbookOperationsServing(
   capabilities: readonly Capability[],

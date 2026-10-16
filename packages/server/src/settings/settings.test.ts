@@ -49,6 +49,7 @@ describe('readSettings', () => {
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
+      connections: { peopleMayAdd: true, allowedHosts: null, credentialKinds: null, variables: [] },
       telemetry: undefined,
       configFile: undefined,
     });
@@ -71,6 +72,7 @@ const everySetting = {
   OPENAI_API_KEY: 'sk-test',
   INTERACTION_OPEN_REQUESTS: '250',
   REASONING_MAX_INPUT_TOKENS: '500000',
+  CONNECTIONS: JSON.stringify({ people_may_add: false, allowed_hosts: ['*.example.com'], credential_kinds: ['none'] }),
 };
 
 describe('readSettings given every setting', () => {
@@ -103,6 +105,7 @@ describe('readSettings given every setting', () => {
       computation: { workers: 4 },
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
+      connections: { peopleMayAdd: false, allowedHosts: ['*.example.com'], credentialKinds: ['none'], variables: [] },
       telemetry: undefined,
       configFile: undefined,
     });
@@ -186,6 +189,12 @@ describe('readSettings rejects invalid settings of other packages', () => {
 
   it('rejects an invalid port with the named error from the server configuration', () => {
     expect(errorFrom({ PORT: 'eighty' })).toEqual(new InvalidPortError('eighty'));
+  });
+
+  it('stops at connection settings it cannot read, naming the setting', () => {
+    expect(String(errorFrom({ CONNECTIONS: '{"people_may_add": "yes"}' }))).toBe(
+      'connection_policy_invalid: The connection settings are invalid. CONNECTIONS: /people_may_add: Expected boolean',
+    );
   });
 
   it('stops at model settings it cannot read, naming the setting and never its value', () => {

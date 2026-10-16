@@ -15,8 +15,9 @@ const rowsInABatch = 100;
 
 export interface SecretStore {
   readonly kid: string;
-  readonly keep: (value: Redacted.Redacted) => Effect.Effect<string, SecretRefused>;
+  readonly keep: (value: Redacted.Redacted, endsWith?: string) => Effect.Effect<string, SecretRefused>;
   readonly read: (id: string) => Effect.Effect<Redacted.Redacted | undefined, SecretKeyUnknown>;
+  readonly endingsOf: (ids: readonly string[]) => Effect.Effect<ReadonlyMap<string, string>>;
   readonly forget: (id: string) => Effect.Effect<void>;
   readonly rotated: () => Effect.Effect<number>;
   readonly close: () => Promise<void>;
@@ -30,6 +31,8 @@ interface Rotation {
 const SealedRows = Schema.Array(Schema.Struct({ sealed: Schema.String }));
 
 const PreviouslySealedRows = Schema.Array(Schema.Struct({ id: Schema.String, sealed: Schema.String }));
+
+const EndingRows = Schema.Array(Schema.Struct({ id: Schema.String, ends_with: Schema.String }));
 
 function refusalOf(value: string): SecretRefused | undefined {
   if (value === '') {
@@ -51,17 +54,36 @@ function commanded(execute: StatementExecutor, sql: SQL): Effect.Effect<void> {
   return Effect.asVoid(Effect.promise(() => execute.command(sql)));
 }
 
-function keptUnder(execute: StatementExecutor, key: SealingKey, value: string): Effect.Effect<string> {
+function keptUnder(
+  execute: StatementExecutor,
+  key: SealingKey,
+  value: string,
+  endsWith: string | undefined,
+): Effect.Effect<string> {
   return Effect.gen(function* () {
     const id = randomUUIDv7();
     const sealed = yield* Effect.promise(() => sealedUnder(key, value));
     yield* commanded(
       execute,
-      SQL`INSERT INTO ${sealedSecrets} (id, kid, sealed, kept_at)
-        VALUES (${id}, ${key.kid}, ${sealed}, ${new Date().toISOString()})`,
+      SQL`INSERT INTO ${sealedSecrets} (id, kid, sealed, kept_at, ends_with)
+        VALUES (${id}, ${key.kid}, ${sealed}, ${new Date().toISOString()}, ${endsWith ?? null})`,
     );
     return id;
   });
+}
+
+function endingsOn(execute: StatementExecutor, ids: readonly string[]): Effect.Effect<ReadonlyMap<string, string>> {
+  if (ids.length === 0) {
+    return Effect.succeed(new Map());
+  }
+  const named = SQL.merge(
+    ids.map((id) => SQL`${id}`),
+    ', ',
+  );
+  return Effect.map(
+    queried(execute, SQL`SELECT id, ends_with FROM ${sealedSecrets} WHERE id IN (${named}) AND ends_with IS NOT NULL`),
+    (rows) => new Map(Schema.decodeUnknownSync(EndingRows)(rows).map(({ id, ends_with: endsWith }) => [id, endsWith])),
+  );
 }
 
 function unsealed(keyring: Keyring, sealed: string): Effect.Effect<string, SecretKeyUnknown> {
@@ -121,12 +143,15 @@ export function secretStoreOn(execute: StatementExecutor, keyring: Keyring, clos
   const { current, previous } = keyring;
   return {
     kid: current.kid,
-    keep: (value) =>
+    keep: (value, endsWith) =>
       Effect.suspend(() => {
         const refusal = refusalOf(Redacted.value(value));
-        return refusal === undefined ? keptUnder(execute, current, Redacted.value(value)) : Effect.fail(refusal);
+        return refusal === undefined
+          ? keptUnder(execute, current, Redacted.value(value), endsWith)
+          : Effect.fail(refusal);
       }),
     read: (id) => readOn(execute, keyring, id),
+    endingsOf: (ids) => endingsOn(execute, ids),
     forget: (id) => commanded(execute, SQL`DELETE FROM ${sealedSecrets} WHERE id = ${id}`),
     rotated: () => (previous === undefined ? Effect.succeed(0) : resealedInBatches(execute, { current, previous }, 0)),
     close,

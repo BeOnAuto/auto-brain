@@ -47,12 +47,20 @@ function streamedBody(name: string, given: StreamedContent | undefined): Effect.
     : Effect.succeed([given]);
 }
 
-export const bodyArgumentsOf: BodyArgumentsOf = {
+const bodyArgumentsOf: BodyArgumentsOf = {
   json: noBody,
   none: noBody,
   'octet-stream': streamedBody,
   csv: streamedBody,
 };
+
+export function bodyArgumentsFor<Kind extends keyof BodyArguments>(
+  kind: Kind,
+  name: string,
+  given: StreamedContent | undefined,
+): Effect.Effect<BodyArguments[Kind]> {
+  return bodyArgumentsOf[kind](name, given);
+}
 
 type Answering<Out extends ObjectSchema> = {
   readonly [Kind in AnswerKind]: (

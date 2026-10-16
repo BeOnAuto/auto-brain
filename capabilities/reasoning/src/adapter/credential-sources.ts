@@ -2,6 +2,8 @@ import { GoogleAuth, OAuth2Client } from 'google-auth-library';
 
 import { OutboundFailure } from './outbound-failure.ts';
 
+export const googleCredentialVariables: readonly string[] = ['GOOGLE_APPLICATION_CREDENTIALS'];
+
 export interface AwsCredentials {
   readonly accessKeyId: string;
   readonly secretAccessKey: string;

@@ -77,7 +77,7 @@ async function executedTwice(server: ReasoningServer, document = source) {
     const running = { type: 'reasoning', name: 'summary', input: {}, run_id: runId };
     const first = await session.callTool('run_definition', running);
     const again = await session.callTool('run_definition', running);
-    const history = await session.callTool('get_run_history', { run_id: runId });
+    const history = await session.callTool('list_playbook_events', { run_id: runId, order: 'asc' });
     return { first, again, history };
   });
 }

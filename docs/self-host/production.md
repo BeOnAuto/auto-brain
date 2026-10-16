@@ -155,7 +155,7 @@ The server calls model providers and the tool servers you configure.
 
 People inspect the runs of a deployed runtime through their agent or in Auto Studio.
 
-- An agent connects with sign-in, which needs `PUBLIC_URL`, or with an [API key](security.md#api-keys) that has `playbook:read`. `get_run` returns a run's status and result with its detailed record, and `get_run_history` returns its steps; see [Runs](../reference/mcp.md#runs) in the MCP reference.
+- An agent connects with sign-in, which needs `PUBLIC_URL`, or with an [API key](security.md#api-keys) that has `playbook:read`. `get_run` returns a run's status and result with its detailed record, and `list_playbook_events`, given its `run_id`, returns its steps; see [Runs](../reference/mcp.md#runs) in the MCP reference.
 - In Auto Studio, each person enters the runtime's `https` address, which needs `PUBLIC_URL` set; see [Open Studio on a runtime](security.md#open-studio-on-a-runtime).
 
 ## The image

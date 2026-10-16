@@ -111,7 +111,7 @@ describe('execute refused over MCP', () => {
 });
 
 describe('execute for a key that may only read', () => {
-  it('is not offered on either endpoint, while search, introspect, validate and dry_run are', async () => {
+  it('is not offered on either endpoint, while search, introspect and dry_run are', async () => {
     const { server } = await serving();
 
     const offered: readonly (readonly string[])[] = await Promise.all(
@@ -121,9 +121,10 @@ describe('execute for a key that may only read', () => {
     );
 
     expect(offered.map((names) => names.includes('execute'))).toEqual([false, false]);
-    expect(
-      offered.map((names) => ['search', 'introspect', 'validate', 'dry_run'].every((name) => names.includes(name))),
-    ).toEqual([true, true]);
+    expect(offered.map((names) => ['search', 'introspect', 'dry_run'].every((name) => names.includes(name)))).toEqual([
+      true,
+      true,
+    ]);
   });
 });
 

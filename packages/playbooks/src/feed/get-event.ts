@@ -18,7 +18,7 @@ import { Effect, Schema, SchemaTransformation } from 'effect';
 import { eventFound } from '../plain-language/feed-words.ts';
 
 const description = [
-  'Reads one event of the playbook whole by its id, as list_playbook_events and get_run_history show it: its fact as data and its metadata, every field whole,',
+  'Reads one event of the playbook whole by its id, as list_playbook_events shows it: its fact as data and its metadata, every field whole,',
   "with a tool call's arguments, the tool's result as it answered and the answer document read from it.",
   `Over MCP an input, output, record, answer, arguments, result or event data past ${mostToolFieldBytes} bytes appears as its size; over HTTP every field is whole.`,
   'Use it to open what a tool answered, or a large input or output, that a page of events shows as its size.',

@@ -1,4 +1,4 @@
-import type { Registration } from '@on.auto/operations';
+import type { RouteRegistration } from '@on.auto/operations';
 
 import { createPlaybook } from './create-playbook.ts';
 import { getPlaybook } from './get-playbook.ts';
@@ -7,7 +7,7 @@ import { retirePlaybook } from './retire-playbook.ts';
 import { updatePlaybook } from './update-playbook.ts';
 
 interface OrgOperation {
-  readonly registration: Registration<'org'>;
+  readonly registration: RouteRegistration<'org'>;
 }
 
 export const playbookOperations: readonly OrgOperation[] = [

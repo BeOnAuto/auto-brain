@@ -35,11 +35,11 @@ const purposesByType: Readonly<Record<string, readonly string[]>> = {
   interaction: ['An interaction function asks a system and answers at once, or asks a person and answers started.'],
   computation: ['A computation function runs a program on its input and gives the same output every time.'],
   recall: [
-    'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.',
+    'Recall retrieves retained run results, definitions and events, never run inputs or tool calls.',
     'What the person wants kept goes in a recall function, for anyone or a workflow to ask later, not your own notes.',
   ],
   prediction: [
-    "A prediction function answers a question from a model a trainer built on the playbook's history, and a build, the input { build: {} }, answers started.",
+    "A prediction function answers from a model trained on the playbook's history; a build, the input { build: {} }, answers started.",
   ],
   workflow: ['A workflow runs functions in steps, waits for input and can start on a schedule or on an event.'],
 };
@@ -49,11 +49,11 @@ export const whatAPlaybookIs = [
   'A playbook contains one brain (its reusable functions) and workflows. The brain shares its lifecycle. Functions run directly or through workflows; runs belong to the playbook.',
 ];
 
-const pagedReads = ['list_runs', 'get_run_history', 'list_playbook_events', 'list_interactions'];
+const pagedReads = ['list_runs', 'list_playbook_events', 'list_interactions'];
 
 const howToAnswer = [
   'Say what was done and what the person can do next in the words of playbooks, functions, workflows and runs,',
-  "not the tools' names, fields or rules, and an id or status only when they need it to act.",
+  "not the tools' names, fields or rules, and an id or status only when needed to act.",
 ].join(' ');
 
 const whenAToolCannot = 'A tool that cannot do what was asked says why and what to change.';
@@ -106,10 +106,10 @@ function callingWords(listed: Serving['listed']): string {
   const executing = listed('execute');
   const dryRunning = listed('dry_run');
   if (executing && dryRunning) {
-    return '; execute calls one and shows what it answers, and dry_run what it would check';
+    return '; execute calls one and shows its answer, and dry_run what it would check';
   }
   if (executing) {
-    return '; execute calls one and shows what it answers';
+    return '; execute calls one and shows its answer';
   }
   return dryRunning ? '; dry_run shows what a call of one would check' : '';
 }
@@ -126,6 +126,9 @@ const modelsAndTools: Sentences = ({ reasoning, listed }) => {
   ];
 };
 
+const connections: Sentences = ({ listed }) =>
+  listed('add_connection') ? ['Add a tool server with add_connection; the person approves it.'] : [];
+
 const typesThatFinishLater: ReadonlySet<string> = new Set(['workflow']);
 
 const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
@@ -140,14 +143,14 @@ const runsThatFinishLater: Sentences = ({ listed, definitionTypes }) => {
 const answeringWhatRunsWaitOn: Sentences = ({ listed }) =>
   listed('answer_interaction')
     ? [
-        'When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction and start no new run for it.',
+        'When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, not with a new run.',
       ]
     : [];
 
 const paging: Sentences = ({ listed }) => {
-  const paged = listed('list_interactions') ? 'Runs, history, events and requests' : 'Runs, history and events';
+  const paged = listed('list_interactions') ? 'Runs, events and requests' : 'Runs and events';
   return pagedReads.some((name) => listed(name))
-    ? [`${paged} come a page at a time; read on only when the person needs more.`]
+    ? [`${paged} come in pages; read on only when the person needs more.`]
     : [];
 };
 
@@ -159,6 +162,7 @@ const orientation: readonly Sentences[] = [
   modelsBeforeWriting,
   guides,
   modelsAndTools,
+  connections,
   runsThatFinishLater,
   answeringWhatRunsWaitOn,
   paging,

@@ -21,9 +21,13 @@ function variablesSetIn(environment: Environment): readonly (readonly [string, s
   });
 }
 
+const proxyFlag = 'NODE_USE_ENV_PROXY';
+
+export const proxySettingsVariables: readonly string[] = [...proxyVariables, proxyFlag];
+
 export function proxySettingsOf(environment: Environment): ProxySettings {
   return {
-    enabled: environment['NODE_USE_ENV_PROXY'] === '1',
+    enabled: environment[proxyFlag] === '1',
     environment: Object.fromEntries(variablesSetIn(environment)),
   };
 }

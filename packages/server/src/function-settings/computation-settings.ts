@@ -10,6 +10,8 @@ export interface ComputationSettings {
 
 const workers = { setting: 'COMPUTATION_WORKERS', least: 1, most: 64, example: 4 };
 
+export const computationVariables: readonly string[] = [workers.setting];
+
 export function readComputationSettings(
   environment: Environment,
 ): Effect.Effect<ComputationSettings, InvalidSettingsError> {

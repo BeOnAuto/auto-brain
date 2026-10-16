@@ -1,4 +1,4 @@
-import { listedTools, plainTextIn, withMcpSession } from '@on.auto/api/testing';
+import { listedTools, withMcpSession } from '@on.auto/api/testing';
 import { createApiKey } from '@on.auto/identity';
 import { allPermissions } from '@on.auto/operations';
 import { serveFakeApi, serveFakeMcp, type FakeApiServer, type FakeMcpServer } from '@on.auto/tool-servers/testing';
@@ -113,33 +113,26 @@ describe('validate and dry_run over HTTP', () => {
   });
 });
 
-describe('validate and dry_run over MCP', () => {
-  it('are tools that only read, though they are routed by POST', async () => {
+describe('introspect and dry_run over MCP', () => {
+  it('are tools that only read, dry_run though it is routed by POST, and validate is served over HTTP alone', async () => {
     const { server } = await serving();
 
-    const { tools, validated } = await withMcpSession(
+    const tools = await withMcpSession(
       'current revision',
       { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: { authorization: `Bearer ${reader.key}` } },
-      async (session) => ({
-        tools: listedTools(await session.listTools()),
-        validated: await session.callTool('validate', { server: 'graph', tool: 'search', arguments: { query: 7 } }),
-      }),
+      async (session) => listedTools(await session.listTools()),
     );
 
+    expect(tools.filter(({ name }) => name === 'validate')).toEqual([]);
     expect(
-      tools
-        .filter(({ name }) => ['validate', 'dry_run', 'introspect'].includes(name))
-        .map(({ annotations }) => annotations),
+      tools.filter(({ name }) => ['dry_run', 'introspect'].includes(name)).map(({ annotations }) => annotations),
     ).toEqual(
-      Array.from({ length: 3 }, () => ({
+      Array.from({ length: 2 }, () => ({
         readOnlyHint: true,
         destructiveHint: false,
         idempotentHint: true,
         openWorldHint: true,
       })),
-    );
-    expect(plainTextIn(validated)).toBe(
-      'The arguments are not what the search tool of graph takes; the details say where and why.',
     );
   });
 });

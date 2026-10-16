@@ -31,6 +31,12 @@ export const exampleSettings = [
     (servers) => JSON.stringify(servers),
     { references: 'kept' },
   ),
+  fileSetting(
+    'EXAMPLE_RULES',
+    Schema.Struct({ credential_kinds: Schema.Array(Schema.String) }),
+    (rules) => JSON.stringify(rules),
+    { sortsOfCredential: ['credential_kinds'] },
+  ),
 ];
 
 export function temporaryDirectory(): string {

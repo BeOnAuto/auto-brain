@@ -84,7 +84,7 @@ describe('the key of a gateway', () => {
     };
 
     expect(await problemsOf(gateways([entry]))).toEqual([
-      { setting: 'MODEL_GATEWAYS', detail: '/0/api_key: Set api_key or api_key_env, not both' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/0/api_key', detail: 'Set api_key or api_key_env, not both' },
     ]);
   });
 });
@@ -92,18 +92,18 @@ describe('the key of a gateway', () => {
 describe('malformed MODEL_GATEWAYS', () => {
   it('is rejected without quoting text that is not JSON', async () => {
     expect(await problemsOf({ MODEL_GATEWAYS: `[{"headers": "${secret}"` })).toEqual([
-      { setting: 'MODEL_GATEWAYS', detail: '/: Expected JSON' },
+      { setting: 'MODEL_GATEWAYS', pointer: '', detail: 'Expected JSON' },
     ]);
   });
 
   it('is rejected with pointers when an entry has the wrong shape', async () => {
     expect(await problemsOf(gateways([{ name: 'a', base_url: 1, headers: { x: 2 }, extra: secret }]))).toEqual([
-      { setting: 'MODEL_GATEWAYS', detail: '/0/extra: Expected no excess property' },
-      { setting: 'MODEL_GATEWAYS', detail: '/0/base_url: Expected string' },
-      { setting: 'MODEL_GATEWAYS', detail: '/0/headers/x: Expected string' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/0/extra', detail: 'Expected no excess property' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/0/base_url', detail: 'Expected string' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/0/headers/x', detail: 'Expected string' },
     ]);
     expect(await problemsOf(gateways({ name: 'a' }))).toEqual([
-      { setting: 'MODEL_GATEWAYS', detail: '/: Expected array' },
+      { setting: 'MODEL_GATEWAYS', pointer: '', detail: 'Expected array' },
     ]);
   });
 
@@ -118,12 +118,13 @@ describe('malformed MODEL_GATEWAYS', () => {
     expect(await problemsOf(gateways(entries))).toEqual([
       {
         setting: 'MODEL_GATEWAYS',
-        detail: '/0/name: Expected 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+        pointer: '/0/name',
+        detail: 'Expected 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
       },
-      { setting: 'MODEL_GATEWAYS', detail: '/1/name: openai is a built-in provider' },
-      { setting: 'MODEL_GATEWAYS', detail: '/3/name: mine is used twice' },
-      { setting: 'MODEL_GATEWAYS', detail: '/3/base_url: Expected an http or https URL' },
-      { setting: 'MODEL_GATEWAYS', detail: '/3/api_key_env: The variable it names is not set' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/1/name', detail: 'openai is a built-in provider' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/3/name', detail: 'mine is used twice' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/3/base_url', detail: 'Expected an http or https URL' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/3/api_key_env', detail: 'The variable it names is not set' },
     ]);
   });
 });
@@ -161,7 +162,8 @@ describe('the allowed_provider_options of a gateway', () => {
     expect(await problemsOf(gateways([entry]))).toEqual(
       runtimeFields.map((field, position) => ({
         setting: 'MODEL_GATEWAYS',
-        detail: `/0/allowed_provider_options/${position}: ${field} is set by the runtime or changes what the call is, so it cannot be allowed`,
+        pointer: `/0/allowed_provider_options/${position}`,
+        detail: `${field} is set by the runtime or changes what the call is, so it cannot be allowed`,
       })),
     );
   });
@@ -180,19 +182,21 @@ describe('the allowed_provider_options of a gateway', () => {
     const notText = { name: 'c', base_url: 'https://c.example', allowed_provider_options: ['user', 7] };
 
     expect(await problemsOf(gateways([malformed, many, notText]))).toEqual([
-      { setting: 'MODEL_GATEWAYS', detail: '/2/allowed_provider_options/1: Expected string' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/2/allowed_provider_options/1', detail: 'Expected string' },
     ]);
     expect(await problemsOf(gateways([malformed, many]))).toEqual([
       {
         setting: 'MODEL_GATEWAYS',
-        detail: '/0/allowed_provider_options/0: Expected a field name of 1 to 64 characters',
+        pointer: '/0/allowed_provider_options/0',
+        detail: 'Expected a field name of 1 to 64 characters',
       },
       {
         setting: 'MODEL_GATEWAYS',
-        detail: '/0/allowed_provider_options/1: Expected a field name of 1 to 64 characters',
+        pointer: '/0/allowed_provider_options/1',
+        detail: 'Expected a field name of 1 to 64 characters',
       },
-      { setting: 'MODEL_GATEWAYS', detail: '/0/allowed_provider_options/3: user is listed twice' },
-      { setting: 'MODEL_GATEWAYS', detail: '/1/allowed_provider_options: Expected at most 64 field names' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/0/allowed_provider_options/3', detail: 'user is listed twice' },
+      { setting: 'MODEL_GATEWAYS', pointer: '/1/allowed_provider_options', detail: 'Expected at most 64 field names' },
     ]);
   });
 });
@@ -208,10 +212,10 @@ describe('MODEL_ALIASES', () => {
 
   it('rejects malformed text and shapes', async () => {
     expect(await problemsOf({ MODEL_ALIASES: 'nope' })).toEqual([
-      { setting: 'MODEL_ALIASES', detail: '/: Expected JSON' },
+      { setting: 'MODEL_ALIASES', pointer: '', detail: 'Expected JSON' },
     ]);
     expect(await problemsOf({ MODEL_ALIASES: '{"a/b": 1}' })).toEqual([
-      { setting: 'MODEL_ALIASES', detail: '/a~1b: Expected string' },
+      { setting: 'MODEL_ALIASES', pointer: '/a~1b', detail: 'Expected string' },
     ]);
   });
 
@@ -219,9 +223,17 @@ describe('MODEL_ALIASES', () => {
     const aliases = { fast: 'anthropic/x', 'a/one': 'a/two', 'a/two': 'a/three', 'a/self': 'a/self' };
 
     expect(await problemsOf({ MODEL_ALIASES: JSON.stringify(aliases) })).toEqual([
-      { setting: 'MODEL_ALIASES', detail: '/fast: An alias and its target are each written provider/model' },
-      { setting: 'MODEL_ALIASES', detail: '/a~1one: The target is itself an alias; an alias resolves in one hop' },
-      { setting: 'MODEL_ALIASES', detail: '/a~1self: The target is itself an alias; an alias resolves in one hop' },
+      { setting: 'MODEL_ALIASES', pointer: '/fast', detail: 'An alias and its target are each written provider/model' },
+      {
+        setting: 'MODEL_ALIASES',
+        pointer: '/a~1one',
+        detail: 'The target is itself an alias; an alias resolves in one hop',
+      },
+      {
+        setting: 'MODEL_ALIASES',
+        pointer: '/a~1self',
+        detail: 'The target is itself an alias; an alias resolves in one hop',
+      },
     ]);
   });
 });

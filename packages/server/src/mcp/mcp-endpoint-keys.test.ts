@@ -38,12 +38,9 @@ const queriesInsideAPlaybook = [
   'get_definition',
   'get_run',
   'list_runs',
-  'get_run_history',
-  'get_playbook_analytics',
   'list_playbook_events',
   'get_event',
   'introspect',
-  'validate',
   'dry_run',
   'list_interactions',
 ];
@@ -103,13 +100,16 @@ describe('the org of a key on /mcp', () => {
   it('is the only one the key reaches, whatever playbook or org the arguments name', async () => {
     const outcome = await asKey(globexAdmin.key, async (session) => ({
       listed: await session.callTool('list_playbooks', {}),
-      read: await session.callTool('get_playbook', { playbook: 'alpha' }),
+      searched: await session.callTool('search', { playbook: 'alpha' }),
       definitions: await session.callTool('list_definitions', { playbook: 'alpha', type: 'reasoning' }),
       named: await session.callTool('list_playbooks', { org: 'acme' }),
     }));
 
     expect(outcome.listed.structuredContent).toEqual({ playbooks: [] });
-    expect(problemIn(outcome.read)).toMatchObject({ reason: 'not_found' });
+    expect(problemIn(outcome.searched)).toMatchObject({
+      reason: 'not_found',
+      detail: 'There is no playbook alpha in this org',
+    });
     expect(problemIn(outcome.definitions)).toMatchObject({
       reason: 'not_found',
       detail: 'There is no playbook alpha in this org',
@@ -159,9 +159,9 @@ describe('a read-only key on /mcp', () => {
 
     expect(outcome.tools).toEqual([
       'list_playbooks',
-      'get_playbook',
       'list_models',
       'search',
+      'list_connections',
       ...queriesInsideAPlaybook,
       'get_guide',
     ]);
@@ -193,19 +193,19 @@ describe('a key that may only read inside playbooks, on /mcp', () => {
 });
 
 describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
-  it('lists the twenty-nine tools and reads a playbook of its org', async () => {
+  it('lists the twenty-eight tools and the playbooks of its org', async () => {
     const outcome = await asKey(
       acmeAdmin.key,
       async (session) => ({
         protocolVersion: session.protocolVersion,
         tools: toolNamesIn(await session.listTools()).length,
-        playbook: await session.callTool('get_playbook', { playbook: 'alpha' }),
+        playbooks: await session.callTool('list_playbooks', {}),
       }),
       kind,
     );
 
-    expect(outcome.tools).toBe(29);
-    expect(outcome.playbook.structuredContent).toMatchObject({ id: 'alpha' });
+    expect(outcome.tools).toBe(28);
+    expect(outcome.playbooks.structuredContent).toMatchObject({ playbooks: [{ id: 'alpha' }, { id: 'beta' }] });
   });
 });
 

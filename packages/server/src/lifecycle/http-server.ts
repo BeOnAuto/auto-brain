@@ -1,6 +1,6 @@
 import { once } from 'node:events';
 import { createServer, type Server } from 'node:http';
-import type { AddressInfo } from 'node:net';
+import { isIP, type AddressInfo } from 'node:net';
 
 import type { ApiHandler } from '@on.auto/api';
 
@@ -23,6 +23,10 @@ function closeIdleConnectionsOnceClosing(server: Server): void {
   if (!server.listening) {
     server.closeIdleConnections();
   }
+}
+
+export function ownOriginOf(host: string, port: number): string {
+  return isIP(host) === 6 ? `http://[${host}]:${port}` : `http://${host}:${port}`;
 }
 
 export function tcpPort(address: Readonly<AddressInfo> | string | null): number {

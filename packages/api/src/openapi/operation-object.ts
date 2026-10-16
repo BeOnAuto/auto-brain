@@ -2,6 +2,7 @@ import {
   catalogPathOf,
   isStreamedBody,
   mediaTypeOfBody,
+  takesNoBody,
   type RegisteredAnswer,
   type RouteRegistration,
   type StreamedBody,
@@ -91,7 +92,7 @@ function inputPartsOf(registration: RouteRegistration, operationId: string): Inp
   const input = selfContainedSchemaOf(registration.input);
   const given = withoutFields(input, registration.pathParameters);
   const path = pathParametersOf(registration, fieldsOfEveryMember(input));
-  if (registration.route.method === 'GET') {
+  if (takesNoBody(registration.route)) {
     return { parameters: [...path, ...queryParametersOf(registration, given)] };
   }
   const body = registration.servedOverHttpAlone ?? { kind: 'json' };

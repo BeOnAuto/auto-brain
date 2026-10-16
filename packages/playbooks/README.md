@@ -23,7 +23,7 @@ The limits of `name` and `description` hold for the text as sent, so the JSON Sc
 
 ## The operations
 
-All five are org operations, so their routes are relative to the org. `playbookOperations` lists them for a catalog.
+All five are org operations, so their routes are relative to the org. `playbookOperations` lists them for a catalog. `get_playbook` is defined with `defineHttpOperation` and so served over HTTP alone, since a playbook `list_playbooks` lists holds the same fields; the other four are also MCP tools.
 
 | Operation         | Kind    | Route                               | Input                                                      | Answer                          | Rejections of the handler |
 | ----------------- | ------- | ----------------------------------- | ---------------------------------------------------------- | ------------------------------- | ------------------------- |

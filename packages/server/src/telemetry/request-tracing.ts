@@ -3,6 +3,8 @@ import type { ApiEnv, TraceParent } from '@on.auto/api';
 import { trace, type Span } from '@opentelemetry/api';
 import type { MiddlewareHandler } from 'hono';
 
+import { withoutTheTokenOfALink } from './redacted-url.ts';
+
 const untracedPaths: ReadonlySet<string> = new Set(['/health']);
 
 interface TracedRequest {
@@ -27,6 +29,7 @@ export function requestTracing(): MiddlewareHandler<ApiEnv> {
       ? next()
       : instrumented(c, async () => {
           const traced = tracedRequestOf(trace.getActiveSpan());
+          traced?.span.setAttribute('url.full', withoutTheTokenOfALink(c.req.url));
           c.set('traceParent', traced?.parent);
           await next();
           traced?.span.setAttribute('auto.on.request_id', c.get('requestId'));

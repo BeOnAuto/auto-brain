@@ -113,7 +113,6 @@ async function playbooksCalled(session: McpSession): Promise<Called> {
     ['create_playbook', created],
     ['retire_playbook', await session.callTool('retire_playbook', { playbook: 'old-sales' })],
     ['list_playbooks', await session.callTool('list_playbooks', { include_retired: true })],
-    ['get_playbook', await session.callTool('get_playbook', { playbook: 'sales' })],
     ['update_playbook', await session.callTool('update_playbook', { ...describing, description: 'Answers questions' })],
     ['list_models', await session.callTool('list_models', {})],
   ];
@@ -140,7 +139,6 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ['run_definition', ran],
     ['get_run', await session.callTool('get_run', inSales({ run_id: runId }))],
     ['list_runs', await session.callTool('list_runs', inSales({}))],
-    ['get_run_history', await session.callTool('get_run_history', inSales({ run_id: runId }))],
     [
       'publish_event',
       await session.callTool('publish_event', inSales({ event: { source: '/crm', type: 'com.acme.deal.won' } })),
@@ -148,7 +146,6 @@ async function reasonFunctionsCalled(session: McpSession): Promise<Called> {
     ['list_playbook_events', listed],
     ['get_event', await session.callTool('get_event', inSales({ event_id: firstEventIn(listed) }))],
     ['list_playbook_events', await session.callTool('list_playbook_events', { playbook: 'old-sales' })],
-    ['get_playbook_analytics', await session.callTool('get_playbook_analytics', inSales({ days: 30 }))],
   ];
 }
 
@@ -193,7 +190,7 @@ async function errorsCalled(session: McpSession): Promise<Called> {
         source: summary,
       }),
     ],
-    ['something missing', await session.callTool('get_playbook', { playbook: 'nowhere' })],
+    ['something missing', await session.callTool('get_definition', inSales({ type: 'reasoning', name: 'nowhere' }))],
     ['a run that did not go through', await session.callTool('get_run', inSales({ run_id: unconnectedRun }))],
   ];
 }
