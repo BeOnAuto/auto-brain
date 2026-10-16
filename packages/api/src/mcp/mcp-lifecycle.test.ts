@@ -1,8 +1,7 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { describe, expect, it } from 'vitest';
 
 import type { RegisterRoutes } from '../index.ts';
+import { notebookOperationsAnnouncingWaits } from '../testing/announced-waiting.ts';
 import { createTestHandler } from '../testing/api-calls.ts';
 import { listenOnLoopback } from '../testing/listening.ts';
 import { connectMcp } from '../testing/mcp-clients.ts';
@@ -25,14 +24,15 @@ describe('closing the API', () => {
   });
 
   it('ends a call of the current revision still running on an MCP endpoint, and reports no incident', async () => {
-    const server = await operationServer();
+    const calling = Promise.withResolvers<void>();
+    const server = await operationServer({ operations: notebookOperationsAnnouncingWaits(calling.resolve) });
     const listening = await listenOnLoopback(server.handler);
     const session = await connectMcp('current revision', {
       url: `${listening.origin}/orgs/acme/playbooks/alpha/mcp`,
       headers: { authorization: `Bearer ${acmeAdmin.key}` },
     });
     const waiting = session.callTool('wait_forever', {});
-    await setTimeout(100);
+    await calling.promise;
 
     await server.handler.close();
 

@@ -20,6 +20,7 @@ export {
   unresolvedSchemasIn,
   type DocumentedOperation,
 } from './openapi/openapi-document.ts';
+export { waitForeverAnnouncing } from './announced-waiting.ts';
 export { waitForever } from './notebook.ts';
 export { danglingReferencesIn } from './self-contained.ts';
 export {
