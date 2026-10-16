@@ -99,8 +99,20 @@ describe('a read of replies that finds nothing to take', () => {
 
     expect(await recordsOf(playbook.ledger, 'request_answered', 'reply_refused')).toEqual([]);
     expect(await recordsOf(playbook.ledger, 'replies_read')).toMatchObject([
-      { data: { replies: 2, taken: 0, refused: 0 } },
+      { data: { replies: 1, taken: 0, refused: 0 } },
     ]);
     expect(await playbook.firstOpen()).toMatchObject({ standing: 'delivered' });
+  });
+
+  it('passes over the message the playbook sent itself, so a thread nobody has replied in is a read that found nothing', async () => {
+    const playbook = await chatHarness();
+    await deliveredInThread(playbook, first);
+
+    await playbook.performReads(Date.now() + farAhead);
+    const [row] = await conversationRows(playbook.ledger);
+
+    expect(playbook.chat.posted()).toHaveLength(1);
+    expect(await recordsOf(playbook.ledger, 'replies_read')).toEqual([]);
+    expect(row?.row).toMatchObject({ open: true, reads: 1, since: null });
   });
 });
