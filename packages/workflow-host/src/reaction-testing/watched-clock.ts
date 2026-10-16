@@ -1,20 +1,20 @@
 import { Effect } from 'effect';
 
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
-import { eventually } from '../testing/eventually.ts';
+import { until } from '../testing/until.ts';
 
 export interface WatchedClock extends HostClock {
   readonly asked: () => readonly number[];
   readonly sleeping: () => number;
 }
 
+interface Reading {
+  readonly reads: () => number;
+}
+
 interface Sleeps {
   readonly asked: number;
   readonly sleeping: number;
-}
-
-interface Reading {
-  readonly reads: () => number;
 }
 
 export function watchedClock(clock: HostClock): WatchedClock {
@@ -44,7 +44,7 @@ export function watchedSystemClock(): WatchedClock {
 }
 
 async function untilAsleepOnceAsked(clock: WatchedClock, sleeps: number): Promise<void> {
-  await eventually(
+  await until(
     (): Sleeps => ({ asked: clock.asked().length, sleeping: clock.sleeping() }),
     ({ asked, sleeping }) => asked >= sleeps && sleeping > 0,
   );

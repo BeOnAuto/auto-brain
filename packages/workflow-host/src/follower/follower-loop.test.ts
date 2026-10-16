@@ -3,8 +3,8 @@ import { Effect, Function } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { systemClock } from '../loop/host-clock.ts';
-import { until } from '../reaction-testing/until.ts';
 import type { Sweep } from '../sweeps/playbook-sweeps.ts';
+import { until } from '../testing/until.ts';
 import { startFollower } from './follower-loop.ts';
 import type { PassEnd } from './record-steps.ts';
 

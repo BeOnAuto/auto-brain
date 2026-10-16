@@ -4,11 +4,11 @@ import { messageIdOf } from '@on.auto/operations';
 import { Client } from 'pg';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { untilAWholeWakeHasPassed, watchedSystemClock } from '../reaction-testing/watched-clock.ts';
 import { onPostgreSQLAt, type SettingsOf } from '../testing/host-files.ts';
 import { collecting, foldedAll, isLive } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { viewsSuites } from '../views-testing/views-suites.ts';
-import { untilAWholeWakeHasPassed, watchedSystemClock } from '../views-testing/watched-clock.ts';
 
 const server = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 

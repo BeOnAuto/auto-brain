@@ -10,8 +10,8 @@ import {
   eventTrigger,
   published,
 } from '../reaction-testing/playbook-writes.ts';
-import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 
 const beta = 'playbook/acme/beta/';
 

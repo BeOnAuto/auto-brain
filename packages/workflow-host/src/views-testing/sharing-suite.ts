@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
+import { readsWhile, watchedSystemClock } from '../reaction-testing/watched-clock.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { counting, detailsOf, foldOf, foldedAll, isLive, liveWith } from './view-documents.ts';
 import { viewHarness } from './view-harness.ts';
-import { readsWhile, watchedSystemClock } from './watched-clock.ts';
 
 function countingRunsOf(subject: string) {
   return detailsOf(foldOf('return view + 1;'), [{ type: 'run_succeeded', subject }], { initial: 0 });

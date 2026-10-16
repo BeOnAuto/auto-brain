@@ -4,12 +4,11 @@ import { Effect } from 'effect';
 import { expect, it } from 'vitest';
 
 import { HostElsewhere } from '../host/run-requests.ts';
-import { eventually } from './eventually.ts';
 import { runAt, startOf, workflow } from './host-documents.ts';
-import { aSQLiteFile, openedOn } from './host-files.ts';
-import { leaseOn, untilRenewedBy } from './host-leases.ts';
+import { aSQLiteFile, leaseOn, openedOn, untilRenewedBy } from './host-files.ts';
 import { databaseSettingsOf, hostIn, type ProcessDatabasesOf } from './host-processes.ts';
 import { hostedOn } from './host-runs.ts';
+import { until } from './until.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -42,7 +41,7 @@ export function leaseSuite(databases: ProcessDatabasesOf): void {
     await untilRenewedBy(leases, held, 3);
     const performedWhileBothRan = second.calls().length;
     await first.killed();
-    const settled = await eventually(second.settlements, (settlements) => settlements.size > 0);
+    const settled = await until(second.settlements, (settlements) => settlements.size > 0);
 
     expect(refused).toBeInstanceOf(HostElsewhere);
     expect(performedWhileBothRan).toBe(0);
@@ -57,7 +56,7 @@ export function leaseSuite(databases: ProcessDatabasesOf): void {
     const second = await hostedOn(databaseSettingsOf(database), { sweepEveryMs, holder: 'second' });
 
     await first.host.stop();
-    const notes = await eventually(second.notes, (noted) => noted.length > 1);
+    const notes = await until(second.notes, (noted) => noted.length > 1);
 
     expect(notes).toMatchObject([
       { kind: 'standing_by', holder: 'first' },

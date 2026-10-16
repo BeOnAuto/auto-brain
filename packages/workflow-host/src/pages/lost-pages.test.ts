@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { onSQLite } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 import { busyOnce } from '../views-testing/pool-faults.ts';
 import { foldingWorker } from '../views-testing/test-fold-workers.ts';
 import {
@@ -109,7 +109,7 @@ describe('a page of folds the pool cannot finish', () => {
       await views.ran('reasoning/runs', 1);
       views.start(quick);
 
-      const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 1);
+      const troubles = await until(views.reports.troubles, (reported) => reported.length > 1);
       const kept = await views.viewOf('runs');
 
       expect(kept).toMatchObject({ phase: 'rebuilding', folded: 0 });

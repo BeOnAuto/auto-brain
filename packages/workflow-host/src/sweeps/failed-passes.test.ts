@@ -6,8 +6,7 @@ import type { FollowedPlaybooks } from '../follower/followed-playbooks.ts';
 import { startFollower } from '../follower/follower-loop.ts';
 import type { PassEnd } from '../follower/record-steps.ts';
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
-import { until } from '../reaction-testing/until.ts';
-import { eventually } from '../testing/eventually.ts';
+import { until } from '../testing/until.ts';
 import { playbookSweepsOn } from './playbook-sweeps.ts';
 
 const alpha = 'playbook/acme/alpha/';
@@ -203,7 +202,7 @@ describe('a sweep in which more playbooks fail than it has room for', () => {
       pass: () => Effect.die(new Error('The ledger could not be read')),
     });
 
-    const waits = await eventually(watched.waits, (asked) => asked.some(({ milliseconds }) => milliseconds > 0));
+    const waits = await until(watched.waits, (asked) => asked.some(({ milliseconds }) => milliseconds > 0));
     const firstWait = waits.find(({ milliseconds }) => milliseconds > 0);
 
     expect(firstWait?.sweptBefore).toBeLessThanOrEqual(2);

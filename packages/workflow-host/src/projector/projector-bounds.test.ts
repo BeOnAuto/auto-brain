@@ -1,9 +1,9 @@
 import { Effect, Function } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { onSQLite } from '../testing/host-files.ts';
-import { databaseTracking, heldFolds, heldReads, type DatabaseTracking } from '../views-testing/pool-faults.ts';
+import { databaseTracking, untilOnlyTheHeldWait } from '../views-testing/database-tracking.ts';
+import { heldFolds, heldReads } from '../views-testing/pool-faults.ts';
 import {
   overrunningFold,
   overrunningFolding,
@@ -40,18 +40,6 @@ function partsOf(views: ViewHarness, database: PassParts['database'], pagesPerWa
     firstSeen: () => true,
     trouble: () => Effect.void,
   };
-}
-
-interface Holding {
-  readonly waiting: number;
-  readonly busy: number;
-}
-
-function untilOnlyTheHeldWait(waiting: () => number, tracking: DatabaseTracking, held: number): Promise<unknown> {
-  return eventually(
-    (): Holding => ({ waiting: waiting(), busy: tracking.busy() }),
-    (now) => now.waiting === held && now.busy === 0,
-  );
 }
 
 function runsOf(count: number): readonly number[] {

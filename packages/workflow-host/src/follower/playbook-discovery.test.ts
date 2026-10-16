@@ -14,8 +14,8 @@ import {
   recorded,
 } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 
 const beta = 'playbook/acme/beta/';
 

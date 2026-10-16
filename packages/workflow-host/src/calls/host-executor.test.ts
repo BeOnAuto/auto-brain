@@ -3,10 +3,10 @@ import { callKeyText, type CallKey, type StartCall } from '@on.auto/workflow-eng
 import { Deferred, Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase, type FaultyDatabase } from '../testing/faulty-database.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { runKey } from '../testing/probe-subjects.ts';
+import { until } from '../testing/until.ts';
 import { hostExecutor, type Deliver, type HostExecutor } from './host-executor.ts';
 
 const origin = { version: 2 };
@@ -188,9 +188,9 @@ describe('the executor of the host, failing to record an answer', () => {
     const executor = calls.executorOn();
 
     await Effect.runPromise(executor.executor.start(call, run, origin));
-    await eventually(calls.troubles, (troubles) => troubles.length > 0);
+    await until(calls.troubles, (troubles) => troubles.length > 0);
     const refusedByTheTrouble = calls.database.writesRefused();
-    await eventually(calls.database.writesRefused, (refused) => refused > refusedByTheTrouble);
+    await until(calls.database.writesRefused, (refused) => refused > refusedByTheTrouble);
     const resumedWhileWriting = await Effect.runPromise(executor.resume());
     calls.database.failingWrites(false);
     await Effect.runPromise(executor.idle());

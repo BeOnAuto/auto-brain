@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { readsWhile, watchedClock } from '../reaction-testing/watched-clock.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
 import { overrunningWhenTold } from '../views-testing/pool-faults.ts';
 import { steppedClock, untilTried } from '../views-testing/stepped-sweeps.ts';
 import { counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';
-import { readsWhile, watchedClock } from '../views-testing/watched-clock.ts';
 import type { TallyDetails, TallyRow } from './tally-folder.ts';
 import { tallyHarness } from './tally-harness.ts';
 

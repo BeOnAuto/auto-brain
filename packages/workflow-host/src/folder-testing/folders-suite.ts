@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import type { Writing } from '../projector/folder.ts';
 import { definitionsByType } from '../projector/projector-schedule.ts';
 import { reconciledRows, type DefinitionsKept } from '../projector/reconciled-rows.ts';
+import { readsWhile, untilAWholeWakeHasPassed, watchedSystemClock } from '../reaction-testing/watched-clock.ts';
 import { openedOn, type SettingsOf } from '../testing/host-files.ts';
 import { alphaKey, counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';
-import { readsWhile, untilAWholeWakeHasPassed, watchedSystemClock } from '../views-testing/watched-clock.ts';
 import {
   talliesOf,
   tallyFolderOf,

@@ -3,8 +3,8 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { alpha, at, recorded } from '../reaction-testing/playbook-writes.ts';
-import { eventually } from '../testing/eventually.ts';
 import { faultyDatabase } from '../testing/faulty-database.ts';
+import { until } from '../testing/until.ts';
 import { recordedWaiting, resultOfEnding } from '../waiting-testing/recorded-waiting.ts';
 import { parentId, parentRun, waitingParent } from '../waiting-testing/waiting-parent.ts';
 import { childEndings, endedChildrenOn } from './child-endings.ts';
@@ -68,7 +68,7 @@ describe('the ending of a run that answers a call', () => {
     await recorded(database.store, `${alpha}runs/${child}`, succeeded, ofTheChild);
     await recorded(database.store, `${alpha}runs/${child}x`, { type: 'run_failed', data: {} }, ofTheChild);
     await settled(parentId);
-    await eventually(
+    await until(
       (): readonly string[] => mapped,
       (types) => types.includes('run_failed'),
     );
