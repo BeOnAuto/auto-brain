@@ -47,7 +47,7 @@ describe('a version that waits for its approver when a newer one is built', () =
     const playbook = buildPlaybook();
     const first = await awaitingApproval(playbook);
     await builtFrom(playbook, ['visits-mean']);
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect((await modelFactsOf(playbook)).filter(({ type }) => type === 'activation_refused')).toMatchObject([
       { data: { version: 1, because: 'superseded', build: first } },
@@ -89,7 +89,7 @@ describe('a version whose activation is approved', () => {
     const playbook = buildPlaybook();
     const build = await awaitingApproval(playbook);
     await decided(playbook, build, 'approve');
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'version_activated',
@@ -102,7 +102,7 @@ describe('a version whose activation is approved', () => {
     const playbook = buildPlaybook();
     const build = await awaitingApproval(playbook);
     await decided(playbook, build, 'reject');
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'activation_refused',
@@ -118,7 +118,7 @@ describe('a version whose approval is not given', () => {
   it('is refused as unanswered when its approval expires', async () => {
     const playbook = buildPlaybook();
     await awaitingApproval(playbook, 'PT1M');
-    await performedUntilQuiet(playbook.due, 120_000);
+    await performedUntilQuiet(playbook, 120_000);
 
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'activation_refused',
@@ -178,7 +178,7 @@ describe('a version whose approver answers no decision', () => {
       run_id: childIdOf(build, '/approval'),
       answer: { note: 'Looks fine' },
     });
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'activation_refused',
@@ -196,7 +196,7 @@ describe('a version a signed-in person approves', () => {
       { run_id: childIdOf(build, '/approval'), answer: { decision: 'approve' } },
       signedInPerson,
     );
-    await performedUntilQuiet(playbook.due);
+    await performedUntilQuiet(playbook);
 
     expect((await modelFactsOf(playbook)).at(-1)).toMatchObject({
       type: 'version_activated',
