@@ -152,6 +152,14 @@ export function placeAt(root: JsonSchema, tokens: readonly string[]): SchemaPlac
   );
 }
 
+export function namesAt(root: JsonSchema, tokens: readonly string[]): readonly JsonSchema[] {
+  const reading: SchemaReading = { root, depth: 0, expanded: false };
+  return placeAt(root, tokens)
+    .schemas.map((schema) => schema['propertyNames'])
+    .filter((names) => isJsonSchema(names))
+    .flatMap((names) => appliedSchemas(names, reading));
+}
+
 export function isItemOf({ token, within }: PlaceStep): boolean {
   return (
     listIndex.test(token) &&

@@ -257,6 +257,7 @@ No fact records who uses a definition; the registries of the playbook are the in
 - a bound it broke is said as the overview says it, from the keyword and its value alone: `at least 6 characters`, `at most 100`, `more than 0`, `at least 1 item`, `a multiple of 0.5`, `no item twice`;
 - a value of another kind is told what the field takes, in the overview's words of the field: `a whole number, from 1 to 100`, `one of: draft, sent, approved`, `text in the form the schema calls date`;
 - a missing field is said at the field that holds it, `The input: expected the field month`, with the description of the field that is missing, and one the schema does not allow as `expected no field extra`, or `no item 3` in a list;
+- a name that `propertyNames` refuses is said as the name and the field that has it, `the name long of names: expected at most 2 characters`;
 - an issue no keyword names keeps the words of the validator, `expected exactly one member to match`, after the field.
 
 There is no `pattern` to word, since the dialect refuses it. The issues of a refusal reach a workflow that called the function unchanged, under `/input`, and the workflow's rejection keeps them.

@@ -7,6 +7,7 @@ import { trailingWords } from '../overview/schema-bounds.ts';
 import {
   isItemOf,
   listOf,
+  namesAt,
   placeAt,
   type JsonSchema,
   type PlaceStep,
@@ -56,8 +57,12 @@ function aboutOf(schemas: readonly JsonSchema[]): string {
     .join('');
 }
 
-function subjectOf({ steps, schemas }: SchemaPlace, what: string): string {
-  return steps.length === 0 ? `The ${what}` : `${steps.map((step) => nameOf(step)).join(', then ')}${aboutOf(schemas)}`;
+function fieldsOf({ steps, schemas }: SchemaPlace, root: string): string {
+  return steps.length === 0 ? root : `${steps.map((step) => nameOf(step)).join(', then ')}${aboutOf(schemas)}`;
+}
+
+function subjectOf(place: SchemaPlace, what: string): string {
+  return fieldsOf(place, `The ${what}`);
 }
 
 function missingWords(step: PlaceStep): string {
@@ -72,7 +77,7 @@ function refusedWords(steps: readonly PlaceStep[]): string {
   return isItemOf(step) ? `no ${nameOf(step)}` : `no field ${step.token}`;
 }
 
-function kindWords({ schemas }: SchemaPlace, root: JsonSchema, detail: string): string {
+function kindWords(schemas: readonly JsonSchema[], root: JsonSchema, detail: string): string {
   const said = schemas.find((schema) => kindKeywords.some((keyword) => schema[keyword] !== undefined));
   return said === undefined ? asPhrase(detail) : `expected ${plainText(expectedWordsOf(said, root))}`;
 }
@@ -91,7 +96,7 @@ function valueSentence({ document, what }: CompiledSchema, tokens: readonly stri
   const place = placeAt(document, tokens);
   return breach.rule === 'bound'
     ? `${subjectOf(place, what)}: expected ${trailingWords(breach.keywords, []).join(', ')}`
-    : `${subjectOf(place, what)}: ${kindWords(place, document, detail)}`;
+    : `${subjectOf(place, what)}: ${kindWords(place.schemas, document, detail)}`;
 }
 
 function breachSentence(schema: CompiledSchema, tokens: readonly string[], breach: Breach, detail: string): string {
@@ -100,8 +105,20 @@ function breachSentence(schema: CompiledSchema, tokens: readonly string[], breac
     : valueSentence(schema, tokens, breach, detail);
 }
 
-function sentenceOf(schema: CompiledSchema, { pointer, detail, breach }: FoundIssue): string {
+function nameSentence({ document, what }: CompiledSchema, tokens: readonly string[], { breach, detail }: FoundIssue) {
+  const holding = tokens.slice(0, -1);
+  const name = `the name ${tokens.slice(-1).join('')} of ${fieldsOf(placeAt(document, holding), `the ${what}`)}`;
+  return breach?.rule === 'bound'
+    ? `${name}: expected ${trailingWords(breach.keywords, []).join(', ')}`
+    : `${name}: ${kindWords(namesAt(document, holding), document, detail)}`;
+}
+
+function sentenceOf(schema: CompiledSchema, issue: FoundIssue): string {
+  const { pointer, detail, breach, ofTheName } = issue;
   const tokens = tokensOf(pointer);
+  if (ofTheName === true) {
+    return nameSentence(schema, tokens, issue);
+  }
   if (breach !== undefined) {
     return breachSentence(schema, tokens, breach, detail);
   }

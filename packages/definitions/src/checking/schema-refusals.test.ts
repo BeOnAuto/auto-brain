@@ -191,19 +191,38 @@ describe('the refusal of a value no keyword of the schema words', () => {
   it('says the words of the validator about the field, or about the whole value', () => {
     expect([
       fieldWords({ oneOf: [{ type: 'string' }, { type: 'string', minLength: 1 }] }, 'a'),
-      fieldWords({ type: 'object', propertyNames: { enum: ['a'] } }, { b: 1 }),
+
       wordsOf({ oneOf: [{ type: 'string' }, { type: 'string', minLength: 1 }] }, 'a', 'answer'),
-    ]).toEqual([
-      'field: expected exactly one member to match.',
-      'field, then b: expected "a".',
-      'Expected exactly one member to match.',
-    ]);
+    ]).toEqual(['field: expected exactly one member to match.', 'Expected exactly one member to match.']);
   });
 
   it('says why a value it cannot check is refused, in the words of the check', () => {
     const shallow = Result.getOrThrow(compileJsonSchema({ type: 'array' }, { what: 'input', nesting: 1 }));
 
     expect(wordedIssuesOf(shallow, [[1]])).toEqual([{ pointer: '', detail: 'The input nests more than 1 levels.' }]);
+  });
+});
+
+describe('the refusal of a name a schema bounds', () => {
+  it('names the name and the field that has it, then the rule the name broke', () => {
+    expect([
+      fieldWords({ type: 'object', propertyNames: { maxLength: 2 } }, { long: 1 }),
+      fieldWords({ type: 'object', description: 'By region', propertyNames: { enum: ['eu', 'us'] } }, { asia: 1 }),
+      wordsOf(
+        {
+          type: 'object',
+          $defs: { region: { enum: ['eu', 'us'] } },
+          properties: { totals: { type: 'object', propertyNames: { $ref: '#/$defs/region' } } },
+        },
+        { totals: { asia: 1 } },
+      ),
+      wordsOf({ type: 'object', propertyNames: { not: {} } }, { any: 1 }),
+    ]).toEqual([
+      'the name long of field: expected at most 2 characters.',
+      'the name asia of field, By region: expected one of: eu, us.',
+      'the name asia of totals: expected one of: eu, us.',
+      'the name any of the input: expected never.',
+    ]);
   });
 });
 
