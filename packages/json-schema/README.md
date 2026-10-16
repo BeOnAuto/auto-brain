@@ -12,7 +12,7 @@ A compiled schema is `{ document, what, validate, issuesOf }`. `validate(value)`
 
 ## Checking a value
 
-`schemaCheckOf(schema, { what, nesting, further })` is a check of a value that names at most three of its issues, the further check's among them, and `issuesDetail(issues, what)` the one wording of them, each at its pointer or as the output or the view itself at the root (`src/checking`). The checked worker of `@on.auto/definitions` checks the outputs and views of computation and recall functions with them, and the interaction capability words a refused answer with `issuesDetail`.
+`schemaCheckOf(schema, { what, nesting, further })` is a check of a value that names at most three of its issues, the further check's among them, and `issuesDetail(issues, what)` the wording of the issues of a value the runtime made, each at its pointer or as the value itself at the root (`src/checking`). The checked worker of `@on.auto/definitions` checks the outputs and views of computation and recall functions with them, and the interaction capability words with `issuesDetail` what a tool it called answered. A value a person or an agent gives, the input of a run or the answer to a request, is worded instead by `wordedIssuesOf` of `@on.auto/definitions`, from the `issuesOf` of its compiled schema.
 
 ## Source
 
