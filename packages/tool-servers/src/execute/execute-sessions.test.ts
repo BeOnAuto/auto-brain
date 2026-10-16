@@ -18,7 +18,7 @@ import {
   type FakeMcpServer,
   type WritesOptions,
 } from '../testing/index.ts';
-import { until } from '../testing/tool-runs.ts';
+import { until } from '../testing/until.ts';
 
 const closing: (() => Promise<void>)[] = [];
 

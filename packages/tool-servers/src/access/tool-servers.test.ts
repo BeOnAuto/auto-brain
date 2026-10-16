@@ -10,7 +10,7 @@ import {
   type AccessOptions,
   type FakeMcpServer,
 } from '../testing/index.ts';
-import { until } from '../testing/tool-runs.ts';
+import { until } from '../testing/until.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 

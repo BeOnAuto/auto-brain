@@ -11,7 +11,7 @@ import {
   serveFakeMcp,
   toolRun,
 } from '../testing/index.ts';
-import { until } from '../testing/tool-runs.ts';
+import { until } from '../testing/until.ts';
 import type { CallJournal } from './recorded-calls.ts';
 
 const closing: (() => Promise<void>)[] = [];
