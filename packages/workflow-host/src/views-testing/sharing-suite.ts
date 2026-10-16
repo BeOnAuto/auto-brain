@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { readsWhile, watchedSystemClock } from '../reaction-testing/watched-clock.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
+import { readsWhile, watchedSystemClock } from '../testing/watched-clock.ts';
 import { counting, detailsOf, foldOf, foldedAll, isLive, liveWith } from './view-documents.ts';
 import { viewHarness } from './view-harness.ts';
 

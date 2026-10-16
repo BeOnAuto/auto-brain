@@ -3,9 +3,9 @@ import { describe, expect, it } from 'vitest';
 
 import { tallyFolderOf } from '../folder-testing/tally-folder.ts';
 import { someFolder } from '../projector/folder.ts';
-import { watchedSystemClock } from '../reaction-testing/watched-clock.ts';
 import { onSQLite, openedOn } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
+import { watchedSystemClock } from '../testing/watched-clock.ts';
 import { counting } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import { openWorkflowStore } from './workflow-store.ts';

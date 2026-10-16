@@ -1,7 +1,7 @@
 import { Effect } from 'effect';
 
 import { systemClock, type HostClock } from '../loop/host-clock.ts';
-import { until } from '../testing/until.ts';
+import { until } from './until.ts';
 
 export interface WatchedClock extends HostClock {
   readonly asked: () => readonly number[];

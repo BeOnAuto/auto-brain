@@ -2,9 +2,9 @@ import type { ArmTimer, WorkflowEngine } from '@on.auto/workflow-engine';
 import { Deferred, Effect, Exit, Function } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { watchedSystemClock, type WatchedClock } from '../reaction-testing/watched-clock.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { until } from '../testing/until.ts';
+import { watchedSystemClock, type WatchedClock } from '../testing/watched-clock.ts';
 import { sqlTimers, type DueTimer, type TimerTable } from '../timers/sql-timers.ts';
 import { startLoop, type HostLoop } from './host-loop.ts';
 

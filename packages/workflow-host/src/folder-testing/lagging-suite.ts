@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { readsWhile, watchedClock } from '../reaction-testing/watched-clock.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
+import { readsWhile, watchedClock } from '../testing/watched-clock.ts';
 import { overrunningWhenTold } from '../views-testing/pool-faults.ts';
 import { steppedClock, untilTried } from '../views-testing/stepped-sweeps.ts';
 import { counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';

@@ -1,13 +1,14 @@
 import type { ProgramPool } from '@on.auto/workflow-engine/dsl';
 import { Effect } from 'effect';
-import { expect, vi } from 'vitest';
+import { expect } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { definitionsByType } from '../projector/projector-schedule.ts';
 import { reconciledRows } from '../projector/reconciled-rows.ts';
+import { until } from '../testing/until.ts';
 import type { KeptView, ViewRow } from '../views/view-rows.ts';
 import { viewsPortOn } from '../views/views-port.ts';
-import { alpha, alphaKey, viewsFolderOver, viewTestTimeoutMs, type Playbook } from './view-documents.ts';
+import { alpha, alphaKey, viewsFolderOver, type Playbook } from './view-documents.ts';
 
 export interface ViewReading {
   readonly viewOf: (name: string, playbook?: Playbook) => Promise<KeptView | undefined>;
@@ -15,26 +16,24 @@ export interface ViewReading {
   readonly gone: (name: string) => Promise<boolean>;
 }
 
-export const viewWaiting = { timeout: viewTestTimeoutMs - 5000, interval: 20 };
-
 export function viewReadingOf(database: HostDatabase): ViewReading {
   const views = viewsPortOn(database);
   const viewOf: ViewReading['viewOf'] = (name, playbook = alpha) => Effect.runPromise(views.viewOf(playbook, name));
   return {
     viewOf,
     until: (name, holds, playbook = alpha) =>
-      vi.waitFor(async () => {
+      until(async () => {
         const view = await viewOf(name, playbook);
         if (view === undefined || !holds(view)) {
           throw new Error(`The view of ${name} does not hold yet: ${JSON.stringify(view)}`);
         }
         return view;
-      }, viewWaiting),
+      }),
     gone: (name) =>
-      vi.waitFor(async () => {
+      until(async () => {
         expect(await viewOf(name)).toBeUndefined();
         return true;
-      }, viewWaiting),
+      }),
   };
 }
 
