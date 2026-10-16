@@ -1,9 +1,8 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { echo } from '@on.auto/definitions/testing';
 import type { Outcome } from '@on.auto/operations';
 import { memoryLedger } from '@on.auto/operations/testing';
 import { Schema } from 'effect';
+import { expect, vi } from 'vitest';
 
 import { makeWorkflowAdapter } from '../capability/workflow.ts';
 import { testExpressionCheck } from './expression-checks.ts';
@@ -18,6 +17,8 @@ export interface WorkflowPlaybook extends Playbook {
 }
 
 const mostDurationMs = 2_592_000_000;
+
+const longerThanTheTestMs = 120_000;
 
 const StartedSchema = Schema.Struct({ output: Schema.Struct({ status: Schema.Literal('started') }) });
 
@@ -37,13 +38,14 @@ export async function workflowPlaybook(): Promise<WorkflowPlaybook> {
     }),
     echo,
   ]);
-  const settled = async (runId: string): Promise<Outcome> => {
-    const outcome = await playbook.call(playbook.getRun, { run_id: runId });
-    if (!isStarted(outcome)) {
-      return outcome;
-    }
-    await setTimeout(10);
-    return settled(runId);
-  };
+  const settled = (runId: string): Promise<Outcome> =>
+    vi.waitFor(
+      async () => {
+        const outcome = await playbook.call(playbook.getRun, { run_id: runId });
+        expect(isStarted(outcome)).toBe(false);
+        return outcome;
+      },
+      { timeout: longerThanTheTestMs, interval: 10 },
+    );
   return { ...playbook, host, settled, close: () => host.stop() };
 }
