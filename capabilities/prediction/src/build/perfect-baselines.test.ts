@@ -1,5 +1,3 @@
-import { setTimeout as sleep } from 'node:timers/promises';
-
 import type { RecordedContent } from '@on.auto/operations';
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
@@ -118,7 +116,7 @@ describe('a build whose baselines cannot be checked', () => {
     for (const held of ['first', 'second']) {
       void Effect.runPromise(playbook.test.ports.models.walk({ sha256: held, path: `/${held}.onnx` }, heldWalk));
     }
-    await sleep(100);
+    await scripted.untilSleeping(['walk', 'walk']);
     const whileBusy = await buildAsked(playbook);
 
     expect(whileBusy).toMatchObject({ status: 'rejected', reason: 'unavailable', kind: 'model_process_busy' });

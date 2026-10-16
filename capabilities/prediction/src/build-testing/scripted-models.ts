@@ -1,6 +1,8 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
+
+import { expect, vi } from 'vitest';
 
 import { scratchDirectory } from '../testing/scratch.ts';
 
@@ -19,15 +21,23 @@ export type Script =
 export interface ScriptedModels {
   readonly module: Readonly<URL>;
   readonly next: (script: Script) => void;
+  readonly untilSleeping: (jobs: readonly string[]) => Promise<void>;
 }
+
+interface ScriptFiles {
+  readonly script: string;
+  readonly sleeping: string;
+}
+
+const waiting = { timeout: 25_000, interval: 20 };
 
 const processLoop = import.meta.resolve('@on.auto/workflow-engine/process-loop');
 
 const realJobs = new URL('../model-jobs/model-jobs.ts', import.meta.url).href;
 
-function sourceOf(scriptFile: string): string {
+function sourceOf(files: ScriptFiles): string {
   return [
-    "import { readFileSync } from 'node:fs';",
+    "import { appendFileSync, readFileSync } from 'node:fs';",
     `import { serveProcessJobs } from '${processLoop}';`,
     `import { modelJobs } from '${realJobs}';`,
     'const real = modelJobs();',
@@ -41,7 +51,10 @@ function sourceOf(scriptFile: string): string {
     '    await new Promise((resolve) => setTimeout(resolve, 300));',
     '    return real[kind](payload);',
     '  },',
-    '  sleeps: () => new Promise(() => {}),',
+    '  sleeps: (kind) => {',
+    `    appendFileSync(${JSON.stringify(files.sleeping)}, kind + '\\n');`,
+    '    return new Promise(() => {});',
+    '  },',
     '  exits: () => process.exit(3),',
     "  allocates: () => { throw new RangeError('Array buffer allocation failed'); },",
     '  garbage: () => ({ nonsense: true }),',
@@ -53,23 +66,32 @@ function sourceOf(scriptFile: string): string {
     '    return { series: answer.series, q: answer.q.map((q) => q.map(() => Number.NaN)) };',
     '  },',
     '};',
-    `const scriptOf = () => readFileSync(${JSON.stringify(scriptFile)}, 'utf8');`,
+    `const scriptOf = () => readFileSync(${JSON.stringify(files.script)}, 'utf8');`,
     'const scripted = (kind) => (payload) => scripts[scriptOf()](kind, payload);',
     "const window = (payload) => (scriptOf() === 'unreadable' ? scripts.unreadable() : real.window(payload));",
     "serveProcessJobs({ check: scripted('check'), run: scripted('run'), walk: scripted('walk'), window, baselines: scripted('baselines') }, process);",
   ].join('\n');
 }
 
+function sleepingIn(files: ScriptFiles): readonly string[] {
+  return readFileSync(files.sleeping, 'utf8').split('\n').slice(0, -1);
+}
+
 export function scriptedModels(): ScriptedModels {
   const directory = scratchDirectory();
-  const scriptFile = join(directory, 'script');
+  const files = { script: join(directory, 'script'), sleeping: join(directory, 'sleeping') };
   const module = pathToFileURL(join(directory, 'scripted-model-process.mjs'));
-  writeFileSync(scriptFile, 'real');
-  writeFileSync(module, sourceOf(scriptFile));
+  writeFileSync(files.script, 'real');
+  writeFileSync(files.sleeping, '');
+  writeFileSync(module, sourceOf(files));
   return {
     module,
     next: (script) => {
-      writeFileSync(scriptFile, script);
+      writeFileSync(files.script, script);
     },
+    untilSleeping: (jobs) =>
+      vi.waitFor(() => {
+        expect(sleepingIn(files)).toEqual(jobs);
+      }, waiting),
   };
 }
