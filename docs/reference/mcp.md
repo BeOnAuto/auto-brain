@@ -31,11 +31,12 @@ A reasoning function can call tools itself, through tool servers the runtime's o
 An agent that connects receives instructions written for the tools its key or token may call. They cover:
 
 - what a playbook is, in the words of the [terminology](../concepts/terminology.md), with a sentence for each function type the runtime runs and one for workflows;
+- that what the person wants kept, for anyone or a workflow to ask later, goes in a recall function of the playbook and not in the agent's own notes;
 - what the connection acts on: the caller's own org on `/mcp`, one org's playbooks on `/orgs/{org}/mcp`, or one playbook on `/orgs/{org}/playbooks/{playbook}/mcp`;
 - that `get_guide` returns the format of each definition and the recipes;
 - how a reasoning function names its model and its tools;
 - that `get_run` shows whether a run that finishes later has ended or is still waiting;
-- that when the person answers what a run waits on, such as an approval, the agent answers the request with `answer_interaction` and starts no new run for it. The answer takes the shape the function's answer takes;
+- that when the person answers what a run waits on, such as an approval, the agent answers the request with `answer_interaction` and starts no new run for it. The tool's description gives the shape of the answer;
 - that runs, history, events and requests come one page at a time;
 - how to reply to the person: what was done and what they can do next, in the words of playbooks, functions, workflows and runs. An id or a status appears only when the person needs it to act.
 
@@ -193,7 +194,7 @@ The recipes are also prompts, which a client that shows MCP prompts offers in it
 | Prompt           | Title                                | Arguments                            | What the recipe does                                                                   |
 | ---------------- | ------------------------------------ | ------------------------------------ | -------------------------------------------------------------------------------------- |
 | `first-playbook` | Create your first playbook           | None                                 | Creates a playbook with a first reasoning function, and runs it once the person agrees |
-| `remember`       | Make the playbook remember something | `what` to remember                   | Keeps what a function's runs returned in a recall function                             |
+| `remember`       | Make the playbook remember something | `what` to remember                   | Keeps what the playbook's runs returned or its events recorded in a recall function    |
 | `give-tools`     | Give the playbook tools              | Optional `server`, a tool server     | Gives a reasoning function the tools of a tool server the playbook may use             |
 | `schedule`       | Run a workflow on a schedule         | The `workflow`, and `when` to run it | Starts a workflow on a schedule or on an event, and reads how its runs went            |
 
