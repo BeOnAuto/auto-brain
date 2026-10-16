@@ -218,8 +218,8 @@ describe('the policy of the runtime, of the hosts', () => {
   });
 });
 
-function naming(name: string) {
-  return { ...notes, credential: { kind: 'reference', name } };
+function naming(variable: string) {
+  return { ...notes, credential: { kind: 'reference', variable, name: 'Authorization', in: 'header' } };
 }
 
 describe('the policy of the runtime, of the variables a reference names', () => {

@@ -63,6 +63,7 @@ describe('an added connection, as the stream folds it', () => {
       },
       link: { token_sha256: 'a1b2', expires_at: '2026-10-15T14:10:00.000Z' },
       secretId: undefined,
+      algorithm: undefined,
     });
   });
 

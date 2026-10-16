@@ -6,6 +6,7 @@ import type { RuntimeAccess } from '../policy/policy-rules.ts';
 
 export interface SecretKeeping {
   readonly keep: (value: Redacted.Redacted, endsWith?: string) => Effect.Effect<string, { readonly detail: string }>;
+  readonly read: (id: string) => Effect.Effect<Redacted.Redacted | undefined, { readonly detail: string }>;
   readonly endingsOf: (ids: readonly string[]) => Effect.Effect<ReadonlyMap<string, string>>;
   readonly forget: (id: string) => Effect.Effect<void>;
 }
