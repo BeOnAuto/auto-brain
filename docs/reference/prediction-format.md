@@ -545,17 +545,18 @@ For example, `{ "series": "north", "given": { "promotion": 1 } }` asks `weekly-o
 
 A question ends within its call and cannot be cancelled while it runs:
 
-| Ending                                                           | When                                                                                                                                                                     |
-| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `succeeded`                                                      | The prediction is its output                                                                                                                                             |
-| `invalid_input`                                                  | The input is neither a question the function takes nor `{ build: {} }`, or the series is not in the dataset's window, at `/input/series`                                 |
-| `conflict`, kind `no_active_version`                             | No version is active yet                                                                                                                                                 |
-| `conflict`, kind `data_changed`                                  | The data part, `horizons`, the `given` features or `accumulates` changed after the active version's model was built for them                                             |
-| `unavailable`, kind `dataset_not_ready`                          | The dataset is waiting or rebuilding; with `because` `stalled`, it stalled                                                                                               |
-| `unavailable`, kind `model_process_busy`                         | Every model process is taken                                                                                                                                             |
-| `unavailable`, kind `model_process_failed`                       | The model process ended before it returned, such as when it ran out of time or memory                                                                                    |
-| `unavailable`, kind `model_process_failed`, because `not_finite` | The model returned a number that is not finite, a low above its likely value or a high below it, or a shape its signature does not give; asking again does not change it |
-| `failed`                                                         | The runtime itself broke down                                                                                                                                            |
+| Ending                                                             | When                                                                                                                                     |
+| ------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `succeeded`                                                        | The prediction is its output                                                                                                             |
+| `invalid_input`                                                    | The input is neither a question the function takes nor `{ build: {} }`, or the series is not in the dataset's window, at `/input/series` |
+| `conflict`, kind `no_active_version`                               | No version is active yet                                                                                                                 |
+| `conflict`, kind `data_changed`                                    | The data part, `horizons`, the `given` features or `accumulates` changed after the active version's model was built for them             |
+| `unavailable`, kind `dataset_not_ready`                            | The dataset is waiting or rebuilding; with `because` `stalled`, it stalled                                                               |
+| `unavailable`, kind `model_process_busy`                           | Every model process is taken                                                                                                             |
+| `unavailable`, kind `model_process_failed`                         | The model process ended before it returned, such as when it ran out of time or memory                                                    |
+| `unavailable`, kind `model_process_failed`, because `not_finite`   | The model returned a number that is not finite, or a shape its signature does not give; asking again does not change it                  |
+| `unavailable`, kind `model_process_failed`, because `not_in_order` | The model returned a low above its likely value or a high below it, which no series holds; asking again does not change it               |
+| `failed`                                                           | The runtime itself broke down                                                                                                            |
 
 A build finishes later, so `run_definition` returns it `started` and `get_run` shows how it ended:
 
@@ -676,7 +677,7 @@ A run that does not succeed raises the error of its rejection:
 - A build nobody answered raises the [problem type](http.md#responses-and-errors) `https://on.auto/problems/unanswered`, status 410, with the kind `expired`. Only a `catch` that names that type or status 410, or catches every error, takes it. So a workflow handles an unanswered build only on purpose.
 - A refusal raises status 503 for `unavailable` and 409 for `conflict`, with its `kind` and `because`.
 - `model_process_busy`, and a dataset still being built, pass with time. So a retry on status 503 suits a question.
-- These do not change when tried again: `builds_full` with `because` `builds_of_the_day`, a `stalled` dataset and a `not_finite` result. Neither do `no_active_version` and `data_changed`, until a build makes a version. So leave 409 out of a retry policy, and read `$error.because` in a `when` to leave out the rest.
+- These do not change when tried again: `builds_full` with `because` `builds_of_the_day`, a `stalled` dataset, and a `not_finite` or `not_in_order` result. Neither do `no_active_version` and `data_changed`, until a build makes a version. So leave 409 out of a retry policy, and read `$error.because` in a `when` to leave out the rest.
 
 A workflow on a [schedule](workflow-format.md#triggers) can ask for a build on that schedule, within the builds a function may ask for in a day.
 

@@ -1113,7 +1113,7 @@ A `500` response contains an incident reference: its `instance` and the `x-reque
 `Retry-After` comes only with an `unavailable` response that a retry of the same request may resolve. It never comes:
 
 - with the kinds `tools_unfinished`, `tool_not_offered` or `model_not_offered`;
-- with `because` set to `builds_of_the_day`, `stalled` or `not_finite`, which no wait resolves;
+- with `because` set to `builds_of_the_day`, `stalled`, `not_finite` or `not_in_order`, which no wait resolves;
 - with `cancelled`.
 
 ### Models and tools a function may not use

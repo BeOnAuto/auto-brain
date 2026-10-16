@@ -3,7 +3,7 @@ import { Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { buildPlaybook } from '../build-testing/build-playbook.ts';
-import { activeVisitsOn, asked, builtFrom, savedFunction } from '../build-testing/built-versions.ts';
+import { activeVisitsOn, asked, builtFrom, savedFunction, visitsRows } from '../build-testing/built-versions.ts';
 import { uploadedDailyVisits } from '../testing/daily-documents.ts';
 import { dailyRows } from '../testing/daily-rows.ts';
 
@@ -63,6 +63,22 @@ describe('the answer to a question to a prediction function', () => {
     });
     expect(Schema.decodeUnknownSync(AnsweredSchema)(answer).output.output).toEqual(steadySouth);
     expect(shapeNamed('series').check(steadySouth)).toEqual([]);
+  });
+});
+
+describe('the horizons in the answer to a question to a prediction function', () => {
+  it('are every horizon nearest first, however the document orders them', async () => {
+    const playbook = buildPlaybook();
+    const source = uploadedDailyVisits(visitsRows.sha256).replace('  horizons: [1, 2]', '  horizons: [2, 1]');
+    await savedFunction(playbook, { source });
+    await builtFrom(playbook, ['visits-mean']);
+
+    expect(await asked(playbook, { series: 'south' })).toMatchObject({
+      output: {
+        status: 'succeeded',
+        output: { lines: [{}, { points: [{ at: '2026-10-10' }, { at: '2026-10-11' }] }] },
+      },
+    });
   });
 
   it('holds the one horizon the question names, with the marks it gives', async () => {

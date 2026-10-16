@@ -13,8 +13,7 @@ import { uploadDataset } from '../upload/upload-dataset.ts';
 
 const heldWalk = { rows: '/held.csv', window: 3, holdout: 1, steps: 1, features: 0, given: [], remaining: null };
 
-const badly =
-  'The model answered something other than a low, a likely value and a high in that order, as finite numbers in the shape its signature gives';
+const outOfOrder = 'The answer does not match the series shape';
 
 function activeVisits(options: PortOptions = {}): Promise<BuildPlaybook> {
   return activeVisitsOn(buildPlaybook(options));
@@ -56,7 +55,7 @@ describe('a question to a prediction function', () => {
 });
 
 describe('a question whose model process does not answer', () => {
-  it('fails as the model process failing when it ends, runs out of memory, or answers numbers that are not finite or not in order', async () => {
+  it('fails as the model process failing when it ends, runs out of memory or answers numbers that are not finite', async () => {
     const { scripted, playbook } = await scriptedVisits();
     scripted.next('exits');
     const exited = await asked(playbook, { series: 'north', horizon: 1 });
@@ -64,8 +63,6 @@ describe('a question whose model process does not answer', () => {
     const exhausted = await asked(playbook, { series: 'north', horizon: 1 });
     scripted.next('not-finite');
     const notFinite = await asked(playbook, { series: 'north', horizon: 1 });
-    scripted.next('crossed');
-    const crossed = await asked(playbook, { series: 'north' });
     scripted.next('unreadable');
     const unread = await asked(playbook, { series: 'north', horizon: 1 });
 
@@ -75,7 +72,7 @@ describe('a question whose model process does not answer', () => {
       kind: 'model_process_failed',
       detail: 'The model process ended before it read the dataset',
     });
-    expect([exited, exhausted, notFinite, crossed]).toMatchObject([
+    expect([exited, exhausted, notFinite]).toMatchObject([
       {
         status: 'rejected',
         reason: 'unavailable',
@@ -88,8 +85,40 @@ describe('a question whose model process does not answer', () => {
         kind: 'model_process_failed',
         detail: 'The model process ended before it answered',
       },
-      { status: 'rejected', reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite', detail: badly },
-      { status: 'rejected', reason: 'unavailable', kind: 'model_process_failed', because: 'not_finite', detail: badly },
+      {
+        status: 'rejected',
+        reason: 'unavailable',
+        kind: 'model_process_failed',
+        because: 'not_finite',
+        detail: 'The model answered something other than finite numbers in the shape its signature gives',
+      },
+    ]);
+  });
+});
+
+describe('a question whose model answers a low above its likely value or a high below it', () => {
+  it('is refused as the model process failing, because its numbers are not in order, in the words of the series shape', async () => {
+    const { scripted, playbook } = await scriptedVisits();
+    scripted.next('low-above');
+    const lowAbove = await asked(playbook, { series: 'north' });
+    scripted.next('high-below');
+    const highBelow = await asked(playbook, { series: 'north' });
+
+    expect([lowAbove, highBelow]).toMatchObject([
+      {
+        status: 'rejected',
+        reason: 'unavailable',
+        kind: 'model_process_failed',
+        because: 'not_in_order',
+        detail: `${outOfOrder}: /lines/1/points/0/low: Expected a low of at most the value`,
+      },
+      {
+        status: 'rejected',
+        reason: 'unavailable',
+        kind: 'model_process_failed',
+        because: 'not_in_order',
+        detail: `${outOfOrder}: /lines/1/points/1/high: Expected a high of at least the value`,
+      },
     ]);
   });
 });

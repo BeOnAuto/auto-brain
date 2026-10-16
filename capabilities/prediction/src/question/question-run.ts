@@ -1,4 +1,10 @@
-import type { CapabilityAnswer, CapabilityRejection, RunContext } from '@on.auto/definitions';
+import {
+  seriesShape,
+  shapeMismatchOf,
+  type CapabilityAnswer,
+  type CapabilityRejection,
+  type RunContext,
+} from '@on.auto/definitions';
 import { Unavailable, type PlaybookAddress } from '@on.auto/operations';
 import { Clock, Effect, Option, Schema } from 'effect';
 
@@ -24,12 +30,19 @@ const busy = new Unavailable({ detail: 'Every model process is busy; try again s
 
 const ended = new Unavailable({ detail: 'The model process ended before it answered', kind: 'model_process_failed' });
 
-const answeredBadly = new Unavailable({
-  detail:
-    'The model answered something other than a low, a likely value and a high in that order, as finite numbers in the shape its signature gives',
+const notFinite = new Unavailable({
+  detail: 'The model answered something other than finite numbers in the shape its signature gives',
   kind: 'model_process_failed',
   because: 'not_finite',
 });
+
+function notInOrder(mismatch: string): Unavailable {
+  return new Unavailable({
+    detail: `The answer does not match the series shape: ${mismatch}`,
+    kind: 'model_process_failed',
+    because: 'not_in_order',
+  });
+}
 
 interface AskedPoint {
   readonly step: number;
@@ -72,10 +85,6 @@ function givenOf(
   return Float32Array.from(Array.from({ length: steps }, () => values).flat());
 }
 
-function isInterval(low: number, value: number, high: number): boolean {
-  return [low, value, high].every((each) => Number.isFinite(each)) && low <= value && value <= high;
-}
-
 function predictedOf(
   q: Readonly<Float32Array>,
   { period: grain }: Predicts,
@@ -85,7 +94,9 @@ function predictedOf(
     const [low, value, high] = Array.from(q.subarray(step * 3, step * 3 + 3));
     return { at: periodForm(grain, period), value: Number(value), low: Number(low), high: Number(high) };
   });
-  return predicted.every(({ low, value, high }) => isInterval(low, value, high)) ? predicted : undefined;
+  return predicted.every(({ low, value, high }) => [low, value, high].every((each) => Number.isFinite(each)))
+    ? predicted
+    : undefined;
 }
 
 function observedOf({ y, origin }: SeriesWindow, { period: grain, history }: Predicts): readonly ObservedPoint[] {
@@ -136,7 +147,7 @@ function answered(
     const expected = `1,${asked.summed === null ? asked.steps : 1},3`;
     const predicted = predictedOf(outcome.answer.q, document.predicts, asked.points);
     if (outcome.answer.dims.join(',') !== expected || predicted === undefined) {
-      return yield* Effect.fail(answeredBadly);
+      return yield* Effect.fail(notFinite);
     }
     return { predicted, milliseconds: outcome.milliseconds };
   });
@@ -163,17 +174,22 @@ export function questionRun(
     const window = yield* seriesWindow(ports, { playbook, document, series: question.series, now });
     const { predicted, milliseconds } = yield* answered({ ports, playbook, document, question }, active, window);
     const origin = periodForm(predicts.period, window.origin);
+    const output = {
+      unit: predicts.unit,
+      period: predicts.period,
+      origin,
+      lines: [
+        { name: 'observed', points: observedOf(window, predicts) },
+        { name: 'predicted', points: predicted },
+      ],
+      ...(question.marks === undefined ? {} : { marks: question.marks }),
+    };
+    const mismatch = shapeMismatchOf(seriesShape, output);
+    if (mismatch !== undefined) {
+      return yield* Effect.fail(notInOrder(mismatch));
+    }
     return {
-      output: {
-        unit: predicts.unit,
-        period: predicts.period,
-        origin,
-        lines: [
-          { name: 'observed', points: observedOf(window, predicts) },
-          { name: 'predicted', points: predicted },
-        ],
-        ...(question.marks === undefined ? {} : { marks: question.marks }),
-      },
+      output,
       record: {
         version: active.version,
         coverage,
