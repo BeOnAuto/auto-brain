@@ -1302,7 +1302,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -1626,7 +1626,7 @@
                       "properties": {
                         "type": {
                           "type": "string",
-                          "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                          "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                         },
                         "name": {
                           "type": "string",
@@ -1919,7 +1919,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -2249,7 +2249,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -2575,7 +2575,7 @@
                   "properties": {
                     "type": {
                       "type": "string",
-                      "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                      "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                     },
                     "name": {
                       "type": "string",
@@ -4967,7 +4967,7 @@
                         "properties": {
                           "type": {
                             "type": "string",
-                            "description": "The type of the definition: reasoning, interaction, computation, recall or workflow"
+                            "description": "The type of the definition: reasoning, interaction, prediction, recall, computation or workflow"
                           },
                           "name": {
                             "type": "string",

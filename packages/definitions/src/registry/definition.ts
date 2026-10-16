@@ -5,7 +5,7 @@ import { TriggerSchema } from './definition-triggers.ts';
 
 const listedDefinitionFields = {
   type: Schema.String.annotate({
-    description: 'The type of the definition: reasoning, interaction, computation, recall or workflow',
+    description: 'The type of the definition: reasoning, interaction, prediction, recall, computation or workflow',
   }),
   name: Schema.String.annotate({
     description: 'The definition name, unique among definitions of its type in the playbook and never reused',

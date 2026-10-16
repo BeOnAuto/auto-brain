@@ -426,7 +426,7 @@ The build's run has `status: succeeded` and this output. Its `version` is the mo
 }
 ```
 
-The model version's **card** records how it was built and how it scored. The playbook keeps it as the `version_built` event on the function's models stream, the part of its history about the function's models, which `list_playbook_events` shows. The card scores the model and the `persistence` baseline, which repeats the last week, on the held-back weeks:
+The figures from here on are those of one run, as an illustration: uv installs the newest scikit-learn, onnx and numpy each time, so a fit on your machine may differ in its last digits. The model version's **card** records how it was built and how it scored. The playbook keeps it as the `version_built` event on the function's models stream, the part of its history about the function's models, which `list_playbook_events` shows. The card scores the model and the `persistence` baseline, which repeats the last week, on the held-back weeks:
 
 | Horizon | Truths scored (`pairs`) | The model's `mase` | `persistence`'s `mase` |
 | ------- | ----------------------- | ------------------ | ---------------------- |
@@ -446,7 +446,7 @@ Use the auto-forecast connection. Ask the "Weekly sign-ups" function in the
 "Forecasts" playbook for north's sign-ups one week ahead.
 ```
 
-The agent runs the function with `{ "series": "north", "horizon": 1 }`. The run succeeds at once with the prediction, a series:
+The agent runs the function with `{ "series": "north", "horizon": 1 }`. The run succeeds at once with the prediction, a series. Its observed weeks are the data's own; its predicted figures, like the card's, illustrate one run:
 
 ```json
 {

@@ -63,7 +63,7 @@ Predict {{ dataset.horizons | join: " and " }} weeks ahead. The features are
 {% endfor %}
 ```
 
-`create_definition` takes `type: "prediction"`, a function `name` such as `weekly-orders` and the document as `source`. The saved function has the `media_type` `text/markdown`. The playbook writes its `input_schema` and `output_schema` itself, from the document. So a document that names `input` or `output` is refused.
+`create_definition` takes `type: "prediction"`, a function `name` such as `weekly-orders` and the document as `source`. The saved function has the `media_type` `text/markdown`. The playbook writes its `input_schema` itself, from the document. Its `output_schema` is the [series shape](output-shapes.md#series), what a question answers, and its `details.shape` is `series`; a build's run answers `{ version, winner, candidates }` and says no shape, as [The input and the output](#the-input-and-the-output) sets out. So a document that names `input` or `output` is refused.
 
 Before you write one, settle these with the person:
 
