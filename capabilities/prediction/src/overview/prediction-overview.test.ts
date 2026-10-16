@@ -56,7 +56,8 @@ describe('the overview of a prediction function of a total to the end of a perio
         'It predicts the total of **sales**, counted in sales, for each series from the day after the last one closed to the end of the week that day falls in.',
         'A season is 7 days long.',
         'A question names a series, with the value of **promo** planned for the days it sums.',
-        'It answers with a likely value, a low and a high: the 50th, 10th and 90th percentiles of its model.',
+        'It answers the last 14 observed days and the total from the next day to the end of its week, with a likely value, a low and a high.',
+        'The likely value is the 50th percentile of its model, the low the 10th and the high the 90th.',
       ].join('\n\n'),
     );
   });
@@ -72,7 +73,7 @@ describe('the overview of a prediction function of a total to the end of a perio
 });
 
 const sentThrough = dailyVisitsWith(
-  ['  horizons: [1, 2]', '  horizons: [1]'],
+  ['  horizons: [1, 2]', '  horizons: [1]\n  history: 1'],
   [
     '    - type: visit.made',
     "    - { type: visit.made, source: shop, data: '${ $data.paid }' }\n    - { type: visit.counted, data: { kind: walk-in } }",
@@ -91,10 +92,11 @@ const sentThrough = dailyVisitsWith(
 describe('the overview of a prediction function sent to its trainer and approved through interaction functions', () => {
   const overview = overviewOf(sentThrough);
 
-  it('predicts one period ahead, and names the attributes and the data test of each filter', () => {
-    expect(sectionIn(overview, 'What it predicts').split('\n\n').slice(0, 2)).toEqual([
+  it('predicts one period ahead, answers the history it names, and names the attributes and the data test of each filter', () => {
+    expect(sectionIn(overview, 'What it predicts').split('\n\n').slice(0, 3)).toEqual([
       'It predicts **visits**, counted in visits, for each series a day at a time, 1 day ahead.',
-      'A question names a series and how many days ahead.',
+      'A question names a series, and one horizon when it asks for that one alone.',
+      'It answers the last observed day and 1 day ahead, with a likely value, a low and a high.',
     ]);
     expect(sectionIn(overview, 'What it learns from')).toContain(
       [

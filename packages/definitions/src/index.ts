@@ -235,6 +235,7 @@ export { outputShapeNamed, outputShapeNames, shapeMismatchOf } from './shapes/ou
 export { declaredShape, type ShapeRefusal } from './shapes/shape-declarations.ts';
 export { publishedOutputOf } from './shapes/published-output.ts';
 export { seriesBounds, seriesMarksSchema, seriesShape } from './shapes/series-shape.ts';
+export { periodNouns, seriesPathBlocks } from './shapes/shape-words.ts';
 export {
   inputSection,
   outputSection,
