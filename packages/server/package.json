@@ -28,6 +28,7 @@
     "@on.auto/api": "workspace:*",
     "@on.auto/computation": "workspace:*",
     "@on.auto/config": "workspace:*",
+    "@on.auto/connections": "workspace:*",
     "@on.auto/coordination": "workspace:*",
     "@on.auto/definitions": "workspace:*",
     "@on.auto/identity": "workspace:*",

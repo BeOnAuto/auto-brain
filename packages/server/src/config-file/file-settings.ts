@@ -1,4 +1,5 @@
 import { fileSetting, type FileSetting } from '@on.auto/config';
+import { ConnectionPolicySchema } from '@on.auto/connections';
 import { ApiKeysSchema } from '@on.auto/identity';
 import { AllowedModelsSchema, DeclaredModelsSchema, ModelAliasesSchema, ModelGatewaysSchema } from '@on.auto/reasoning';
 import { ToolServersSchema } from '@on.auto/tool-servers';
@@ -66,4 +67,5 @@ export const fileSettings: readonly FileSetting[] = [
     asJson,
     { references: 'kept' },
   ),
+  fileSetting('CONNECTIONS', ConnectionPolicySchema, asJson),
 ];

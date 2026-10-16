@@ -1,6 +1,7 @@
 import { dirname } from 'node:path';
 
 import type { Environment, FileUse } from '@on.auto/config';
+import { readConnectionPolicy, type ConnectionPolicy } from '@on.auto/connections';
 import {
   defaultMostInputTokens,
   ModelSettingsInvalid,
@@ -21,6 +22,7 @@ interface ReasoningBounds {
 export interface ReasoningSettings {
   readonly models: ModelSettings;
   readonly toolServers: ToolServerSettings;
+  readonly connections: ConnectionPolicy;
   readonly reasoning: ReasoningBounds;
 }
 
@@ -57,7 +59,7 @@ function serversPlaced(invalid: Problems, file: FileUse | undefined): ToolServer
   });
 }
 
-function modelProvidersOf(models: ModelSettings): readonly string[] {
+export function modelProvidersOf(models: ModelSettings): readonly string[] {
   const { configured, unconfigured } = providerStatus(models, { entraId: false });
   return [...configured, ...unconfigured.map(({ provider }) => provider)];
 }
@@ -73,5 +75,6 @@ export function readReasoningSettings(environment: Environment, file: FileUse | 
     }).pipe(Effect.mapError((invalid: Problems) => serversPlaced(invalid, file))),
   );
   const reasoning = Effect.runSync(countsIn(environment, { settings: 'reasoning function settings', bounds }));
-  return { models, toolServers, reasoning };
+  const connections = Effect.runSync(readConnectionPolicy(environment));
+  return { models, toolServers, connections, reasoning };
 }

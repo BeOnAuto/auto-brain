@@ -44,7 +44,9 @@ const definitionTools = [
   'send_run_event',
 ];
 
-const orgTools = [...playbookTools, 'list_models', 'search'];
+const connectionTools = ['add_connection', 'list_connections', 'get_connection', 'remove_connection'];
+
+const orgTools = [...playbookTools, 'list_models', 'search', ...connectionTools];
 
 const insideAPlaybookAlone = definitionTools.filter((name) => !orgTools.includes(name));
 

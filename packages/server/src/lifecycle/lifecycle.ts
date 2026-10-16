@@ -19,7 +19,7 @@ import {
 } from '../logging/logging.ts';
 import { readSettings, type Settings } from '../settings/settings.ts';
 import { startTelemetry, type Telemetry } from '../telemetry/start-telemetry.ts';
-import { createHttpServer, listen, tcpPort } from './http-server.ts';
+import { createHttpServer, listen, ownOriginOf, tcpPort } from './http-server.ts';
 import { shutDown } from './shutdown.ts';
 import { StartupError } from './startup-error.ts';
 
@@ -39,7 +39,7 @@ export type ServedClosing = (served: Served) => Served;
 
 export interface Composed<R> {
   readonly services: Layer.Layer<R>;
-  readonly serve: (runtime: AppRuntime<R>) => Served | Promise<Served>;
+  readonly serve: (runtime: AppRuntime<R>, ownOrigin: () => string) => Served | Promise<Served>;
 }
 
 export interface ServerOptions<R> {
@@ -65,9 +65,9 @@ interface Starting<R> {
   readonly options: ServerOptions<R>;
 }
 
-async function servedOf<R>(composed: Composed<R>, runtime: AppRuntime<R>): Promise<Served> {
+async function servedOf<R>(composed: Composed<R>, runtime: AppRuntime<R>, ownOrigin: () => string): Promise<Served> {
   try {
-    return await composed.serve(runtime);
+    return await composed.serve(runtime, ownOrigin);
   } catch (failure) {
     await runtime.dispose();
     throw failure;
@@ -92,7 +92,8 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
   await runtime.run(logAccessMode({ ...settings, mode: authenticator.mode }));
   await runtime.run(logConfigFile(settings.configFile));
   await runtime.run(logTelemetry(settings.telemetry));
-  const served = await servedOf(composed, runtime);
+  const listening = { port: settings.port };
+  const served = await servedOf(composed, runtime, () => ownOriginOf(settings.host, listening.port));
   const api = createApiHandler({
     allowedOrigins: settings.allowedOrigins,
     authenticator,
@@ -111,9 +112,10 @@ async function started<R>({ settings, authenticator, telemetry, options }: Start
     await api.close();
     throw error;
   }
+  listening.port = tcpPort(server.address());
   let stopping: Promise<void> | undefined;
   return {
-    port: tcpPort(server.address()),
+    port: listening.port,
     mode: authenticator.mode,
     signIn: settings.signIn,
     stop: async () => {

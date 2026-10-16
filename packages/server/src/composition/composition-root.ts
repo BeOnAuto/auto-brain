@@ -1,12 +1,12 @@
 import type { DispatcherServices } from '@on.auto/operations';
 
 import { ledgerDatabaseOf } from '../database/ledger-database.ts';
-import { ledgerStoresOpenedBy } from '../database/ledger-stores.ts';
 import { defaultServerOptions, type ServerOptions } from '../lifecycle/lifecycle.ts';
 import { serveWorkflows, type WorkflowParts } from '../workflows/workflows.ts';
 import { applicationLayer } from './application-layer.ts';
 import { functionWiringOf, type FunctionWiring } from './function-wiring.ts';
 import { ledgerLayerFor } from './ledger-store.ts';
+import { storesAndConnectionsOf } from './served-connections.ts';
 import { functionsServedBy } from './served-functions.ts';
 import { loggedModelAccess } from './served-reasoning.ts';
 
@@ -23,15 +23,17 @@ export function compositionRootWith(
       const database = ledgerDatabaseOf(settings, telemetry.appended);
       return {
         services: applicationLayer(ledgerLayerFor(settings, database, wiring.projections.appends)),
-        serve: async (runtime) => {
+        serve: async (runtime, ownOrigin) => {
           const { ledger, workflows, identityIssuer } = settings;
-          const stores = await ledgerStoresOpenedBy(runtime.context, settings, database);
+          const { stores, connections } = await storesAndConnectionsOf(runtime, settings, database, ownOrigin);
           const functions = await functionsServedBy(runtime, settings, database, { ...wiring, telemetry });
           const parts = {
             ledger,
             workflows,
             identityIssuer,
             ...functions.parts,
+            orgOperations: [...functions.parts.orgOperations, ...connections.operations],
+            orgRoutes: connections.pageRoutes,
             ...(clock === undefined ? {} : { clock }),
           };
           return stores.withSecretsClosed(functions.closing(await serveWorkflows(runtime, parts)));

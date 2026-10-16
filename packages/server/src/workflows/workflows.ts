@@ -30,8 +30,13 @@ interface PlaybookRoute {
   readonly registration: HttpRegistration<'playbook'>;
 }
 
+interface OrgRoute {
+  readonly registration: HttpRegistration<'org'>;
+}
+
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
+  readonly orgRoutes: readonly OrgRoute[];
   readonly playbookOperations: readonly PlaybookOperation[];
   readonly playbookRoutes: readonly PlaybookRoute[];
   readonly check: ExpressionCheck;
@@ -75,6 +80,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
   opening.resolve(host);
   const catalog = makeCatalog([
     ...parts.orgOperations,
+    ...parts.orgRoutes,
     ...playbookOperationsServing(capabilities, parts),
     ...parts.playbookOperations,
     ...parts.playbookRoutes,

@@ -270,6 +270,33 @@
         "additionalProperties": false
       },
       "description": "The tool servers whose tools a function may name, each bound to an org and optionally its playbooks: url for a remote MCP server, command for an MCP server run as a process, document for an HTTP API described by an OpenAPI document. Secrets are references such as ${GRAPH_API_KEY}. TOOL_SERVERS wins over it"
+    },
+    "connections": {
+      "type": "object",
+      "properties": {
+        "people_may_add": {
+          "type": "boolean",
+          "description": "Whether people may add connections through their agents; true when left out"
+        },
+        "allowed_hosts": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^(?:\\*\\.)?[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$"
+          },
+          "description": "The hosts a connection may reach, each a host or *. and a host for every host under it; every host when left out"
+        },
+        "credential_kinds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": ["none", "reference", "secret", "client_credentials", "authorization"]
+          },
+          "description": "The kinds of credential a connection may take, of none, reference, secret, client_credentials and authorization; every kind when left out"
+        }
+      },
+      "additionalProperties": false,
+      "description": "What people may add as connections through their agents: tool servers of an org, which every playbook of the org may use. CONNECTIONS wins over it"
     }
   },
   "additionalProperties": false,

@@ -83,7 +83,7 @@ function postInitialize(path: string, headers: Readonly<Record<string, string>>)
 }
 
 describe('the org endpoint of the server', () => {
-  it('names the release under the title Auto Runtime and lists the five playbook tools, list_models and search', async () => {
+  it('names the release under the title Auto Runtime and lists the five playbook tools, list_models, search and the four of connections', async () => {
     const connected = await withMcpSession(
       'current revision',
       endpoint('/orgs/acme/mcp', acmeAdmin.key),
@@ -95,7 +95,16 @@ describe('the org endpoint of the server', () => {
 
     expect(connected).toEqual({
       serverVersion: { ...release, title: 'Auto Runtime' },
-      tools: [...playbookTools, 'list_models', 'search', 'get_guide'],
+      tools: [
+        ...playbookTools,
+        'list_models',
+        'search',
+        'add_connection',
+        'list_connections',
+        'get_connection',
+        'remove_connection',
+        'get_guide',
+      ],
     });
   });
 
@@ -156,6 +165,16 @@ describe('the callers the MCP endpoints of the server reject before MCP', () => 
   });
 });
 
+const queriesOfTheOrg = [
+  'list_playbooks',
+  'get_playbook',
+  'list_models',
+  'search',
+  'list_connections',
+  'get_connection',
+  'get_guide',
+];
+
 describe('the permissions and playbooks of a key over MCP', () => {
   it('offer a read-only key the queries of the org and no command, and serve it a query', async () => {
     const outcome = await withMcpSession(
@@ -167,7 +186,7 @@ describe('the permissions and playbooks of a key over MCP', () => {
       }),
     );
 
-    expect(outcome.tools).toEqual(['list_playbooks', 'get_playbook', 'list_models', 'search', 'get_guide']);
+    expect(outcome.tools).toEqual(queriesOfTheOrg);
     expect(outcome.listed.structuredContent).toEqual({ playbooks: [] });
   });
 

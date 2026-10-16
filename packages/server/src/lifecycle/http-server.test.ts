@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { tcpPort } from './http-server.ts';
+import { ownOriginOf, tcpPort } from './http-server.ts';
 import { startServer, defaultServerOptions, type RunningServer } from './lifecycle.ts';
 
 describe('HTTP server', () => {
@@ -45,5 +45,23 @@ describe('tcpPort', () => {
 
   it.each([null, '/tmp/auto-runtime.sock'])('rejects %s because it is not a TCP address', (address) => {
     expect(() => tcpPort(address)).toThrow(new TypeError('The server is not listening on a TCP port'));
+  });
+});
+
+describe('the origin of the server on its own machine', () => {
+  it('names the host it listens on, localhost when it listens on every interface, and an IPv6 host in brackets', () => {
+    expect([
+      ownOriginOf('127.0.0.1', 5555),
+      ownOriginOf('0.0.0.0', 5555),
+      ownOriginOf('::', 5555),
+      ownOriginOf('::1', 5555),
+      ownOriginOf('localhost', 3000),
+    ]).toEqual([
+      'http://127.0.0.1:5555',
+      'http://localhost:5555',
+      'http://localhost:5555',
+      'http://[::1]:5555',
+      'http://localhost:3000',
+    ]);
   });
 });
