@@ -3,7 +3,14 @@
   "ui": "stream",
   "agentGuidance": false,
   "globalPassThroughEnv": ["TMPDIR"],
-  "globalDependencies": ["tsconfig.base.json", ".oxlintrc.json", "vitest.shared.ts", ".nvmrc", "pnpm-lock.yaml"],
+  "globalDependencies": [
+    "package.json",
+    "tsconfig.base.json",
+    ".oxlintrc.json",
+    "vitest.shared.ts",
+    ".nvmrc",
+    "pnpm-lock.yaml"
+  ],
   "tasks": {
     "transit": {
       "dependsOn": ["^transit"]
@@ -16,6 +23,12 @@
     },
     "test": {
       "dependsOn": ["transit"],
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "$TURBO_ROOT$/docs/**",
+        "!$TURBO_ROOT$/docs/.vitepress/cache/**",
+        "!$TURBO_ROOT$/docs/.vitepress/dist/**"
+      ],
       "env": ["LEDGER_TEST_POSTGRESQL_URL", "CONTENT_TEST_OBJECT_STORE_URL"],
       "outputs": ["coverage/**"]
     },

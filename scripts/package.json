@@ -1,0 +1,12 @@
+{
+  "name": "@on.auto/scripts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "Elastic-2.0",
+  "type": "module",
+  "devDependencies": {
+    "@on.auto/api": "workspace:*",
+    "@on.auto/definitions": "workspace:*",
+    "@on.auto/server": "workspace:*"
+  }
+}

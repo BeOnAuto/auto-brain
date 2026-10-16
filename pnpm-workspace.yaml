@@ -1,6 +1,7 @@
 packages:
   - packages/*
   - capabilities/*
+  - scripts
 
 catalog:
   vitest: 5.0.3
