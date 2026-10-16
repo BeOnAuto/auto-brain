@@ -44,7 +44,7 @@ describe('the issues of a value that breaks a bound of its schema', () => {
     },
   );
 
-  it('names the bound of a field where the field is, and of a name the schema bounds where the name is', () => {
+  it('names the bound of a field where the field is, and of a name the schema bounds where the name is, as a name', () => {
     expect(
       issuesOf(
         {
@@ -59,6 +59,7 @@ describe('the issues of a value that breaks a bound of its schema', () => {
         pointer: '/names/long',
         detail: 'Expected a string with at most 2 code points',
         breach: bound({ maxLength: 2 }),
+        ofTheName: true,
       },
     ]);
   });

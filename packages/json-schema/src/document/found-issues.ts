@@ -10,13 +10,20 @@ export type Breach =
 
 export interface FoundIssue extends Issue {
   readonly breach?: Breach;
+  readonly ofTheName?: true;
 }
 
-interface Leaf {
+interface Within {
   readonly path: readonly PropertyKey[];
-  readonly issue: SchemaIssue.Issue;
   readonly holder?: SchemaAST.AST | undefined;
+  readonly ofTheName?: true;
 }
+
+interface Leaf extends Within {
+  readonly issue: SchemaIssue.Issue;
+}
+
+const namesCheck = 'effect/schema/isPropertyNames';
 
 type CheckBreach = (filter: SchemaAST.Filter<unknown>, holder: SchemaAST.AST | undefined) => Breach;
 
@@ -55,17 +62,21 @@ const breachesOfChecks: ReadonlyMap<string | undefined, CheckBreach> = new Map<s
   ['effect/schema/isInt', () => ofAnotherKind],
 ]);
 
-function leavesOf(issue: SchemaIssue.Issue, path: readonly PropertyKey[], holder?: SchemaAST.AST): Leaf[] {
+function isTheCheckOfNames(issue: SchemaIssue.Issue): issue is SchemaIssue.Filter {
+  return issue instanceof SchemaIssue.Filter && issue.filter.annotations?.representation?.id === namesCheck;
+}
+
+function leavesOf(issue: SchemaIssue.Issue, within: Within): Leaf[] {
   if (issue instanceof SchemaIssue.Pointer) {
-    return leavesOf(issue.issue, [...path, ...issue.path], holder);
+    return leavesOf(issue.issue, { ...within, path: [...within.path, ...issue.path] });
   }
   if (issue instanceof SchemaIssue.Composite || (issue instanceof SchemaIssue.AnyOf && issue.issues.length > 0)) {
-    return issue.issues.flatMap((inner) => leavesOf(inner, path, issue.ast));
+    return issue.issues.flatMap((inner) => leavesOf(inner, { ...within, holder: issue.ast }));
   }
-  if (issue instanceof SchemaIssue.Filter && !(issue.issue instanceof SchemaIssue.InvalidValue)) {
-    return leavesOf(issue.issue, path, holder);
+  if (isTheCheckOfNames(issue)) {
+    return leavesOf(issue.issue, { ...within, ofTheName: true });
   }
-  return [{ path, issue, holder }];
+  return [{ ...within, issue }];
 }
 
 function isAValueWhereNoneIsAllowed(issue: SchemaIssue.Issue): boolean {
@@ -92,11 +103,15 @@ function breachOf(leaf: Leaf): Breach | undefined {
 }
 
 function foundOf(leaf: Leaf): FoundIssue {
-  const found = { pointer: pointerOf(leaf.path), detail: detailOf(leaf.issue) };
   const breach = breachOf(leaf);
-  return breach === undefined ? found : { ...found, breach };
+  return {
+    pointer: pointerOf(leaf.path),
+    detail: detailOf(leaf.issue),
+    ...(breach === undefined ? {} : { breach }),
+    ...(leaf.ofTheName === undefined ? {} : { ofTheName: leaf.ofTheName }),
+  };
 }
 
 export function foundIssuesOf(issue: SchemaIssue.Issue): readonly FoundIssue[] {
-  return leavesOf(issue, []).map((leaf) => foundOf(leaf));
+  return leavesOf(issue, { path: [] }).map((leaf) => foundOf(leaf));
 }
