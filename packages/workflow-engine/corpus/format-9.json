@@ -8,100 +8,59 @@
         "format": 9,
         "receipt": {
           "kind": "started",
-          "key": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+          "key": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
           "at": 1790845200000
         },
         "steps": [
           {
-            "reference": "/do/0/all",
+            "reference": "/do/0/race",
             "run": 1,
             "outcome": "started",
-            "name": "all",
+            "name": "race",
             "times": 1,
             "caused_by": "input"
           },
           {
-            "reference": "/do/0/all/fork/branches/0/backing",
-            "run": 1,
-            "outcome": "started",
-            "name": "backing",
-            "times": 1,
-            "caused_by": {
-              "reference": "/do/0/all",
-              "run": 1,
-              "outcome": "started",
-              "times": 1
-            }
-          },
-          {
-            "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+            "reference": "/do/0/race/fork/branches/0/first",
             "run": 1,
             "outcome": "waiting",
-            "name": "ask",
+            "name": "first",
             "times": 1,
             "caused_by": {
-              "reference": "/do/0/all/fork/branches/0/backing",
+              "reference": "/do/0/race",
               "run": 1,
               "outcome": "started",
               "times": 1
             },
             "waits_for": "call",
-            "child": "notify at /do/0/all/fork/branches/0/backing/try/0/ask #1"
+            "child": "676e4b31-e401-5fe7-adbb-0dc9c66db0f2"
           },
           {
-            "reference": "/do/0/all/fork/branches/1/both",
-            "run": 1,
-            "outcome": "waiting",
-            "name": "both",
-            "times": 1,
-            "caused_by": {
-              "reference": "/do/0/all",
-              "run": 1,
-              "outcome": "started",
-              "times": 1
-            },
-            "waits_for": "event"
-          },
-          {
-            "reference": "/do/0/all/fork/branches/2/telling",
-            "run": 1,
-            "outcome": "completed",
-            "name": "telling",
-            "times": 1,
-            "caused_by": {
-              "reference": "/do/0/all",
-              "run": 1,
-              "outcome": "started",
-              "times": 1
-            }
-          },
-          {
-            "reference": "/do/0/all/fork/branches/3/asking",
+            "reference": "/do/0/race/fork/branches/1/later",
             "run": 1,
             "outcome": "started",
-            "name": "asking",
+            "name": "later",
             "times": 1,
             "caused_by": {
-              "reference": "/do/0/all",
+              "reference": "/do/0/race",
               "run": 1,
               "outcome": "started",
               "times": 1
             }
           },
           {
-            "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+            "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
             "run": 1,
             "outcome": "waiting",
-            "name": "ask",
+            "name": "pause",
             "times": 1,
             "caused_by": {
-              "reference": "/do/0/all/fork/branches/3/asking",
+              "reference": "/do/0/race/fork/branches/1/later",
               "run": 1,
               "outcome": "started",
               "times": 1
             },
-            "waits_for": "call",
-            "child": "notify at /do/0/all/fork/branches/3/asking/try/0/ask #1"
+            "waits_for": "timer"
           }
         ],
         "resumed": null,
@@ -109,7 +68,7 @@
           {
             "op": "replace",
             "path": "/runId",
-            "value": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a"
+            "value": "0199a3c4-7d2e-7c1a-9b3f-000000000315"
           },
           {
             "op": "replace",
@@ -129,92 +88,42 @@
                 },
                 "do": [
                   {
-                    "all": {
+                    "race": {
                       "fork": {
+                        "compete": true,
                         "branches": [
                           {
-                            "backing": {
-                              "try": [
+                            "first": {
+                              "call": "run_definition",
+                              "with": {
+                                "type": "computation",
+                                "name": "hold-seats",
+                                "input": {
+                                  "seats": 0
+                                }
+                              }
+                            }
+                          },
+                          {
+                            "later": {
+                              "do": [
                                 {
-                                  "ask": {
-                                    "call": "notify",
-                                    "with": {
-                                      "to": "bob"
+                                  "pause": {
+                                    "wait": {
+                                      "milliseconds": 200
                                     }
                                   }
-                                }
-                              ],
-                              "catch": {
-                                "retry": {
-                                  "delay": "PT1H",
-                                  "limit": {
-                                    "attempt": {
-                                      "count": 2
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          },
-                          {
-                            "both": {
-                              "listen": {
-                                "to": {
-                                  "all": [
-                                    {
-                                      "with": {
-                                        "type": "first"
-                                      }
-                                    },
-                                    {
-                                      "with": {
-                                        "type": "second"
-                                      }
-                                    },
-                                    {
-                                      "with": {
-                                        "type": "third"
-                                      }
-                                    }
-                                  ]
-                                }
-                              }
-                            }
-                          },
-                          {
-                            "telling": {
-                              "emit": {
-                                "event": {
-                                  "with": {
-                                    "type": "com.acme.told",
-                                    "source": "/acme",
-                                    "data": {
-                                      "to": "ada"
-                                    }
-                                  }
-                                }
-                              }
-                            }
-                          },
-                          {
-                            "asking": {
-                              "try": [
+                                },
                                 {
-                                  "ask": {
-                                    "call": "notify",
+                                  "again": {
+                                    "call": "run_definition",
                                     "with": {
-                                      "to": "ada"
+                                      "type": "computation",
+                                      "name": "hold-seats"
                                     }
                                   }
                                 }
-                              ],
-                              "catch": {
-                                "errors": {
-                                  "with": {
-                                    "status": 408
-                                  }
-                                }
-                              }
+                              ]
                             }
                           }
                         ]
@@ -227,6 +136,36 @@
             }
           },
           {
+            "op": "add",
+            "path": "/attributes/org",
+            "value": "acme"
+          },
+          {
+            "op": "add",
+            "path": "/attributes/playbook",
+            "value": "alpha"
+          },
+          {
+            "op": "add",
+            "path": "/attributes/run_id",
+            "value": "0199a3c4-7d2e-7c1a-9b3f-000000000315"
+          },
+          {
+            "op": "add",
+            "path": "/attributes/definition",
+            "value": {
+              "name": "refused-input",
+              "version": 1
+            }
+          },
+          {
+            "op": "add",
+            "path": "/attributes/caller",
+            "value": {
+              "id": "acme-admin"
+            }
+          },
+          {
             "op": "replace",
             "path": "/limits/mostDurationMs",
             "value": 2592000000
@@ -235,13 +174,6 @@
             "op": "replace",
             "path": "/limits/longestCallMs",
             "value": 600000
-          },
-          {
-            "op": "add",
-            "path": "/limits/longestCallMsByTask",
-            "value": {
-              "/do/0/all/fork/branches/3/asking/try/0/ask": 90000
-            }
           },
           {
             "op": "replace",
@@ -265,37 +197,22 @@
           },
           {
             "op": "add",
-            "path": "/runs/~1do~10~1all",
+            "path": "/runs/~1do~10~1race",
             "value": 1
           },
           {
             "op": "add",
-            "path": "/runs/~1do~10~1all~1fork~1branches~10~1backing",
+            "path": "/runs/~1do~10~1race~1fork~1branches~10~1first",
             "value": 1
           },
           {
             "op": "add",
-            "path": "/runs/~1do~10~1all~1fork~1branches~10~1backing~1try~10~1ask",
+            "path": "/runs/~1do~10~1race~1fork~1branches~11~1later",
             "value": 1
           },
           {
             "op": "add",
-            "path": "/runs/~1do~10~1all~1fork~1branches~11~1both",
-            "value": 1
-          },
-          {
-            "op": "add",
-            "path": "/runs/~1do~10~1all~1fork~1branches~12~1telling",
-            "value": 1
-          },
-          {
-            "op": "add",
-            "path": "/runs/~1do~10~1all~1fork~1branches~13~1asking",
-            "value": 1
-          },
-          {
-            "op": "add",
-            "path": "/runs/~1do~10~1all~1fork~1branches~13~1asking~1try~10~1ask",
+            "path": "/runs/~1do~10~1race~1fork~1branches~11~1later~1do~10~1pause",
             "value": 1
           },
           {
@@ -318,7 +235,7 @@
             "path": "/timers/armed/2",
             "value": {
               "purpose": "call_deadline",
-              "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+              "reference": "/do/0/race/fork/branches/0/first",
               "armedAt": 1790845200000,
               "dueAt": 1790845800000
             }
@@ -327,60 +244,32 @@
             "op": "add",
             "path": "/timers/armed/3",
             "value": {
-              "purpose": "call_deadline",
-              "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+              "purpose": "wait",
+              "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
               "armedAt": 1790845200000,
-              "dueAt": 1790845290000
+              "dueAt": 1790845200200
             }
           },
           {
             "op": "add",
-            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~10~1backing~1try~10~1ask\",1]",
+            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"~1do~10~1race~1fork~1branches~10~1first\",1]",
             "value": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "reference": "/do/0/race/fork/branches/0/first",
               "run": 1
             }
-          },
-          {
-            "op": "add",
-            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~13~1asking~1try~10~1ask\",1]",
-            "value": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
-              "run": 1
-            }
-          },
-          {
-            "op": "add",
-            "path": "/listeners/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~11~1both\",1]",
-            "value": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/1/both",
-              "run": 1
-            }
-          },
-          {
-            "op": "replace",
-            "path": "/emitted/count",
-            "value": 1
-          },
-          {
-            "op": "replace",
-            "path": "/emitted/bytes",
-            "value": 159
           },
           {
             "op": "replace",
             "path": "/heldBytes",
-            "value": 29280
+            "value": 20931
           },
           {
             "op": "add",
             "path": "/machine/values/1",
             "value": {
-              "value": 1,
-              "bytes": 1
+              "value": {},
+              "bytes": 2
             }
           },
           {
@@ -388,25 +277,19 @@
             "path": "/machine/values/2",
             "value": {
               "value": {
-                "to": "bob"
+                "type": "computation",
+                "name": "hold-seats",
+                "input": {
+                  "seats": 0
+                }
               },
-              "bytes": 12
-            }
-          },
-          {
-            "op": "add",
-            "path": "/machine/values/3",
-            "value": {
-              "value": {
-                "to": "ada"
-              },
-              "bytes": 12
+              "bytes": 62
             }
           },
           {
             "op": "replace",
             "path": "/machine/nextValue",
-            "value": 4
+            "value": 3
           },
           {
             "op": "replace",
@@ -430,7 +313,7 @@
                   "current": {
                     "kind": "running",
                     "task": {
-                      "reference": "/do/0/all",
+                      "reference": "/do/0/race",
                       "run": 1,
                       "startedAt": 1790845200000,
                       "context": 0,
@@ -440,12 +323,12 @@
                       "timeout": null,
                       "body": {
                         "kind": "fork",
-                        "compete": false,
+                        "compete": true,
                         "branches": [
                           {
                             "state": "running",
                             "task": {
-                              "reference": "/do/0/all/fork/branches/0/backing",
+                              "reference": "/do/0/race/fork/branches/0/first",
                               "run": 1,
                               "startedAt": 1790845200000,
                               "context": 0,
@@ -454,51 +337,23 @@
                               "variables": {},
                               "timeout": null,
                               "body": {
-                                "kind": "try",
-                                "attempt": 0,
-                                "startedAt": 1790845200000,
-                                "phase": {
-                                  "kind": "trying",
-                                  "list": {
-                                    "pointer": "/do/0/all/fork/branches/0/backing/try",
-                                    "position": 0,
-                                    "data": 1,
-                                    "variables": {},
-                                    "current": {
-                                      "kind": "running",
-                                      "task": {
-                                        "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
-                                        "run": 1,
-                                        "startedAt": 1790845200000,
-                                        "context": 0,
-                                        "rawInput": 1,
-                                        "input": 1,
-                                        "variables": {},
-                                        "timeout": null,
-                                        "body": {
-                                          "kind": "call",
-                                          "key": {
-                                            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-                                            "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
-                                            "run": 1
-                                          },
-                                          "function": "notify",
-                                          "arguments": 2,
-                                          "label": "the function notify",
-                                          "deadline": "2"
-                                        }
-                                      }
-                                    }
-                                  },
-                                  "attemptLimit": null
-                                }
+                                "kind": "call",
+                                "key": {
+                                  "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+                                  "reference": "/do/0/race/fork/branches/0/first",
+                                  "run": 1
+                                },
+                                "function": "run_definition",
+                                "arguments": 2,
+                                "label": "the computation function hold-seats",
+                                "deadline": "2"
                               }
                             }
                           },
                           {
                             "state": "running",
                             "task": {
-                              "reference": "/do/0/all/fork/branches/1/both",
+                              "reference": "/do/0/race/fork/branches/1/later",
                               "run": 1,
                               "startedAt": 1790845200000,
                               "context": 0,
@@ -507,66 +362,29 @@
                               "variables": {},
                               "timeout": null,
                               "body": {
-                                "kind": "listen",
-                                "consumed": [null, null, null],
-                                "waited": 1
-                              }
-                            }
-                          },
-                          {
-                            "state": "finished",
-                            "output": 1,
-                            "flow": "continue"
-                          },
-                          {
-                            "state": "running",
-                            "task": {
-                              "reference": "/do/0/all/fork/branches/3/asking",
-                              "run": 1,
-                              "startedAt": 1790845200000,
-                              "context": 0,
-                              "rawInput": 1,
-                              "input": 1,
-                              "variables": {},
-                              "timeout": null,
-                              "body": {
-                                "kind": "try",
-                                "attempt": 0,
-                                "startedAt": 1790845200000,
-                                "phase": {
-                                  "kind": "trying",
-                                  "list": {
-                                    "pointer": "/do/0/all/fork/branches/3/asking/try",
-                                    "position": 0,
-                                    "data": 1,
-                                    "variables": {},
-                                    "current": {
-                                      "kind": "running",
-                                      "task": {
-                                        "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
-                                        "run": 1,
-                                        "startedAt": 1790845200000,
-                                        "context": 0,
-                                        "rawInput": 1,
-                                        "input": 1,
-                                        "variables": {},
-                                        "timeout": null,
-                                        "body": {
-                                          "kind": "call",
-                                          "key": {
-                                            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-                                            "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
-                                            "run": 1
-                                          },
-                                          "function": "notify",
-                                          "arguments": 3,
-                                          "label": "the function notify",
-                                          "deadline": "3"
-                                        }
+                                "kind": "list",
+                                "list": {
+                                  "pointer": "/do/0/race/fork/branches/1/later/do",
+                                  "position": 0,
+                                  "data": 1,
+                                  "variables": {},
+                                  "current": {
+                                    "kind": "running",
+                                    "task": {
+                                      "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
+                                      "run": 1,
+                                      "startedAt": 1790845200000,
+                                      "context": 0,
+                                      "rawInput": 1,
+                                      "input": 1,
+                                      "variables": {},
+                                      "timeout": null,
+                                      "body": {
+                                        "kind": "wait",
+                                        "timer": "3"
                                       }
                                     }
-                                  },
-                                  "attemptLimit": null
+                                  }
                                 }
                               }
                             }
@@ -582,13 +400,13 @@
           {
             "op": "replace",
             "path": "/historyBytes",
-            "value": 8950
+            "value": 5798
           }
         ],
         "outputs": [
           {
             "kind": "arm_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
             "timerId": "1",
             "dueAt": 1793437200000,
             "purpose": "deadline",
@@ -597,81 +415,35 @@
           {
             "kind": "start_call",
             "key": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "reference": "/do/0/race/fork/branches/0/first",
               "run": 1
             },
-            "function": "notify",
+            "function": "run_definition",
             "arguments": {
-              "to": "bob"
+              "type": "computation",
+              "name": "hold-seats",
+              "input": {
+                "seats": 0
+              }
             },
             "longestMs": 600000
           },
           {
             "kind": "arm_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
             "timerId": "2",
             "dueAt": 1790845800000,
             "purpose": "call_deadline",
-            "label": "/do/0/all/fork/branches/0/backing/try/0/ask deadline"
-          },
-          {
-            "kind": "arm_listener",
-            "key": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/1/both",
-              "run": 1
-            },
-            "filters": [
-              {
-                "type": "first"
-              },
-              {
-                "type": "second"
-              },
-              {
-                "type": "third"
-              }
-            ]
-          },
-          {
-            "kind": "emit_event",
-            "key": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/2/telling",
-              "run": 1
-            },
-            "event": {
-              "type": "com.acme.told",
-              "source": "/acme",
-              "data": {
-                "to": "ada"
-              },
-              "specversion": "1.0",
-              "id": "716f8618-f183-5b77-936b-31c1e39c7260",
-              "time": "2026-10-01T09:00:00.000Z"
-            }
-          },
-          {
-            "kind": "start_call",
-            "key": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
-              "run": 1
-            },
-            "function": "notify",
-            "arguments": {
-              "to": "ada"
-            },
-            "longestMs": 90000
+            "label": "/do/0/race/fork/branches/0/first deadline"
           },
           {
             "kind": "arm_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
             "timerId": "3",
-            "dueAt": 1790845290000,
-            "purpose": "call_deadline",
-            "label": "/do/0/all/fork/branches/3/asking/try/0/ask deadline"
+            "dueAt": 1790845200200,
+            "purpose": "wait",
+            "label": "/do/0/race/fork/branches/1/later/do/0/pause"
           }
         ]
       }
@@ -683,35 +455,31 @@
         "format": 9,
         "receipt": {
           "kind": "call_answered",
-          "key": "[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"/do/0/all/fork/branches/0/backing/try/0/ask\",1]",
-          "at": 1790845200010,
-          "status": "rejected",
-          "rejection": {
-            "kind": "tool_server_failed",
-            "because": "unreachable"
-          }
+          "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"/do/0/race/fork/branches/0/first\",1]",
+          "at": 1790845200050,
+          "status": "rejected"
         },
         "steps": [
           {
-            "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+            "reference": "/do/0/race/fork/branches/0/first",
             "run": 1,
             "outcome": "raised",
-            "name": "ask",
+            "name": "first",
             "times": 1,
             "caused_by": {
-              "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+              "reference": "/do/0/race/fork/branches/0/first",
               "run": 1,
               "outcome": "waiting",
               "times": 1
             },
             "error": {
-              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
-              "title": "The function notify rejected the run with unavailable"
+              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+              "title": "The computation function hold-seats refused its input"
             }
           }
         ],
         "resumed": {
-          "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
+          "reference": "/do/0/race/fork/branches/0/first",
           "run": 1,
           "times": 1
         },
@@ -719,7 +487,7 @@
           {
             "op": "replace",
             "path": "/lastInputAt",
-            "value": 1790845200010
+            "value": 1790845200050
           },
           {
             "op": "replace",
@@ -727,32 +495,17 @@
             "value": 2
           },
           {
-            "op": "replace",
-            "path": "/timers/next",
-            "value": 5
-          },
-          {
             "op": "remove",
             "path": "/timers/armed/2"
           },
           {
-            "op": "add",
-            "path": "/timers/armed/4",
-            "value": {
-              "purpose": "retry_delay",
-              "reference": "/do/0/all/fork/branches/0/backing",
-              "armedAt": 1790845200010,
-              "dueAt": 1790848800010
-            }
-          },
-          {
             "op": "remove",
-            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~10~1backing~1try~10~1ask\",1]"
+            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"~1do~10~1race~1fork~1branches~10~1first\",1]"
           },
           {
             "op": "replace",
             "path": "/heldBytes",
-            "value": 25172
+            "value": 16773
           },
           {
             "op": "remove",
@@ -760,64 +513,46 @@
           },
           {
             "op": "remove",
-            "path": "/machine/root/body/list/current/task/body/branches/0/task/body/phase/list"
-          },
-          {
-            "op": "remove",
-            "path": "/machine/root/body/list/current/task/body/branches/0/task/body/phase/attemptLimit"
+            "path": "/machine/root/body/list/current/task/body/branches/0/task"
           },
           {
             "op": "replace",
-            "path": "/machine/root/body/list/current/task/body/branches/0/task/body/phase/kind",
-            "value": "backing_off"
+            "path": "/machine/root/body/list/current/task/body/branches/0/state",
+            "value": "failed"
           },
           {
             "op": "add",
-            "path": "/machine/root/body/list/current/task/body/branches/0/task/body/phase/timer",
-            "value": "4"
-          },
-          {
-            "op": "add",
-            "path": "/machine/root/body/list/current/task/body/branches/0/task/body/phase/error",
+            "path": "/machine/root/body/list/current/task/body/branches/0/error",
             "value": {
-              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/communication",
-              "status": 503,
-              "title": "The function notify rejected the run with unavailable",
-              "detail": "The tool server is gone",
-              "instance": "/do/0/all/fork/branches/0/backing/try/0/ask",
-              "kind": "tool_server_failed",
-              "because": "unreachable"
+              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+              "status": 400,
+              "title": "The computation function hold-seats refused its input",
+              "detail": "seats, How many seats to hold: expected at least 1.",
+              "instance": "/do/0/race/fork/branches/0/first",
+              "issues": [
+                {
+                  "pointer": "/input/seats",
+                  "detail": "seats, How many seats to hold: expected at least 1."
+                }
+              ]
             }
           },
           {
             "op": "add",
-            "path": "/machine/root/body/list/current/task/body/branches/0/task/body/phase/failed",
-            "value": {
-              "reference": "/do/0/all/fork/branches/0/backing/try/0/ask",
-              "run": 1,
-              "outcome": "raised",
-              "times": 1
-            }
+            "path": "/machine/root/body/list/current/task/body/branches/0/order",
+            "value": 0
           },
           {
             "op": "replace",
             "path": "/historyBytes",
-            "value": 11679
+            "value": 7689
           }
         ],
         "outputs": [
           {
             "kind": "cancel_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
             "timerId": "2"
-          },
-          {
-            "kind": "arm_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "4",
-            "dueAt": 1790848800010,
-            "purpose": "retry_delay",
-            "label": "/do/0/all/fork/branches/0/backing retry 1"
           }
         ]
       }
@@ -828,33 +563,51 @@
         "type": "input_applied",
         "format": 9,
         "receipt": {
-          "kind": "event_offered",
-          "key": "record-1",
-          "at": 1790845200010,
-          "eventType": "second"
+          "kind": "timer_fired",
+          "key": "3",
+          "at": 1790845200200
         },
         "steps": [
           {
-            "reference": "/do/0/all/fork/branches/1/both",
+            "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
             "run": 1,
-            "outcome": "waiting",
-            "name": "both",
-            "times": 2,
+            "outcome": "completed",
+            "name": "pause",
+            "times": 1,
             "caused_by": {
-              "reference": "/do/0/all/fork/branches/1/both",
+              "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
               "run": 1,
               "outcome": "waiting",
               "times": 1
+            }
+          },
+          {
+            "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+            "run": 1,
+            "outcome": "waiting",
+            "name": "again",
+            "times": 1,
+            "caused_by": {
+              "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
+              "run": 1,
+              "outcome": "completed",
+              "times": 1
             },
-            "waits_for": "event"
+            "waits_for": "call",
+            "child": "591333de-4027-5881-a467-5b6f58a0fe9c"
           }
         ],
         "resumed": {
-          "reference": "/do/0/all/fork/branches/1/both",
+          "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
           "run": 1,
           "times": 1
         },
         "patch": [
+          {
+            "op": "replace",
+            "path": "/lastInputAt",
+            "value": 1790845200200
+          },
           {
             "op": "replace",
             "path": "/inputs",
@@ -862,57 +615,141 @@
           },
           {
             "op": "add",
-            "path": "/inbox/offeredIds/-",
-            "value": "record-1"
-          },
-          {
-            "op": "replace",
-            "path": "/inbox/received",
+            "path": "/runs/~1do~10~1race~1fork~1branches~11~1later~1do~11~1again",
             "value": 1
           },
           {
             "op": "replace",
-            "path": "/inbox/receivedBytes",
-            "value": 33
+            "path": "/timers/next",
+            "value": 5
+          },
+          {
+            "op": "remove",
+            "path": "/timers/armed/3"
+          },
+          {
+            "op": "add",
+            "path": "/timers/armed/4",
+            "value": {
+              "purpose": "call_deadline",
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+              "armedAt": 1790845200200,
+              "dueAt": 1790845800200
+            }
+          },
+          {
+            "op": "add",
+            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"~1do~10~1race~1fork~1branches~11~1later~1do~11~1again\",1]",
+            "value": {
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+              "run": 1
+            }
           },
           {
             "op": "replace",
             "path": "/heldBytes",
-            "value": 25205
+            "value": 16815
           },
           {
             "op": "add",
-            "path": "/machine/values/4",
+            "path": "/machine/values/3",
             "value": {
               "value": {
-                "id": "e-second",
-                "type": "second"
+                "type": "computation",
+                "name": "hold-seats"
               },
-              "bytes": 33
+              "bytes": 42
             }
           },
           {
             "op": "replace",
             "path": "/machine/nextValue",
-            "value": 5
-          },
-          {
-            "op": "replace",
-            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/consumed/1",
             "value": 4
           },
           {
             "op": "replace",
-            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/waited",
-            "value": 2
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/position",
+            "value": 1
+          },
+          {
+            "op": "replace",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/reference",
+            "value": "/do/0/race/fork/branches/1/later/do/1/again"
+          },
+          {
+            "op": "replace",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/startedAt",
+            "value": 1790845200200
+          },
+          {
+            "op": "remove",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/timer"
+          },
+          {
+            "op": "replace",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/kind",
+            "value": "call"
+          },
+          {
+            "op": "add",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/key",
+            "value": {
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+              "run": 1
+            }
+          },
+          {
+            "op": "add",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/function",
+            "value": "run_definition"
+          },
+          {
+            "op": "add",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/arguments",
+            "value": 3
+          },
+          {
+            "op": "add",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/label",
+            "value": "the computation function hold-seats"
+          },
+          {
+            "op": "add",
+            "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/deadline",
+            "value": "4"
           },
           {
             "op": "replace",
             "path": "/historyBytes",
-            "value": 12824
+            "value": 11318
           }
         ],
-        "outputs": []
+        "outputs": [
+          {
+            "kind": "start_call",
+            "key": {
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+              "run": 1
+            },
+            "function": "run_definition",
+            "arguments": {
+              "type": "computation",
+              "name": "hold-seats"
+            },
+            "longestMs": 600000
+          },
+          {
+            "kind": "arm_timer",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+            "timerId": "4",
+            "dueAt": 1790845800200,
+            "purpose": "call_deadline",
+            "label": "/do/0/race/fork/branches/1/later/do/1/again deadline"
+          }
+        ]
       }
     },
     {
@@ -921,129 +758,69 @@
         "type": "input_applied",
         "format": 9,
         "receipt": {
-          "kind": "timer_fired",
-          "key": "3",
-          "at": 1790845290000
+          "kind": "call_answered",
+          "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"/do/0/race/fork/branches/1/later/do/1/again\",1]",
+          "at": 1790845200250,
+          "status": "rejected"
         },
         "steps": [
           {
-            "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+            "reference": "/do/0/race/fork/branches/1/later/do/1/again",
             "run": 1,
             "outcome": "raised",
-            "name": "ask",
+            "name": "again",
             "times": 1,
             "caused_by": {
-              "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
               "run": 1,
               "outcome": "waiting",
               "times": 1
             },
             "error": {
-              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/timeout",
-              "title": "The function notify did not finish within 90000 ms, the most it may take"
+              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+              "title": "The computation function hold-seats refused its input"
             }
           },
           {
-            "reference": "/do/0/all/fork/branches/3/asking",
+            "reference": "/do/0/race/fork/branches/1/later",
             "run": 1,
-            "outcome": "completed",
-            "name": "asking",
+            "outcome": "raised",
+            "name": "later",
             "times": 1,
             "caused_by": {
-              "reference": "/do/0/all/fork/branches/3/asking",
+              "reference": "/do/0/race/fork/branches/1/later",
               "run": 1,
               "outcome": "started",
               "times": 1
+            },
+            "error": {
+              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+              "title": "The computation function hold-seats refused its input"
+            }
+          },
+          {
+            "reference": "/do/0/race",
+            "run": 1,
+            "outcome": "raised",
+            "name": "race",
+            "times": 1,
+            "caused_by": {
+              "reference": "/do/0/race",
+              "run": 1,
+              "outcome": "started",
+              "times": 1
+            },
+            "error": {
+              "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+              "title": "The computation function hold-seats refused its input"
             }
           }
         ],
         "resumed": {
-          "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+          "reference": "/do/0/race/fork/branches/1/later/do/1/again",
           "run": 1,
           "times": 1
         },
-        "patch": [
-          {
-            "op": "replace",
-            "path": "/lastInputAt",
-            "value": 1790845290000
-          },
-          {
-            "op": "replace",
-            "path": "/inputs",
-            "value": 4
-          },
-          {
-            "op": "remove",
-            "path": "/timers/armed/3"
-          },
-          {
-            "op": "remove",
-            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~13~1asking~1try~10~1ask\",1]"
-          },
-          {
-            "op": "replace",
-            "path": "/heldBytes",
-            "value": 17001
-          },
-          {
-            "op": "remove",
-            "path": "/machine/values/3"
-          },
-          {
-            "op": "remove",
-            "path": "/machine/root/body/list/current/task/body/branches/3/task"
-          },
-          {
-            "op": "replace",
-            "path": "/machine/root/body/list/current/task/body/branches/3/state",
-            "value": "finished"
-          },
-          {
-            "op": "add",
-            "path": "/machine/root/body/list/current/task/body/branches/3/output",
-            "value": 1
-          },
-          {
-            "op": "add",
-            "path": "/machine/root/body/list/current/task/body/branches/3/flow",
-            "value": "continue"
-          },
-          {
-            "op": "replace",
-            "path": "/historyBytes",
-            "value": 14599
-          }
-        ],
-        "outputs": [
-          {
-            "kind": "cancel_call",
-            "key": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
-              "run": 1
-            },
-            "reason": "deadline"
-          }
-        ]
-      }
-    },
-    {
-      "version": 5,
-      "event": {
-        "type": "input_applied",
-        "format": 9,
-        "receipt": {
-          "kind": "cancel_requested",
-          "key": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-          "at": 1790845290005,
-          "cancel": {
-            "by": "acme-admin",
-            "kind": "requested"
-          }
-        },
-        "steps": [],
-        "resumed": null,
         "patch": [
           {
             "op": "replace",
@@ -1053,12 +830,12 @@
           {
             "op": "replace",
             "path": "/lastInputAt",
-            "value": 1790845290005
+            "value": 1790845200250
           },
           {
             "op": "replace",
             "path": "/inputs",
-            "value": 5
+            "value": 4
           },
           {
             "op": "remove",
@@ -1070,21 +847,16 @@
           },
           {
             "op": "remove",
-            "path": "/listeners/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~11~1both\",1]"
+            "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"~1do~10~1race~1fork~1branches~11~1later~1do~11~1again\",1]"
           },
           {
             "op": "replace",
             "path": "/heldBytes",
-            "value": 584
-          },
-          {
-            "op": "replace",
-            "path": "/cancelRequested",
-            "value": true
+            "value": 389
           },
           {
             "op": "remove",
-            "path": "/machine/values/4"
+            "path": "/machine/values/3"
           },
           {
             "op": "replace",
@@ -1095,48 +867,52 @@
             "op": "replace",
             "path": "/outcome",
             "value": {
-              "kind": "cancelled",
-              "cancel": {
-                "by": "acme-admin",
-                "kind": "requested",
-                "reason": "Not needed any more"
+              "kind": "raised",
+              "error": {
+                "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                "status": 400,
+                "instance": "/do/0/race/fork/branches/0/first",
+                "title": "The computation function hold-seats refused its input",
+                "detail": "seats, How many seats to hold: expected at least 1.",
+                "issues": [
+                  {
+                    "detail": "seats, How many seats to hold: expected at least 1.",
+                    "pointer": "/input/seats"
+                  }
+                ]
               }
             }
           },
           {
             "op": "replace",
             "path": "/historyBytes",
-            "value": 16084
+            "value": 14221
           }
         ],
         "outputs": [
           {
-            "kind": "cancel_listener",
-            "key": {
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "reference": "/do/0/all/fork/branches/1/both",
-              "run": 1
-            }
-          },
-          {
             "kind": "cancel_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "timerId": "1"
-          },
-          {
-            "kind": "cancel_timer",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
             "timerId": "4"
           },
           {
+            "kind": "cancel_timer",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+            "timerId": "1"
+          },
+          {
             "kind": "settle",
-            "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+            "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
             "settlement": {
               "status": "rejected",
-              "detail": "Not needed any more",
-              "by": "acme-admin",
-              "reason": "cancelled",
-              "kind": "requested"
+              "detail": "The computation function hold-seats refused its input, at the step first: seats, How many seats to hold: expected at least 1.",
+              "reason": "invalid_input",
+              "issues": [
+                {
+                  "detail": "seats, How many seats to hold: expected at least 1.",
+                  "pointer": "/input/seats"
+                }
+              ]
             }
           }
         ]
@@ -1145,9 +921,9 @@
   ],
   "snapshot": {
     "chunks": [
-      "{\"format\":9,\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"version\":2,\"historyBytes\":11679,\"state\":{\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"status\":\"running\",\"workflow\":{\"document\":{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"acme\",\"name\":\"test\",\"version\":\"1.0.0\"},\"do\":[{\"all\":{\"fork\":{\"branches\":[{\"backing\":{\"try\":[{\"ask\":{\"call\":\"notify\",\"with\":{\"to\":\"bob\"}}}],\"catch\":{\"retry\":{\"delay\":\"PT1H\",\"limit\":{\"attempt\":{\"count\":2}}}}}},{\"both\":{\"listen\":{\"to\":{\"all\":[{\"with\":{\"type\":\"first\"}},{\"with\":{\"type\":\"second\"}},{\"with\":{\"type\":\"third\"}}]}}}},{\"telling\":{\"emit\":{\"event\":{\"with\":{\"type\":\"com.acme.told\",\"source\":\"/acme\",\"data\":{\"to\":\"ada\"}}}}}},{\"asking\":{\"try\":[{\"ask\":{\"call\":\"notify\",\"with\":{\"to\":\"ada\"}}}],\"catch\":{\"errors\":{\"with\":{\"status\":408}}}}}]}}}]},\"input\":1},\"attributes\":{},\"limits\":{\"mostDurationMs\":2592000000,\"longestCallMs\":600000,\"longestCallMsByTask\":{\"/do/0/all/fork/branches/3/asking/try/0/ask\":90000}},\"startedAt\":1790845200000,\"lastInputAt\":1790845200010,\"inputs\":2,\"random\":{\"seed\":7,\"draws\":0},\"runs\":{\"/do/0/all\":1,\"/do/0/all/fork/branches/0/backing\":1,\"/do/0/all/fork/branches/0/backing/try/0/ask\":1,\"/do/0/all/fork/branches/1/both\":1,\"/do/0/all/fork/branches/2/telling\":1,\"/do/0/all/fork/branches/3/asking\":1,\"/do/0/all/fork/branches/3/asking/try/0/ask\":1},\"timers\":{\"next\":5,\"armed\":{\"1\":{\"purpose\":\"deadline\",\"reference\":\"/\",\"armedAt\":1790845200000,\"dueAt\":1793437200000},\"3\":{\"purpose\":\"call_deadline\",\"reference\":\"/do/0/all/fork/branches/3/asking/try/0/ask\",\"armedAt\":1790845200000,\"dueAt\":1790845290000},\"4\":{\"purpose\":\"retry_delay\",\"reference\":\"/do/0/all/fork/branches/0/backing\",\"armedAt\":1790845200010,\"dueAt\":1790848800010}}},\"calls\":{\"[\\\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\\\",\\\"/do/0/all/fork/branches/3/asking/try/0/ask\\\",1]\":{\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/3/asking/try/0/ask\",\"run\":1}},\"listeners\":{\"[\\\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\\\",\\\"/do/0/all/fork/branches/1/both\\\",1]\":{\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/1/both\",\"run\":1}},\"emitted\":{\"count\":1,\"bytes\":159},\"inbox\":{\"waiting\":[],\"waitingBytes\":0,\"receivedIds\":[],\"offeredIds\":[],\"received\":0,\"receivedBytes\":0},\"heldBytes\":25172,\"historyBytes\":11679,\"stepsWithoutWaiting\":0,\"cancelRequested\":false,\"machine\":{\"values\":{\"0\":{\"value\":{},\"bytes\":2},\"1\":{\"value\":1,\"bytes\":1},\"3\":{\"value\":{\"to\":\"ada\"},\"bytes\":12}},\"nextValue\":4,\"context\":0,\"root\":{\"reference\":\"/\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"fork\",\"compete\":false,\"branches\":[{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/0/backing\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"backing_off\",\"timer\":\"4\",\"error\":{\"type\":\"https://open-workflow-specification.org/spec/1.0.0/errors/communication\",\"status\":503,\"instance\":\"/do/0/all/fork/branches/0/backing/try/0/ask\",\"title\":\"The function notify rejected the run with unavailable\",\"detail\":\"The tool server is gone\",\"kind\":\"tool_server_failed\",\"because\":\"unreachable\"},\"failed\":{\"reference\":\"/do/0/all/fork/branches/0/backing/try/0/ask\",\"run\":1,\"outcome\":\"raised\",\"times\":1}}}}},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/1/both\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"listen\",\"consumed\":[null,null,null],\"waited\":1}}},{\"state\":\"finished\",\"output\":1,\"flow\":\"continue\"},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/3/asking\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"try\",\"attempt\":0,\"startedAt\":1790845200000,\"phase\":{\"kind\":\"trying\",\"list\":{\"pointer\":\"/do/0/all/fork/branches/3/asking/try\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/all/fork/branches/3/asking/try/0/ask\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"call\",\"key\":{\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"reference\":\"/do/0/all/fork/branches/3/asking/try/0/ask\",\"run\":1},\"function\":\"notify\",\"arguments\":3,\"label\":\"the function notify\",\"deadline\":\"3\"}}}},\"attemptLimit\":null}}}}]}}}}}}},\"outcome\":null}}"
+      "{\"format\":9,\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"version\":2,\"historyBytes\":7689,\"state\":{\"runId\":\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"status\":\"running\",\"workflow\":{\"document\":{\"document\":{\"dsl\":\"1.0.3\",\"namespace\":\"acme\",\"name\":\"test\",\"version\":\"1.0.0\"},\"do\":[{\"race\":{\"fork\":{\"compete\":true,\"branches\":[{\"first\":{\"call\":\"run_definition\",\"with\":{\"type\":\"computation\",\"name\":\"hold-seats\",\"input\":{\"seats\":0}}}},{\"later\":{\"do\":[{\"pause\":{\"wait\":{\"milliseconds\":200}}},{\"again\":{\"call\":\"run_definition\",\"with\":{\"type\":\"computation\",\"name\":\"hold-seats\"}}}]}}]}}}]},\"input\":1},\"attributes\":{\"org\":\"acme\",\"playbook\":\"alpha\",\"run_id\":\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"definition\":{\"name\":\"refused-input\",\"version\":1},\"caller\":{\"id\":\"acme-admin\"}},\"limits\":{\"mostDurationMs\":2592000000,\"longestCallMs\":600000},\"startedAt\":1790845200000,\"lastInputAt\":1790845200050,\"inputs\":2,\"random\":{\"seed\":7,\"draws\":0},\"runs\":{\"/do/0/race\":1,\"/do/0/race/fork/branches/0/first\":1,\"/do/0/race/fork/branches/1/later\":1,\"/do/0/race/fork/branches/1/later/do/0/pause\":1},\"timers\":{\"next\":4,\"armed\":{\"1\":{\"purpose\":\"deadline\",\"reference\":\"/\",\"armedAt\":1790845200000,\"dueAt\":1793437200000},\"3\":{\"purpose\":\"wait\",\"reference\":\"/do/0/race/fork/branches/1/later/do/0/pause\",\"armedAt\":1790845200000,\"dueAt\":1790845200200}}},\"calls\":{},\"listeners\":{},\"emitted\":{\"count\":0,\"bytes\":0},\"inbox\":{\"waiting\":[],\"waitingBytes\":0,\"receivedIds\":[],\"offeredIds\":[],\"received\":0,\"receivedBytes\":0},\"heldBytes\":16773,\"historyBytes\":7689,\"stepsWithoutWaiting\":0,\"cancelRequested\":false,\"machine\":{\"values\":{\"0\":{\"value\":{},\"bytes\":2},\"1\":{\"value\":{},\"bytes\":2}},\"nextValue\":3,\"context\":0,\"root\":{\"reference\":\"/\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/race\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"fork\",\"compete\":true,\"branches\":[{\"state\":\"failed\",\"error\":{\"type\":\"https://open-workflow-specification.org/spec/1.0.0/errors/validation\",\"status\":400,\"instance\":\"/do/0/race/fork/branches/0/first\",\"title\":\"The computation function hold-seats refused its input\",\"detail\":\"seats, How many seats to hold: expected at least 1.\",\"issues\":[{\"detail\":\"seats, How many seats to hold: expected at least 1.\",\"pointer\":\"/input/seats\"}]},\"order\":0},{\"state\":\"running\",\"task\":{\"reference\":\"/do/0/race/fork/branches/1/later\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"list\",\"list\":{\"pointer\":\"/do/0/race/fork/branches/1/later/do\",\"position\":0,\"data\":1,\"variables\":{},\"current\":{\"kind\":\"running\",\"task\":{\"reference\":\"/do/0/race/fork/branches/1/later/do/0/pause\",\"run\":1,\"startedAt\":1790845200000,\"context\":0,\"rawInput\":1,\"input\":1,\"variables\":{},\"timeout\":null,\"body\":{\"kind\":\"wait\",\"timer\":\"3\"}}}}}}}]}}}}}}},\"outcome\":null}}"
     ],
-    "bytes": 4670,
+    "bytes": 3024,
     "tail": [
       {
         "version": 3,
@@ -1155,33 +931,51 @@
           "type": "input_applied",
           "format": 9,
           "receipt": {
-            "kind": "event_offered",
-            "key": "record-1",
-            "at": 1790845200010,
-            "eventType": "second"
+            "kind": "timer_fired",
+            "key": "3",
+            "at": 1790845200200
           },
           "steps": [
             {
-              "reference": "/do/0/all/fork/branches/1/both",
+              "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
               "run": 1,
-              "outcome": "waiting",
-              "name": "both",
-              "times": 2,
+              "outcome": "completed",
+              "name": "pause",
+              "times": 1,
               "caused_by": {
-                "reference": "/do/0/all/fork/branches/1/both",
+                "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
                 "run": 1,
                 "outcome": "waiting",
                 "times": 1
+              }
+            },
+            {
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+              "run": 1,
+              "outcome": "waiting",
+              "name": "again",
+              "times": 1,
+              "caused_by": {
+                "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
+                "run": 1,
+                "outcome": "completed",
+                "times": 1
               },
-              "waits_for": "event"
+              "waits_for": "call",
+              "child": "591333de-4027-5881-a467-5b6f58a0fe9c"
             }
           ],
           "resumed": {
-            "reference": "/do/0/all/fork/branches/1/both",
+            "reference": "/do/0/race/fork/branches/1/later/do/0/pause",
             "run": 1,
             "times": 1
           },
           "patch": [
+            {
+              "op": "replace",
+              "path": "/lastInputAt",
+              "value": 1790845200200
+            },
             {
               "op": "replace",
               "path": "/inputs",
@@ -1189,57 +983,141 @@
             },
             {
               "op": "add",
-              "path": "/inbox/offeredIds/-",
-              "value": "record-1"
-            },
-            {
-              "op": "replace",
-              "path": "/inbox/received",
+              "path": "/runs/~1do~10~1race~1fork~1branches~11~1later~1do~11~1again",
               "value": 1
             },
             {
               "op": "replace",
-              "path": "/inbox/receivedBytes",
-              "value": 33
+              "path": "/timers/next",
+              "value": 5
+            },
+            {
+              "op": "remove",
+              "path": "/timers/armed/3"
+            },
+            {
+              "op": "add",
+              "path": "/timers/armed/4",
+              "value": {
+                "purpose": "call_deadline",
+                "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+                "armedAt": 1790845200200,
+                "dueAt": 1790845800200
+              }
+            },
+            {
+              "op": "add",
+              "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"~1do~10~1race~1fork~1branches~11~1later~1do~11~1again\",1]",
+              "value": {
+                "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+                "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+                "run": 1
+              }
             },
             {
               "op": "replace",
               "path": "/heldBytes",
-              "value": 25205
+              "value": 16815
             },
             {
               "op": "add",
-              "path": "/machine/values/4",
+              "path": "/machine/values/3",
               "value": {
                 "value": {
-                  "id": "e-second",
-                  "type": "second"
+                  "type": "computation",
+                  "name": "hold-seats"
                 },
-                "bytes": 33
+                "bytes": 42
               }
             },
             {
               "op": "replace",
               "path": "/machine/nextValue",
-              "value": 5
-            },
-            {
-              "op": "replace",
-              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/consumed/1",
               "value": 4
             },
             {
               "op": "replace",
-              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/waited",
-              "value": 2
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/position",
+              "value": 1
+            },
+            {
+              "op": "replace",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/reference",
+              "value": "/do/0/race/fork/branches/1/later/do/1/again"
+            },
+            {
+              "op": "replace",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/startedAt",
+              "value": 1790845200200
+            },
+            {
+              "op": "remove",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/timer"
+            },
+            {
+              "op": "replace",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/kind",
+              "value": "call"
+            },
+            {
+              "op": "add",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/key",
+              "value": {
+                "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+                "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+                "run": 1
+              }
+            },
+            {
+              "op": "add",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/function",
+              "value": "run_definition"
+            },
+            {
+              "op": "add",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/arguments",
+              "value": 3
+            },
+            {
+              "op": "add",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/label",
+              "value": "the computation function hold-seats"
+            },
+            {
+              "op": "add",
+              "path": "/machine/root/body/list/current/task/body/branches/1/task/body/list/current/task/body/deadline",
+              "value": "4"
             },
             {
               "op": "replace",
               "path": "/historyBytes",
-              "value": 12824
+              "value": 11318
             }
           ],
-          "outputs": []
+          "outputs": [
+            {
+              "kind": "start_call",
+              "key": {
+                "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+                "reference": "/do/0/race/fork/branches/1/later/do/1/again",
+                "run": 1
+              },
+              "function": "run_definition",
+              "arguments": {
+                "type": "computation",
+                "name": "hold-seats"
+              },
+              "longestMs": 600000
+            },
+            {
+              "kind": "arm_timer",
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "timerId": "4",
+              "dueAt": 1790845800200,
+              "purpose": "call_deadline",
+              "label": "/do/0/race/fork/branches/1/later/do/1/again deadline"
+            }
+          ]
         }
       },
       {
@@ -1248,129 +1126,69 @@
           "type": "input_applied",
           "format": 9,
           "receipt": {
-            "kind": "timer_fired",
-            "key": "3",
-            "at": 1790845290000
+            "kind": "call_answered",
+            "key": "[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"/do/0/race/fork/branches/1/later/do/1/again\",1]",
+            "at": 1790845200250,
+            "status": "rejected"
           },
           "steps": [
             {
-              "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+              "reference": "/do/0/race/fork/branches/1/later/do/1/again",
               "run": 1,
               "outcome": "raised",
-              "name": "ask",
+              "name": "again",
               "times": 1,
               "caused_by": {
-                "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+                "reference": "/do/0/race/fork/branches/1/later/do/1/again",
                 "run": 1,
                 "outcome": "waiting",
                 "times": 1
               },
               "error": {
-                "type": "https://open-workflow-specification.org/spec/1.0.0/errors/timeout",
-                "title": "The function notify did not finish within 90000 ms, the most it may take"
+                "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                "title": "The computation function hold-seats refused its input"
               }
             },
             {
-              "reference": "/do/0/all/fork/branches/3/asking",
+              "reference": "/do/0/race/fork/branches/1/later",
               "run": 1,
-              "outcome": "completed",
-              "name": "asking",
+              "outcome": "raised",
+              "name": "later",
               "times": 1,
               "caused_by": {
-                "reference": "/do/0/all/fork/branches/3/asking",
+                "reference": "/do/0/race/fork/branches/1/later",
                 "run": 1,
                 "outcome": "started",
                 "times": 1
+              },
+              "error": {
+                "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                "title": "The computation function hold-seats refused its input"
+              }
+            },
+            {
+              "reference": "/do/0/race",
+              "run": 1,
+              "outcome": "raised",
+              "name": "race",
+              "times": 1,
+              "caused_by": {
+                "reference": "/do/0/race",
+                "run": 1,
+                "outcome": "started",
+                "times": 1
+              },
+              "error": {
+                "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                "title": "The computation function hold-seats refused its input"
               }
             }
           ],
           "resumed": {
-            "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
+            "reference": "/do/0/race/fork/branches/1/later/do/1/again",
             "run": 1,
             "times": 1
           },
-          "patch": [
-            {
-              "op": "replace",
-              "path": "/lastInputAt",
-              "value": 1790845290000
-            },
-            {
-              "op": "replace",
-              "path": "/inputs",
-              "value": 4
-            },
-            {
-              "op": "remove",
-              "path": "/timers/armed/3"
-            },
-            {
-              "op": "remove",
-              "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~13~1asking~1try~10~1ask\",1]"
-            },
-            {
-              "op": "replace",
-              "path": "/heldBytes",
-              "value": 17001
-            },
-            {
-              "op": "remove",
-              "path": "/machine/values/3"
-            },
-            {
-              "op": "remove",
-              "path": "/machine/root/body/list/current/task/body/branches/3/task"
-            },
-            {
-              "op": "replace",
-              "path": "/machine/root/body/list/current/task/body/branches/3/state",
-              "value": "finished"
-            },
-            {
-              "op": "add",
-              "path": "/machine/root/body/list/current/task/body/branches/3/output",
-              "value": 1
-            },
-            {
-              "op": "add",
-              "path": "/machine/root/body/list/current/task/body/branches/3/flow",
-              "value": "continue"
-            },
-            {
-              "op": "replace",
-              "path": "/historyBytes",
-              "value": 14599
-            }
-          ],
-          "outputs": [
-            {
-              "kind": "cancel_call",
-              "key": {
-                "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-                "reference": "/do/0/all/fork/branches/3/asking/try/0/ask",
-                "run": 1
-              },
-              "reason": "deadline"
-            }
-          ]
-        }
-      },
-      {
-        "version": 5,
-        "event": {
-          "type": "input_applied",
-          "format": 9,
-          "receipt": {
-            "kind": "cancel_requested",
-            "key": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-            "at": 1790845290005,
-            "cancel": {
-              "by": "acme-admin",
-              "kind": "requested"
-            }
-          },
-          "steps": [],
-          "resumed": null,
           "patch": [
             {
               "op": "replace",
@@ -1380,12 +1198,12 @@
             {
               "op": "replace",
               "path": "/lastInputAt",
-              "value": 1790845290005
+              "value": 1790845200250
             },
             {
               "op": "replace",
               "path": "/inputs",
-              "value": 5
+              "value": 4
             },
             {
               "op": "remove",
@@ -1397,21 +1215,16 @@
             },
             {
               "op": "remove",
-              "path": "/listeners/[\"0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a\",\"~1do~10~1all~1fork~1branches~11~1both\",1]"
+              "path": "/calls/[\"0199a3c4-7d2e-7c1a-9b3f-000000000315\",\"~1do~10~1race~1fork~1branches~11~1later~1do~11~1again\",1]"
             },
             {
               "op": "replace",
               "path": "/heldBytes",
-              "value": 584
-            },
-            {
-              "op": "replace",
-              "path": "/cancelRequested",
-              "value": true
+              "value": 389
             },
             {
               "op": "remove",
-              "path": "/machine/values/4"
+              "path": "/machine/values/3"
             },
             {
               "op": "replace",
@@ -1422,48 +1235,52 @@
               "op": "replace",
               "path": "/outcome",
               "value": {
-                "kind": "cancelled",
-                "cancel": {
-                  "by": "acme-admin",
-                  "kind": "requested",
-                  "reason": "Not needed any more"
+                "kind": "raised",
+                "error": {
+                  "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+                  "status": 400,
+                  "instance": "/do/0/race/fork/branches/0/first",
+                  "title": "The computation function hold-seats refused its input",
+                  "detail": "seats, How many seats to hold: expected at least 1.",
+                  "issues": [
+                    {
+                      "detail": "seats, How many seats to hold: expected at least 1.",
+                      "pointer": "/input/seats"
+                    }
+                  ]
                 }
               }
             },
             {
               "op": "replace",
               "path": "/historyBytes",
-              "value": 16084
+              "value": 14221
             }
           ],
           "outputs": [
             {
-              "kind": "cancel_listener",
-              "key": {
-                "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-                "reference": "/do/0/all/fork/branches/1/both",
-                "run": 1
-              }
-            },
-            {
               "kind": "cancel_timer",
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
-              "timerId": "1"
-            },
-            {
-              "kind": "cancel_timer",
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
               "timerId": "4"
             },
             {
+              "kind": "cancel_timer",
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+              "timerId": "1"
+            },
+            {
               "kind": "settle",
-              "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+              "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
               "settlement": {
                 "status": "rejected",
-                "detail": "Not needed any more",
-                "by": "acme-admin",
-                "reason": "cancelled",
-                "kind": "requested"
+                "detail": "The computation function hold-seats refused its input, at the step first: seats, How many seats to hold: expected at least 1.",
+                "reason": "invalid_input",
+                "issues": [
+                  {
+                    "detail": "seats, How many seats to hold: expected at least 1.",
+                    "pointer": "/input/seats"
+                  }
+                ]
               }
             }
           ]
@@ -1472,7 +1289,7 @@
     ]
   },
   "state": {
-    "runId": "0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a",
+    "runId": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
     "status": "ended",
     "workflow": {
       "document": {
@@ -1484,92 +1301,42 @@
         },
         "do": [
           {
-            "all": {
+            "race": {
               "fork": {
+                "compete": true,
                 "branches": [
                   {
-                    "backing": {
-                      "try": [
+                    "first": {
+                      "call": "run_definition",
+                      "with": {
+                        "type": "computation",
+                        "name": "hold-seats",
+                        "input": {
+                          "seats": 0
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "later": {
+                      "do": [
                         {
-                          "ask": {
-                            "call": "notify",
-                            "with": {
-                              "to": "bob"
+                          "pause": {
+                            "wait": {
+                              "milliseconds": 200
                             }
                           }
-                        }
-                      ],
-                      "catch": {
-                        "retry": {
-                          "delay": "PT1H",
-                          "limit": {
-                            "attempt": {
-                              "count": 2
-                            }
-                          }
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "both": {
-                      "listen": {
-                        "to": {
-                          "all": [
-                            {
-                              "with": {
-                                "type": "first"
-                              }
-                            },
-                            {
-                              "with": {
-                                "type": "second"
-                              }
-                            },
-                            {
-                              "with": {
-                                "type": "third"
-                              }
-                            }
-                          ]
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "telling": {
-                      "emit": {
-                        "event": {
-                          "with": {
-                            "type": "com.acme.told",
-                            "source": "/acme",
-                            "data": {
-                              "to": "ada"
-                            }
-                          }
-                        }
-                      }
-                    }
-                  },
-                  {
-                    "asking": {
-                      "try": [
+                        },
                         {
-                          "ask": {
-                            "call": "notify",
+                          "again": {
+                            "call": "run_definition",
                             "with": {
-                              "to": "ada"
+                              "type": "computation",
+                              "name": "hold-seats"
                             }
                           }
                         }
-                      ],
-                      "catch": {
-                        "errors": {
-                          "with": {
-                            "status": 408
-                          }
-                        }
-                      }
+                      ]
                     }
                   }
                 ]
@@ -1580,29 +1347,35 @@
       },
       "input": 1
     },
-    "attributes": {},
-    "limits": {
-      "mostDurationMs": 2592000000,
-      "longestCallMs": 600000,
-      "longestCallMsByTask": {
-        "/do/0/all/fork/branches/3/asking/try/0/ask": 90000
+    "attributes": {
+      "org": "acme",
+      "playbook": "alpha",
+      "run_id": "0199a3c4-7d2e-7c1a-9b3f-000000000315",
+      "definition": {
+        "name": "refused-input",
+        "version": 1
+      },
+      "caller": {
+        "id": "acme-admin"
       }
     },
+    "limits": {
+      "mostDurationMs": 2592000000,
+      "longestCallMs": 600000
+    },
     "startedAt": 1790845200000,
-    "lastInputAt": 1790845290005,
-    "inputs": 5,
+    "lastInputAt": 1790845200250,
+    "inputs": 4,
     "random": {
       "seed": 7,
       "draws": 0
     },
     "runs": {
-      "/do/0/all": 1,
-      "/do/0/all/fork/branches/0/backing": 1,
-      "/do/0/all/fork/branches/0/backing/try/0/ask": 1,
-      "/do/0/all/fork/branches/1/both": 1,
-      "/do/0/all/fork/branches/2/telling": 1,
-      "/do/0/all/fork/branches/3/asking": 1,
-      "/do/0/all/fork/branches/3/asking/try/0/ask": 1
+      "/do/0/race": 1,
+      "/do/0/race/fork/branches/0/first": 1,
+      "/do/0/race/fork/branches/1/later": 1,
+      "/do/0/race/fork/branches/1/later/do/0/pause": 1,
+      "/do/0/race/fork/branches/1/later/do/1/again": 1
     },
     "timers": {
       "next": 5,
@@ -1611,21 +1384,21 @@
     "calls": {},
     "listeners": {},
     "emitted": {
-      "count": 1,
-      "bytes": 159
+      "count": 0,
+      "bytes": 0
     },
     "inbox": {
       "waiting": [],
       "waitingBytes": 0,
       "receivedIds": [],
-      "offeredIds": ["record-1"],
-      "received": 1,
-      "receivedBytes": 33
+      "offeredIds": [],
+      "received": 0,
+      "receivedBytes": 0
     },
-    "heldBytes": 584,
-    "historyBytes": 16084,
+    "heldBytes": 389,
+    "historyBytes": 14221,
     "stepsWithoutWaiting": 0,
-    "cancelRequested": true,
+    "cancelRequested": false,
     "machine": {
       "values": {
         "0": {
@@ -1633,20 +1406,28 @@
           "bytes": 2
         },
         "1": {
-          "value": 1,
-          "bytes": 1
+          "value": {},
+          "bytes": 2
         }
       },
-      "nextValue": 5,
+      "nextValue": 4,
       "context": 0,
       "root": null
     },
     "outcome": {
-      "kind": "cancelled",
-      "cancel": {
-        "by": "acme-admin",
-        "kind": "requested",
-        "reason": "Not needed any more"
+      "kind": "raised",
+      "error": {
+        "type": "https://open-workflow-specification.org/spec/1.0.0/errors/validation",
+        "status": 400,
+        "instance": "/do/0/race/fork/branches/0/first",
+        "title": "The computation function hold-seats refused its input",
+        "detail": "seats, How many seats to hold: expected at least 1.",
+        "issues": [
+          {
+            "detail": "seats, How many seats to hold: expected at least 1.",
+            "pointer": "/input/seats"
+          }
+        ]
       }
     }
   }
