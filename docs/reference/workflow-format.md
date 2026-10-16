@@ -362,7 +362,7 @@ A function that called tools may have changed something outside the playbook, so
 - A function that called tools and could not finish raises a type of its own, never `communication`. It is `https://on.auto/problems/tools_unfinished`, status 503, when its server marks every tool it called read-only, so a `catch` on status 503 may run it again safely. Otherwise it is `https://on.auto/problems/effect_unknown`, status 409: a tool may have changed something, so a `catch` on status 503 or on communication errors does not run it again.
 - Their `because` field is `tool_error` when a tool returned an error, and `server_failed` when a tool server failed. A reasoning function whose tools are not offered has the kind `tool_not_offered`, and one whose tool server cannot be used `tool_server_failed`.
 - A step that meets a run whose tools may have been called before, such as when the server restarted during the step, raises `https://on.auto/problems/tools_called`, never `runtime`. A workflow that ends with it is rejected as a `conflict` of that kind: check the run's history and start a new run.
-- A `retry` that catches every error, or status 409, runs the function again under a new id, which calls its tools again.
+- A `retry` that catches every error, or status 409, also takes `effect_unknown` and `tools_called`: it runs the function again under a new id, which calls its tools again.
 
 Other function types:
 
