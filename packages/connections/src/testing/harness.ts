@@ -12,7 +12,7 @@ import {
   recordingReporter,
   type MemoryLedger,
 } from '@on.auto/operations/testing';
-import { DateTime, Effect, Layer, Redacted } from 'effect';
+import { Array as Arr, DateTime, Effect, Layer, Option, Redacted } from 'effect';
 import { TestClock } from 'effect/testing';
 
 import { makeConnectionOperations, type ConnectionOperations } from '../operations/connection-operations.ts';
@@ -119,9 +119,5 @@ export function harness({ beforeKeeping, ...given }: HarnessOptions = {}): Harne
 }
 
 export function operationNamed(operations: ConnectionOperations, name: string) {
-  const found = operations.find(({ registration }) => registration.name === name);
-  if (found === undefined) {
-    throw new Error(`There is no operation ${name}`);
-  }
-  return found;
+  return Option.getOrThrow(Arr.findFirst(operations, ({ registration }) => registration.name === name));
 }

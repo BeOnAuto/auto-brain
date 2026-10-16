@@ -84,6 +84,5 @@ describe('the words of a tool that could not do what it was asked', () => {
     ]).toEqual(['add the connection “notes”', 'list the connections', 'remove the connection “crm-id”']);
     expect(() => wordsOf(h, 'get_connection')).toThrow('The operation get_connection has no words');
     expect(() => wordsOf(h, 'read_link')).toThrow('The operation read_link has no words');
-    expect(() => operationNamed(h.operations, 'nothing')).toThrow('There is no operation nothing');
   });
 });

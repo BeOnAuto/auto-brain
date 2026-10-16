@@ -91,19 +91,21 @@ const serving: AnsweringServing = {
 
 const answer = { content: [{ type: 'text', text: 'Made it.' }], structuredContent: { page } } as const;
 
-function replaying(name: string) {
+function replaying(keptFor: Readonly<Record<string, string>>) {
   const caller = { id: 'acme-admin', org: 'acme', permissions: [], playbooks: '*' } as const;
-  const kept = { tool: 'open_page', caller: 'acme-admin', org: 'acme', answer };
+  const kept = { tool: 'open_page', caller: 'acme-admin', org: 'acme', ...keptFor, answer };
   return toolCallbackOf(
     serving,
     { caller, org: 'acme', requestId: 'request', dropped: [] },
-    { ...words, name },
+    { ...words, name: 'open_page' },
   )({}, { mcpReq: { id: 1, signal: new AbortController().signal, requestState: () => kept } });
 }
 
 describe('an answer kept for a retry', () => {
   it('is given back only to the tool, the caller and the org it was kept for, and otherwise the call runs', async () => {
-    expect(await replaying('open_page')).toEqual(answer);
-    expect(await replaying('other_page')).toMatchObject({ isError: true });
+    expect(await replaying({})).toEqual(answer);
+    expect(await replaying({ tool: 'other_page' })).toMatchObject({ isError: true });
+    expect(await replaying({ caller: 'acme-reader' })).toMatchObject({ isError: true });
+    expect(await replaying({ org: 'globex' })).toMatchObject({ isError: true });
   });
 });
