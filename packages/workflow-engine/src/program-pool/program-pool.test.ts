@@ -1,15 +1,11 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { Json } from '../dsl/json.ts';
 import type { PoolSettings, ProgramPool, ProgramRequest } from '../jobs/pool-contract.ts';
+import { nextThreadStarted, threadEnded } from '../pool-testing/threads-alive.ts';
+import { isWatched, longerThanTheTestMs, until } from '../pool-testing/waiting.ts';
 import { runMemoryBytes, unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
 import { programPool } from './program-pool.ts';
-
-const poolTestTimeoutMs = 30_000;
-
-const longerThanTheTestMs = 2 * poolTestTimeoutMs;
 
 const timerSlackMs = 2;
 
@@ -257,12 +253,15 @@ describe('a worker that breaks', () => {
 describe('a run of the pool that is cancelled', () => {
   it('stops its worker', async () => {
     const cancelling = new AbortController();
+    const starting = nextThreadStarted();
     const run = poolOf({ worker: blocking }).run(request('.'), cancelling.signal);
 
-    await setTimeout(50);
+    const thread = await starting;
+    await until(() => isWatched(cancelling.signal));
     cancelling.abort();
 
     expect(await run).toMatchObject({ ran: 'stopped', because: 'cancelled' });
+    expect(threadEnded(thread)).toBe(true);
   });
 
   it('starts no worker when it was cancelled before it was admitted', async () => {

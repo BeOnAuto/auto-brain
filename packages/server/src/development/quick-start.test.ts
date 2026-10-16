@@ -1,7 +1,6 @@
 import { once } from 'node:events';
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { text } from 'node:stream/consumers';
-import { setTimeout } from 'node:timers/promises';
 
 import { withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
 import { Schema } from 'effect';
@@ -9,6 +8,7 @@ import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { tcpPort } from '../lifecycle/http-server.ts';
 import { developmentFiles, startDevelopment, untilListening } from '../testing/processes/development-process.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const playbook = 'support';
 
@@ -118,13 +118,11 @@ function structured(result: ToolResult): Readonly<Record<string, unknown>> {
   return { isError: result.isError ?? false, ...result.structuredContent };
 }
 
-async function settled(session: McpSession, runId: unknown): Promise<Readonly<Record<string, unknown>>> {
-  const reading = structured(await session.callTool('get_run', { playbook, run_id: runId }));
-  if (reading['status'] !== 'started') {
-    return reading;
-  }
-  await setTimeout(100);
-  return settled(session, runId);
+function settled(session: McpSession, runId: unknown): Promise<Readonly<Record<string, unknown>>> {
+  return until(
+    async () => structured(await session.callTool('get_run', { playbook, run_id: runId })),
+    (reading) => reading['status'] !== 'started',
+  );
 }
 
 async function stored(session: McpSession, type: string, name: string, source: string): Promise<unknown> {

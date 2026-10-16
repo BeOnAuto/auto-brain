@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
+import { until } from '../testing/until.ts';
 import { dueLooping, keysOf } from './due-looping.ts';
 import { dueAwaitedMs, dueInOneTick, duePerformedAtOnce } from './due-work.ts';
 import { fakeDueWork } from './fake-due-work.ts';
@@ -17,7 +17,7 @@ describe('a due row that calls out nowhere, behind more deliveries than one read
     rows.local('expiry');
 
     await dueLooping(rows);
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
+    const [performed] = await until(rows.performed, (done) => done.length > 0);
 
     expect(performed?.key).toBe('expiry');
   });
@@ -37,7 +37,7 @@ describe('a delivery that waits for a place while deliveries hang', () => {
     rows.endsAt('delivery-19', endsAt);
 
     await dueLooping(rows);
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
+    const [performed] = await until(rows.performed, (done) => done.length > 0);
 
     expect(performed?.key).toBe('delivery-19');
     expect(rows.attempts().filter(({ key }) => key !== 'delivery-19')).toHaveLength(duePerformedAtOnce);
@@ -58,7 +58,7 @@ describe('a due row whose ending falls due while a tick waits for the rows it ha
     rows.endsAt('delivery-19', endsAt);
 
     await dueLooping(rows);
-    const [performed] = await eventually(rows.performed, (done) => done.length > 0);
+    const [performed] = await until(rows.performed, (done) => done.length > 0);
 
     expect(performed?.key).toBe('delivery-19');
   });
@@ -73,7 +73,7 @@ describe('due rows that end while the loop reads when to wake next', () => {
     }
 
     await dueLooping(rows);
-    const performed = await eventually(rows.performed, (done) => done.length === duePerformedAtOnce + 1, 800);
+    const performed = await until(rows.performed, (done) => done.length === duePerformedAtOnce + 1);
 
     expect(performed).toHaveLength(duePerformedAtOnce + 1);
   });
@@ -88,7 +88,7 @@ describe('a host that stops while due rows are in flight', () => {
     }
     rows.local('expiry');
     const looping = await dueLooping(rows);
-    await eventually(rows.attempts, (made) => made.length === 2);
+    await until(rows.attempts, (made) => made.length === 2);
 
     await looping.stop();
 
@@ -107,7 +107,7 @@ describe('a delivery handed out while workflow timers fall due', () => {
     const dueAt = Date.now() + 500;
 
     await looping.armTimer(dueAt);
-    await eventually(looping.order, (order) => order.length === 1);
+    await until(looping.order, (order) => order.length === 1);
 
     expect(Date.now() - dueAt).toBeLessThan(dueAwaitedMs / 2);
     expect(rows.attempts()).toHaveLength(duePerformedAtOnce + 1);

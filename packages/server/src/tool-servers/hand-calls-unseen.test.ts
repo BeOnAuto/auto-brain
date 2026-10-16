@@ -1,10 +1,10 @@
 import { serveFakeMcp } from '@on.auto/tool-servers/testing';
 import { Schema } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { recallTestTimeoutMs } from '../testing/servers/recall-server.ts';
 import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -85,22 +85,16 @@ describe('the calls made by hand in a playbook', () => {
     await server.call('POST', `${alpha}/events`, {
       body: { event: { source: '/ledger', type: 'com.acme.ledger.closed', data: { month: 'october' } } },
     });
-    const triggered = await vi.waitFor(
-      async () => {
-        const runs = await runsOf(server, 'on-a-closing');
-        expect(runs).toMatchObject([{ status: 'succeeded' }]);
-        return runs;
-      },
-      { timeout: recallTestTimeoutMs - 10_000, interval: 100 },
-    );
-    const recalled = await vi.waitFor(
-      async () => {
-        const ran = await server.call('POST', `${alpha}/definitions/recall/seen/run`, { body: {} });
-        expect(ran.body).toMatchObject({ status: 'succeeded', output: ['com.acme.ledger.closed'] });
-        return ran.body;
-      },
-      { timeout: recallTestTimeoutMs - 10_000, interval: 100 },
-    );
+    const triggered = await until(async () => {
+      const runs = await runsOf(server, 'on-a-closing');
+      expect(runs).toMatchObject([{ status: 'succeeded' }]);
+      return runs;
+    });
+    const recalled = await until(async () => {
+      const ran = await server.call('POST', `${alpha}/definitions/recall/seen/run`, { body: {} });
+      expect(ran.body).toMatchObject({ status: 'succeeded', output: ['com.acme.ledger.closed'] });
+      return ran.body;
+    });
 
     expect(saved).toEqual([201, 201, 201]);
     expect(called).toMatchObject({ status: 200, body: { outcome: 'result' } });

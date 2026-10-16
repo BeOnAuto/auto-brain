@@ -1,16 +1,11 @@
 import { foldOf, recallDocument } from '@on.auto/recall/testing';
 import { Schema } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import {
-  liveWith,
-  recallTestTimeoutMs,
-  recalled,
-  servingRecall,
-  standingUntil,
-} from '../testing/servers/recall-server.ts';
+import { liveWith, recalled, servingRecall, standingUntil } from '../testing/servers/recall-server.ts';
 import { runIdIn, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const tallying = workflowSource(
   'tally',
@@ -52,13 +47,10 @@ async function servingTheTally(): Promise<ReasoningServer> {
 }
 
 function everyRunEnded(server: ReasoningServer, count: number): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const { runs } = decodeRuns((await server.call('GET', `${alpha}/runs?type=workflow&name=tally`)).body);
-      expect(runs.filter(({ status }) => status === 'succeeded')).toHaveLength(count);
-    },
-    { timeout: recallTestTimeoutMs / 2, interval: 100 },
-  );
+  return until(async () => {
+    const { runs } = decodeRuns((await server.call('GET', `${alpha}/runs?type=workflow&name=tally`)).body);
+    expect(runs.filter(({ status }) => status === 'succeeded')).toHaveLength(count);
+  });
 }
 
 describe('a recall function whose source names the subject, the caller and the trigger kind', () => {

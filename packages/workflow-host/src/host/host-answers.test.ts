@@ -1,10 +1,10 @@
 import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
+import { until } from '../testing/until.ts';
 import { HostStopped } from './host-gate.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -60,7 +60,7 @@ describe('the host reporting to its operator', () => {
 
     await Effect.runPromise(hosted.host.start(run, startOf(listening)));
     await Effect.runPromise(hosted.host.deliver(run, approved));
-    const troubles = await eventually(hosted.troubles, (reported) => reported.length > 0);
+    const troubles = await until(hosted.troubles, (reported) => reported.length > 0);
 
     expect(troubles).toEqual([`${runId} unknown_run`]);
   });
@@ -72,7 +72,7 @@ describe('the host reporting to its operator', () => {
     );
 
     await Effect.runPromise(hosted.host.start(run, startOf(notifying)));
-    const troubles = await eventually(hosted.troubles, (reported) => reported.length > 0);
+    const troubles = await until(hosted.troubles, (reported) => reported.length > 0);
 
     expect(troubles).toEqual(['A call could not record its answer']);
   });

@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { internalTermsIn, withMcpSession } from '@on.auto/api/testing';
 import { movedClock } from '@on.auto/workflow-host/testing';
 import { Schema } from 'effect';
@@ -7,6 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const aMinuteAndASecond = 61_000;
 
@@ -72,13 +71,11 @@ let server: ReasoningServer;
 
 let seen: Seen;
 
-async function endedRuns(count: number, attempts = 300): Promise<typeof ListedRuns.Type> {
-  const listed = runsIn((await server.call('GET', `${alpha}/runs?type=workflow&name=close-the-month`)).body);
-  if (listed.runs.filter(({ status }) => status !== 'started').length >= count || attempts <= 1) {
-    return listed;
-  }
-  await setTimeout(100);
-  return endedRuns(count, attempts - 1);
+function endedRuns(count: number): Promise<typeof ListedRuns.Type> {
+  return until(
+    async () => runsIn((await server.call('GET', `${alpha}/runs?type=workflow&name=close-the-month`)).body),
+    (listed) => listed.runs.filter(({ status }) => status !== 'started').length >= count,
+  );
 }
 
 async function startOf(runId: string): Promise<Start> {

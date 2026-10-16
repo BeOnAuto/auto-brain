@@ -3,10 +3,10 @@ import { describe, expect, it } from 'vitest';
 
 import { skippingClock } from '../loop/host-clock.ts';
 import { settleAttemptsBeforeBackingOff, settleBackOffMs } from '../settlement/settle-attempts.ts';
-import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import { aSQLiteFile } from '../testing/host-files.ts';
 import { hostedOn } from '../testing/host-runs.ts';
+import { until } from '../testing/until.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -54,9 +54,9 @@ describe('the host asked to start a run whose settlement is pending', () => {
     hosted.know(runId);
 
     await Effect.runPromise(hosted.host.start(run, startOf(ending)));
-    await eventually(hosted.notes, (notes) => notes.length > 0, 2000);
+    await until(hosted.notes, (notes) => notes.length > 0);
     const startedAgain = await Effect.runPromise(hosted.host.start(run, startOf(ending)));
-    const settled = await eventually(hosted.settlements, (settlements) => settlements.size > 0, 2000);
+    const settled = await until(hosted.settlements, (settlements) => settlements.size > 0);
 
     expect(startedAgain).toBe('going');
     expect([...settled.keys()]).toEqual([runId]);
@@ -80,7 +80,7 @@ describe('the host whose ledger cannot be reached for two minutes', () => {
     outage.endsAt = clock.now() + outageMs;
 
     await Effect.runPromise(hosted.host.start(run, startOf(ending)));
-    const notes = await eventually(hosted.notes, (noted) => noted.length > 1, 1500);
+    const notes = await until(hosted.notes, (noted) => noted.length > 1);
 
     expect(notes.map(({ kind }) => kind)).toEqual(['settle_backing_off', 'settled_after_back_off']);
     expect([...hosted.settlements().keys()]).toEqual([runId]);

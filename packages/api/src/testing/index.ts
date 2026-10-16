@@ -25,7 +25,7 @@ export {
   unresolvedSchemasIn,
   type DocumentedOperation,
 } from './openapi/openapi-document.ts';
-export { waitForever } from './notebook.ts';
+export { waitForeverAnnouncing } from './notebook.ts';
 export { danglingReferencesIn } from './self-contained.ts';
 export {
   guideToolName,

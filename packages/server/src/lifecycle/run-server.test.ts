@@ -85,26 +85,32 @@ function signalledDuringStartUp(signal: StopSignal): { fake: FakeProcess; servic
 
 describe('runServer', () => {
   it('announces the port it listens on', async () => {
-    const { serverProcess, written, stopRequested } = fakeProcess();
-    const server = await runServer(serverProcess, defaultServerOptions, stopRequested);
+    const { serverProcess, written, stopRequested, stopInsisted } = fakeProcess();
+    const server = await runServer(serverProcess, defaultServerOptions, stopRequested, stopInsisted);
 
     expect(written).toEqual([`Auto Runtime listening on port ${server.port}\n`]);
     await server.stop();
   });
 
   it('rejects invalid settings before it listens, with a named error, and announces nothing', async () => {
-    const { serverProcess, written, stopRequested } = fakeProcess({ ...loopback, ALLOWED_ORIGINS: 'app.example.com' });
+    const { serverProcess, written, stopRequested, stopInsisted } = fakeProcess({
+      ...loopback,
+      ALLOWED_ORIGINS: 'app.example.com',
+    });
 
-    await expect(runServer(serverProcess, defaultServerOptions, stopRequested)).rejects.toMatchObject({
+    await expect(runServer(serverProcess, defaultServerOptions, stopRequested, stopInsisted)).rejects.toMatchObject({
       name: 'InvalidSettingsError',
     });
     expect(written).toEqual([]);
   });
 
   it('rejects invalid API keys before it listens, with a named error, and announces nothing', async () => {
-    const { serverProcess, written, stopRequested } = fakeProcess({ ...loopback, API_KEYS: '[{"id":"ci-1"}]' });
+    const { serverProcess, written, stopRequested, stopInsisted } = fakeProcess({
+      ...loopback,
+      API_KEYS: '[{"id":"ci-1"}]',
+    });
 
-    await expect(runServer(serverProcess, defaultServerOptions, stopRequested)).rejects.toMatchObject({
+    await expect(runServer(serverProcess, defaultServerOptions, stopRequested, stopInsisted)).rejects.toMatchObject({
       name: 'InvalidApiKeysError',
     });
     expect(written).toEqual([]);
@@ -115,8 +121,8 @@ describe('runServer on a stop signal', () => {
   it.each<StopSignal>(['SIGTERM', 'SIGINT'])(
     'stops accepting connections on %s, before anything else stops it',
     async (signal) => {
-      const { serverProcess, stopRequested, send } = fakeProcess();
-      const server = await runServer(serverProcess, defaultServerOptions, stopRequested);
+      const { serverProcess, stopRequested, stopInsisted, send } = fakeProcess();
+      const server = await runServer(serverProcess, defaultServerOptions, stopRequested, stopInsisted);
 
       send(signal);
       const acceptingAfterSignal = await isAcceptingConnections(server.port);
@@ -129,8 +135,8 @@ describe('runServer on a stop signal', () => {
   it.each<StopSignal>(['SIGTERM', 'SIGINT'])(
     'stops on %s sent the moment it announces the port, because it handles the signal before announcing',
     async (signal) => {
-      const { serverProcess, stopRequested } = signalledOnAnnouncement(signal);
-      const server = await runServer(serverProcess, defaultServerOptions, stopRequested);
+      const { serverProcess, stopRequested, stopInsisted } = signalledOnAnnouncement(signal);
+      const server = await runServer(serverProcess, defaultServerOptions, stopRequested, stopInsisted);
 
       const acceptingAfterSignal = await isAcceptingConnections(server.port);
       await server.stop();
@@ -147,6 +153,7 @@ describe('runServer on a stop signal', () => {
         fake.serverProcess,
         optionsComposing(services, () => servedBy([])),
         fake.stopRequested,
+        fake.stopInsisted,
       );
 
       const acceptingAfterStartUp = await isAcceptingConnections(server.port);
@@ -173,9 +180,14 @@ describe('a server that cannot start', () => {
   it.each(startUpFailures)(
     'names the error in one line on stderr, announces nothing and exits 1 with %o',
     async (settings, error) => {
-      const { serverProcess, written, errors, exited, stopRequested } = fakeProcess({ ...loopback, ...settings });
+      const { serverProcess, written, errors, exited, stopRequested, stopInsisted } = fakeProcess({
+        ...loopback,
+        ...settings,
+      });
 
-      await runServer(serverProcess, defaultServerOptions, stopRequested).catch(exitOnStartupFailure(serverProcess));
+      await runServer(serverProcess, defaultServerOptions, stopRequested, stopInsisted).catch(
+        exitOnStartupFailure(serverProcess),
+      );
 
       expect(await exited).toBe(1);
       expect({ written, errors }).toEqual({ written: [], errors: [`Auto Runtime could not start: ${error}\n`] });
@@ -204,8 +216,8 @@ describe('runServer told to stop twice', () => {
 
 describe('runServer after it stopped', () => {
   it('exits 0 at the exit deadline, saying why, when the process is still running', async () => {
-    const { serverProcess, stopRequested, send, exited, errors } = fakeProcess();
-    await runServer(serverProcess, { ...defaultServerOptions, exitDeadlineMs: 10 }, stopRequested);
+    const { serverProcess, stopRequested, stopInsisted, send, exited, errors } = fakeProcess();
+    await runServer(serverProcess, { ...defaultServerOptions, exitDeadlineMs: 10 }, stopRequested, stopInsisted);
 
     send('SIGTERM');
 

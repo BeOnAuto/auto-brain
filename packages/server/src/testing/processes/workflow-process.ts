@@ -1,7 +1,6 @@
 import { once } from 'node:events';
 import { createServer, type ServerResponse } from 'node:http';
 import { homedir } from 'node:os';
-import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { Schema } from 'effect';
@@ -9,6 +8,7 @@ import { onTestFinished } from 'vitest';
 
 import { tcpPort } from '../../lifecycle/http-server.ts';
 import { runIdIn, isStarted, workflowSource } from '../servers/workflow-server.ts';
+import { until } from '../waiting/until.ts';
 import { spawnServer, type SpawnedServer } from './spawned-server.ts';
 
 export interface LogLine {
@@ -61,17 +61,8 @@ export async function requestTo(port: number, method: string, path: string, body
   return { status: response.status, body: await response.json() };
 }
 
-async function eventually(attempt: () => Promise<Answer>, done: (answer: Answer) => boolean): Promise<Answer> {
-  const answer = await attempt();
-  if (done(answer)) {
-    return answer;
-  }
-  await setTimeout(100);
-  return eventually(attempt, done);
-}
-
 export async function settledOver(port: number, path: string): Promise<unknown> {
-  const { body } = await eventually(
+  const { body } = await until(
     () => requestTo(port, 'GET', path),
     (answer) => !isStarted(answer.body),
   );

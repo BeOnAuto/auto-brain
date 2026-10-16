@@ -1,13 +1,12 @@
 import { Effect, type Schema } from 'effect';
-import { vi } from 'vitest';
 
 import type { DatabaseSettings } from '../database/host-databases.ts';
 import { someFolder } from '../projector/folder.ts';
 import { definitionStreamOf } from '../projector/playbook-definitions.ts';
 import type { Projector } from '../projector/projector.ts';
+import { until } from '../testing/until.ts';
 import { alphaKey } from '../views-testing/view-documents.ts';
 import { viewHarness, type ViewHarness } from '../views-testing/view-harness.ts';
-import { viewWaiting } from '../views-testing/view-reading.ts';
 import {
   talliedOutputsOf,
   talliesOf,
@@ -91,19 +90,19 @@ export async function tallyHarness(settings: DatabaseSettings): Promise<TallyHar
     tallies,
     outputs: () => Effect.runPromise(talliedOutputsOf(views.store.database, alphaKey)),
     untilTally: (details, holds) =>
-      vi.waitFor(async () => {
+      until(async () => {
         const row = await named(details);
         if (row === undefined || !holds(row)) {
           throw new Error(`The tally of ${tallyOf(details)} does not hold yet: ${JSON.stringify(row)}`);
         }
         return row;
-      }, viewWaiting),
+      }),
     goneTally: (details) =>
-      vi.waitFor(async () => {
+      until(async () => {
         if ((await named(details)) !== undefined) {
           throw new Error(`The tally of ${tallyOf(details)} is still kept`);
         }
-      }, viewWaiting),
+      }),
     startWithTallies: (more = {}, rebuildsAtOnce = rebuildsByDefault) =>
       views.start({ ...more, besides: [someFolder(tallyFolderOf(rebuildsAtOnce))] }),
     watchingTallies,

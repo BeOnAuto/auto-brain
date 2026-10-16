@@ -1,13 +1,13 @@
 import { Effect } from 'effect';
-import { expect, vi } from 'vitest';
+import { expect } from 'vitest';
 
 import type { HostClock } from '../loop/host-clock.ts';
+import { until } from '../testing/until.ts';
 import { rowsOfPlaybook } from '../views/view-reconciling.ts';
 import type { FoldingSettings } from '../views/views-folding.ts';
 import { foldingWorker } from './test-fold-workers.ts';
 import { alphaKey, foldOf, foldingOf } from './view-documents.ts';
 import type { ViewHarness } from './view-harness.ts';
-import { viewWaiting } from './view-reading.ts';
 
 export const overrunsItsDeadline = 'overruns its deadline';
 
@@ -77,7 +77,7 @@ export function steppedClock(start: number): SteppedClock {
           }),
     step: (milliseconds) => {
       time.now += milliseconds;
-      for (const sleeper of [...sleepers].filter(({ until }) => until <= time.now)) {
+      for (const sleeper of [...sleepers].filter((asleep) => asleep.until <= time.now)) {
         sleepers.delete(sleeper);
         sleeper.wake();
       }
@@ -91,7 +91,7 @@ export async function overtimesOf(views: ViewHarness, name: string): Promise<num
 }
 
 export function untilTried(views: ViewHarness, name: string, overtimes: number): Promise<void> {
-  return vi.waitFor(async () => {
+  return until(async () => {
     expect(await overtimesOf(views, name)).toBe(overtimes);
-  }, viewWaiting);
+  });
 }

@@ -1,16 +1,13 @@
-import { setTimeout } from 'node:timers/promises';
-
+import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import type { CheckOutcome, CheckRequest, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
+import type { CheckOutcome, CheckRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { brokenAtStart, checking, checkingForever, checkingReadyAfter } from '../pool-testing/checking-workers.ts';
 import { counting } from '../pool-testing/counting-workers.ts';
+import { nextThreadStarted, threadEnded } from '../pool-testing/threads-alive.ts';
+import { isWatched, longerThanTheTestMs, until } from '../pool-testing/waiting.ts';
 import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
 import { checkPermits, mostCheckStartMs, programPool } from './program-pool.ts';
-
-const poolTestTimeoutMs = 30_000;
-
-const longerThanTheTestMs = 2 * poolTestTimeoutMs;
 
 const slowStartMs = 2000;
 
@@ -19,6 +16,8 @@ const pools: ProgramPool[] = [];
 const coverage = process.env['NODE_V8_COVERAGE'];
 
 const measured = coverage === undefined ? {} : { NODE_V8_COVERAGE: coverage };
+
+const decodeRan = Schema.decodeUnknownSync(Schema.Struct({ thread: Schema.Number }));
 
 afterEach(async () => {
   await Promise.all(pools.splice(0).map((pool) => pool.close()));
@@ -44,9 +43,9 @@ function threadOf(outcome: CheckOutcome): number | undefined {
   return outcome.ran === 'checked' ? outcome.issues[0]?.line : undefined;
 }
 
-function blocked(pool: ProgramPool) {
+function counted(pool: ProgramPool, source: string): Promise<PoolOutcome> {
   return pool.run({
-    source: 'block',
+    source,
     entry: 'default',
     arguments: [null],
     moment: 0,
@@ -57,6 +56,15 @@ function blocked(pool: ProgramPool) {
     mostOutputBytes: 1000,
     worker: counting,
   });
+}
+
+function blocked(pool: ProgramPool): Promise<PoolOutcome> {
+  return counted(pool, 'block');
+}
+
+async function threadCounting(pool: ProgramPool): Promise<number> {
+  const outcome = await counted(pool, 'count');
+  return decodeRan(outcome.ran === 'answered' ? outcome.output : {}).thread;
 }
 
 describe('the permit of the checks of a pool', () => {
@@ -107,24 +115,27 @@ describe('the worker of the checks of a pool, while it starts', () => {
   it('ends a check busy when its worker is not ready within the start a check allows, and never ends the worker while it starts', async () => {
     const pool = poolOf({ checkStartMs: 200 });
     const worker = checkingReadyAfter(slowStartMs);
+    const starting = nextThreadStarted();
 
     const early = await pool.check(checkOf({ worker }));
+    const started = await starting;
     const cancelling = new AbortController();
     const cancelled = pool.check(checkOf({ worker }), cancelling.signal);
-    await setTimeout(100);
+    await until(() => isWatched(cancelling.signal));
     cancelling.abort();
-    await setTimeout(2 * slowStartMs);
-    const [first, second] = [await pool.check(checkOf({ worker })), await pool.check(checkOf({ worker }))];
+    await until(async () => threadOf(await pool.check(checkOf({ worker }))) === started);
+    const second = await pool.check(checkOf({ worker }));
 
     expect(early).toMatchObject({ ran: 'stopped', because: 'busy' });
     expect(await cancelled).toMatchObject({ ran: 'stopped', because: 'cancelled' });
-    expect([first.ran, threadOf(second)]).toEqual(['checked', threadOf(first)]);
+    expect(threadOf(second)).toBe(started);
   });
 
   it('ends a check closing when the pool closes while its worker starts, and crashed when the worker ends before it is ready', async () => {
     const pool = poolOf();
-    const starting = pool.check(checkOf({ worker: checkingReadyAfter(slowStartMs) }));
-    await setTimeout(100);
+    const watched = new AbortController();
+    const starting = pool.check(checkOf({ worker: checkingReadyAfter(slowStartMs) }), watched.signal);
+    await until(() => isWatched(watched.signal));
 
     await pool.close();
 
@@ -141,7 +152,8 @@ describe('the worker of the checks of a pool, once it started', () => {
     const pool = poolOf({ idleMs: 100 });
 
     const first = await pool.check(checkOf());
-    await setTimeout(500);
+    const programThread = await threadCounting(pool);
+    await until(() => threadEnded(programThread));
     const later = await pool.check(checkOf());
 
     expect(threadOf(later)).toBe(threadOf(first));

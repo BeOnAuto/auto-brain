@@ -26,7 +26,7 @@ describe('stopping pnpm dev', () => {
 
       development.signal(signal);
 
-      await expect(endingOf(development)).resolves.toEqual({ exitCode: 0, allStopped: true, said: [] });
+      await expect(endingOf(development)).resolves.toEqual({ exitCode: 0, said: [] });
     },
   );
 
@@ -46,7 +46,6 @@ describe('stopping pnpm dev', () => {
 
     await expect(endingOf(development)).resolves.toEqual({
       exitCode: 0,
-      allStopped: true,
       said: [`${files.envFile} changed, so the server restarts`],
     });
     expect(pidsOf(development)).toHaveLength(1);
@@ -59,6 +58,6 @@ describe('killing pnpm dev', () => {
 
     development.signal('SIGKILL');
 
-    await expect(endingOf(development)).resolves.toEqual({ exitCode: null, allStopped: true, said: [] });
+    await expect(endingOf(development)).resolves.toEqual({ exitCode: null, said: [] });
   });
 });

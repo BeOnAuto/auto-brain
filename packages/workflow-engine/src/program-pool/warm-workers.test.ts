@@ -1,12 +1,11 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { FoldingView } from '../folds/fold-page.ts';
 import type { FoldOutcome, FoldRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
-import { counting, countingElsewhere, countingOnTheLoop } from '../pool-testing/counting-workers.ts';
-import { threadsAlive } from '../pool-testing/threads-alive.ts';
+import { begun, counting, countingElsewhere, countingOnTheLoop } from '../pool-testing/counting-workers.ts';
+import { threadEnded, threadsAlive } from '../pool-testing/threads-alive.ts';
+import { longerThanTheTestMs, until } from '../pool-testing/waiting.ts';
 import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
 import { programPool } from './program-pool.ts';
 
@@ -20,8 +19,6 @@ interface Running {
   readonly signal?: Readonly<AbortSignal>;
   readonly worker?: Readonly<URL>;
 }
-
-const poolTestTimeoutMs = 30_000;
 
 const pools: ProgramPool[] = [];
 
@@ -129,7 +126,7 @@ describe('a worker of the pool kept between jobs', () => {
     const pool = poolOf({ idleMs: 100 });
     const first = await counted(pool);
 
-    await setTimeout(500);
+    await until(() => threadEnded(first.thread));
     const next = await counted(pool);
 
     expect([first.jobs, next.jobs]).toEqual([1, 1]);
@@ -163,11 +160,13 @@ describe('a worker of the pool after a job the pool had to stop', () => {
     const pool = poolOf();
     const first = await counted(pool);
     const cancelling = new AbortController();
+    const beginning = begun(1);
 
     const blocked = run(pool, 'block', { signal: cancelling.signal });
-    await setTimeout(100);
+    const reached = await beginning;
     cancelling.abort();
 
+    expect(reached).toEqual([{ source: 'block', thread: first.thread }]);
     expect(await blocked).toMatchObject({ ran: 'stopped', because: 'cancelled' });
     expect([first.jobs, (await counted(pool)).jobs]).toEqual([1, 1]);
   });
@@ -181,7 +180,7 @@ describe('a job of the pool cancelled before it has a worker', () => {
     const cancelling = new AbortController();
 
     const blocked = run(pool, 'block', {
-      deadlineMs: 2 * poolTestTimeoutMs,
+      deadlineMs: longerThanTheTestMs,
       signal: cancelling.signal,
       worker: countingElsewhere,
     });
@@ -281,7 +280,7 @@ describe('a worker of the pool that, idle, sends a message, fails or ends', () =
       const pool = poolOf();
       const first = ranOf(await run(pool, misbehaviour));
 
-      await setTimeout(400);
+      await until(() => threadEnded(first.thread));
       const next = await counted(pool);
 
       expect([first.jobs, next.jobs]).toEqual([1, 1]);

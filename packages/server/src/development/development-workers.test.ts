@@ -1,12 +1,8 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-import {
-  developmentFiles,
-  developmentTestTimeoutMs,
-  startDevelopment,
-  untilListening,
-} from '../testing/processes/development-process.ts';
+import { developmentFiles, startDevelopment, untilListening } from '../testing/processes/development-process.ts';
 import { request, type TestResponse } from '../testing/servers/http-client.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const meetings = '/v1/orgs/local/playbooks/meetings';
 
@@ -54,14 +50,11 @@ describe('the functions pnpm dev serves in worker threads', () => {
     const echoed = await call('POST', `${meetings}/definitions/computation/echo/run`, { input: { said: 'hello' } });
     expect(echoed.body).toMatchObject({ status: 'succeeded', output: { said: 'hello' } });
     await call('POST', `${meetings}/definitions/recall`, { name: 'said', source: saidSoFar });
-    const recalled = await vi.waitFor(
-      async () => {
-        const answered = await call('POST', `${meetings}/definitions/recall/said/run`, { input: {} });
-        expect(answered.status).toBe(200);
-        return answered;
-      },
-      { timeout: developmentTestTimeoutMs / 2, interval: 100 },
-    );
+    const recalled = await until(async () => {
+      const answered = await call('POST', `${meetings}/definitions/recall/said/run`, { input: {} });
+      expect(answered.status).toBe(200);
+      return answered;
+    });
 
     expect(recalled.body).toMatchObject({ status: 'succeeded', output: ['HELLO'] });
   });

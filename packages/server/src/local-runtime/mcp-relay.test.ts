@@ -1,6 +1,7 @@
 import { InMemoryTransport, parseJSONRPCMessage, type Transport } from '@modelcontextprotocol/server';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
+import { until } from '../testing/waiting/until.ts';
 import { relay } from './mcp-relay.ts';
 
 const listTools = parseJSONRPCMessage({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} });
@@ -252,7 +253,7 @@ describe('relaying a notification to a runtime that does not answer', () => {
 
     await agent.send(initialized);
 
-    await vi.waitFor(() => {
+    await until(() => {
       expect(reported).toEqual(['Auto Runtime did not take a message: Error: refused again']);
     });
   });

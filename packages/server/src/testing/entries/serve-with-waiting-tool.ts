@@ -6,9 +6,9 @@ import { routesServing } from '../../composition/served-routes.ts';
 import { retryStateKeysOf, secretsKeysOf } from '../../database/secrets-keys.ts';
 import { servedBy } from '../../lifecycle/lifecycle.ts';
 import { exitOnStartupFailure, runServer } from '../../lifecycle/run-server.ts';
-import { stopRequestedBy } from '../../lifecycle/stop-request.ts';
-import { shortShutdownTimeoutMs } from '../processes/short-shutdown-timeout.ts';
-import { waitForeverAnnouncedIn } from './announced-waiting.ts';
+import { stopInsistedBy, stopRequestedBy } from '../../lifecycle/stop-request.ts';
+import { shortShutdownTimeoutMs } from '../processes/shutdown-timeouts.ts';
+import { waitForeverAnnouncedIn } from './calls-in-flight.ts';
 
 await runServer<DispatcherServices>(
   process,
@@ -27,4 +27,5 @@ await runServer<DispatcherServices>(
     shutdownTimeoutMs: shortShutdownTimeoutMs,
   },
   stopRequestedBy(process),
+  stopInsistedBy(process),
 ).catch(exitOnStartupFailure(process));

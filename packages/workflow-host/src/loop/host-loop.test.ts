@@ -1,13 +1,11 @@
-import { setTimeout } from 'node:timers/promises';
-
 import type { ArmTimer, WorkflowEngine } from '@on.auto/workflow-engine';
 import { Deferred, Effect, Exit, Function } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
+import { watchedSystemClock, type WatchedClock } from '../testing/watched-clock.ts';
 import { sqlTimers, type DueTimer, type TimerTable } from '../timers/sql-timers.ts';
-import { systemClock } from './host-clock.ts';
 import { startLoop, type HostLoop } from './host-loop.ts';
 
 const runKey = 'acme/alpha/0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
@@ -16,6 +14,7 @@ const run = { runId: runKey, attributes: {} };
 
 interface Looping {
   readonly loop: HostLoop;
+  readonly clock: WatchedClock;
   readonly arm: (timerId: string, inMs: number) => Promise<number>;
   readonly fired: () => readonly string[];
   readonly troubles: () => readonly string[];
@@ -64,12 +63,13 @@ async function looping(options: LoopingOptions): Promise<Looping> {
   const fired: string[] = [];
   const troubles: string[] = [];
   const counts = { sweeps: 0 };
+  const clock = watchedSystemClock();
   const alarm: { armed: (dueAt: number) => void } = { armed: Function.constVoid };
   const timers = sqlTimers(database, (dueAt) => {
     alarm.armed(dueAt);
   });
   const loop = startLoop({
-    clock: systemClock,
+    clock,
     dueWork: [],
     timers: failingReadsOf(timers, readsFailing),
     engine: {
@@ -86,16 +86,14 @@ async function looping(options: LoopingOptions): Promise<Looping> {
         Effect.sync(() => fired.push(timer.timerId)),
       ),
     resume: () => Effect.succeed(0),
-    trouble: (what) =>
-      Effect.sync(() => {
-        troubles.push(what);
-      }),
+    trouble: (what) => Effect.sync(() => troubles.push(what)),
     sweepEveryMs,
   });
   alarm.armed = loop.armed;
   onTestFinished(() => loop.stop());
   return {
     loop,
+    clock,
     arm: async (timerId, inMs) => {
       const dueAt = Date.now() + inMs;
       const timer: ArmTimer = { kind: 'arm_timer', runId: runKey, timerId, dueAt, purpose: 'wait' };
@@ -120,10 +118,10 @@ function failingOnce(): (timer: DueTimer) => Effect.Effect<void, Error> {
 describe('the loop of the host, firing timers', () => {
   it('fires a timer when it is due, woken from a long wait by the timer being armed', async () => {
     const loop = await looping({ sweepEveryMs: 3_600_000 });
-    await setTimeout(20);
+    await until(loop.clock.asked, (asked) => asked.some((milliseconds) => milliseconds > 60_000));
 
     const dueAt = await loop.arm('1', 30);
-    const fired = await eventually(loop.fired, (timers) => timers.length > 0);
+    const fired = await until(loop.fired, (timers) => timers.length > 0);
 
     expect([fired, Date.now() >= dueAt, loop.sweeps()]).toEqual([['1'], true, 1]);
   });
@@ -132,7 +130,7 @@ describe('the loop of the host, firing timers', () => {
     const loop = await looping({ sweepEveryMs: 40, fire: failingOnce() });
 
     await loop.arm('1', 0);
-    const fired = await eventually(loop.fired, (timers) => timers.length > 0);
+    const fired = await until(loop.fired, (timers) => timers.length > 0);
 
     expect([fired, loop.troubles()]).toEqual([
       ['1'],
@@ -145,7 +143,7 @@ describe('the loop of the host, sweeping and stopping', () => {
   it('reports a sweep that failed, and sweeps again at the next interval', async () => {
     const loop = await looping({ sweepEveryMs: 20, sweep: () => Effect.die(new Error('The ledger is down')) });
 
-    await eventually(loop.sweeps, (sweeps) => sweeps >= 2);
+    await until(loop.sweeps, (sweeps) => sweeps >= 2);
 
     expect(new Set(loop.troubles())).toEqual(new Set(['A sweep of the runs failed; the next sweep tries again']));
   });
@@ -154,7 +152,7 @@ describe('the loop of the host, sweeping and stopping', () => {
     const loop = await looping({ sweepEveryMs: 20, readsFailing: 1 });
 
     await loop.arm('1', 0);
-    const fired = await eventually(loop.fired, (timers) => timers.length > 0);
+    const fired = await until(loop.fired, (timers) => timers.length > 0);
 
     expect([fired, new Set(loop.troubles())]).toEqual([
       ['1'],
@@ -176,7 +174,6 @@ describe('the loop of the host, sweeping and stopping', () => {
     await Effect.runPromise(Deferred.await(firing));
 
     const stopped = loop.loop.stop();
-    await setTimeout(20);
     const firedBeforeFinishing = [...loop.fired()];
     await Effect.runPromise(Deferred.done(finishing, Exit.void));
     await stopped;

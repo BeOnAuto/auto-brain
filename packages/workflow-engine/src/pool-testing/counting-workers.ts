@@ -1,11 +1,27 @@
+import { Schema } from 'effect';
+
+export interface Begun {
+  readonly source: string;
+  readonly thread: number;
+}
+
+const beginnings = 'the jobs counting workers begin';
+
+const decodeBegun = Schema.decodeUnknownSync(Schema.Struct({ source: Schema.String, thread: Schema.Number }));
+
 function workerOf(source: string): URL {
   return new URL(`data:text/javascript,${encodeURIComponent(source)}`);
 }
 
 const countingSource = [
   "import { pbkdf2Sync } from 'node:crypto';",
-  "import { parentPort, threadId } from 'node:worker_threads';",
+  "import { BroadcastChannel, parentPort, threadId } from 'node:worker_threads';",
   'let jobs = 0;',
+  'const begin = (source) => {',
+  `  const beginnings = new BroadcastChannel(${JSON.stringify(beginnings)});`,
+  '  beginnings.postMessage({ source, thread: threadId });',
+  '  beginnings.close();',
+  '};',
   'const answer = (job, keep) => {',
   '  const output = JSON.stringify({ jobs, thread: threadId });',
   "  parentPort.postMessage({ job, answer: { ran: 'answered', output, bytes: output.length, work: 0 }, keep });",
@@ -24,9 +40,24 @@ const countingSource = [
   '};',
   "parentPort.on('message', ({ job, request }) => {",
   '  jobs += 1;',
+  '  begin(request.source);',
   '  (behaviours[request.source] ?? ((each) => answer(each, true)))(job);',
   '});',
 ].join('\n');
+
+export function begun(jobs: number): Promise<readonly Begun[]> {
+  const listening = new BroadcastChannel(beginnings);
+  const heard: Begun[] = [];
+  const { promise, resolve } = Promise.withResolvers<readonly Begun[]>();
+  listening.addEventListener('message', (event: Readonly<MessageEvent>) => {
+    heard.push(decodeBegun(event.data));
+    if (heard.length === jobs) {
+      listening.close();
+      resolve(heard);
+    }
+  });
+  return promise;
+}
 
 export const counting = workerOf(countingSource);
 

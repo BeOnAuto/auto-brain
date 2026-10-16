@@ -1,10 +1,10 @@
 import { Effect } from 'effect';
 import { expect, it } from 'vitest';
 
-import { eventually } from './eventually.ts';
 import { runAt, startOf, workflow } from './host-documents.ts';
 import type { SettingsOf } from './host-files.ts';
 import { hostedOn } from './host-runs.ts';
+import { until } from './until.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7a';
 
@@ -24,9 +24,9 @@ export function runSuite(settings: SettingsOf): void {
     const run = runAt(runId);
 
     const started = await Effect.runPromise(hosted.host.start(run, startOf(approval)));
-    await eventually(hosted.calls, (calls) => calls.length > 0);
+    await until(hosted.calls, (calls) => calls.length > 0);
     const delivered = await Effect.runPromise(hosted.host.deliver(run, approved));
-    const settlements = await eventually(hosted.settlements, (settled) => settled.size > 0);
+    const settlements = await until(hosted.settlements, (settled) => settled.size > 0);
     const again = await Effect.runPromise(hosted.host.deliver(run, { ...approved, id: 'approved-2' }));
     const startedAgain = await Effect.runPromise(hosted.host.start(run, startOf(approval)));
 

@@ -5,9 +5,9 @@ import { Effect, Schema } from 'effect';
 import type { HostDatabase } from '../database/host-database.ts';
 import { statement } from '../database/statement.ts';
 import { alpha, playbookCreated } from '../reaction-testing/playbook-writes.ts';
-import { until } from '../reaction-testing/until.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
 import { hostedOn, type HostedOptions, type HostedRuns } from '../testing/host-runs.ts';
+import { until } from '../testing/until.ts';
 
 export interface FollowedHost {
   readonly database: HostDatabase;
@@ -15,20 +15,18 @@ export interface FollowedHost {
   readonly settled: (runId: string) => Promise<Settlement | undefined>;
 }
 
-export function settledIn(hosted: HostedRuns, attempts?: number): (runId: string) => Promise<Settlement | undefined> {
+export function settledIn(hosted: HostedRuns): (runId: string) => Promise<Settlement | undefined> {
   return (runId) =>
     until(
       () => Promise.resolve(hosted.settlements().get(runId)),
       (settlement) => settlement !== undefined,
-      attempts,
     );
 }
 
-export async function untilFollowed(database: HostDatabase, attempts?: number): Promise<void> {
+export async function untilFollowed(database: HostDatabase): Promise<void> {
   await until(
     () => Effect.runPromise(database.read(statement`SELECT playbook_key FROM workflow_followed_playbooks`)),
     (rows) => rows.length > 0,
-    attempts,
   );
 }
 
@@ -47,7 +45,7 @@ export async function followedHost(options: HostedOptions = {}): Promise<Followe
 
 const Places = Schema.Array(Schema.Struct({ cursor: Schema.NullOr(Schema.String) }));
 
-export async function followedThroughTheLatest(database: HostDatabase, attempts?: number): Promise<void> {
+export async function followedThroughTheLatest(database: HostDatabase): Promise<void> {
   const { records } = await Effect.runPromise(
     recordedReaderOf(database.store)(
       { org: 'acme', playbook: 'alpha' },
@@ -63,6 +61,5 @@ export async function followedThroughTheLatest(database: HostDatabase, attempts?
         ),
       ),
     (places) => places[0]?.cursor === records[0]?.cursor,
-    attempts,
   );
 }

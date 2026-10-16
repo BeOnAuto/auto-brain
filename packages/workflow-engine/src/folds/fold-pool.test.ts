@@ -2,13 +2,10 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 import type { JsonObject } from '../dsl/json.ts';
 import type { FoldRequest, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
+import { longerThanTheTestMs } from '../pool-testing/waiting.ts';
 import { programPool } from '../program-pool/program-pool.ts';
 import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
 import type { FoldingView } from './fold-page.ts';
-
-const poolTestTimeoutMs = 30_000;
-
-const longerThanTheTestMs = 2 * poolTestTimeoutMs;
 
 const timerSlackMs = 2;
 

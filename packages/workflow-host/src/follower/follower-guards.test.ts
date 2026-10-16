@@ -13,7 +13,7 @@ import {
   runRecorded,
 } from '../reaction-testing/playbook-writes.ts';
 import { reactingHost, type ReactingHost } from '../reaction-testing/reacting-host.ts';
-import { until } from '../reaction-testing/until.ts';
+import { until } from '../testing/until.ts';
 
 const succeeded = { type: 'run_succeeded' };
 
@@ -120,7 +120,6 @@ describe('a playbook whose run log holds a record its dispatch never covers', ()
     const starts = await until(
       () => Promise.resolve(reacting.reactions.starts()),
       (found) => found.length > 0,
-      2000,
     );
 
     expect(starts.map(({ workflow }) => workflow)).toEqual(['close']);
