@@ -4,7 +4,12 @@ import { type SchemaIssue } from '@on.auto/json-schema';
 import { Result, type Schema } from 'effect';
 
 import type { OutputRequest } from '../model/model-request.ts';
-import { checkAnswerSchema, compileAnswerSchema, shapedAnswerSchema } from '../schema/answer-schema.ts';
+import {
+  checkAnswerSchema,
+  compileAnswerSchema,
+  compileInputSchema,
+  shapedAnswerSchema,
+} from '../schema/answer-schema.ts';
 import type { InputSection, OutputSection } from './front-matter-schema.ts';
 import type { InputContract } from './reasoning-function-definition.ts';
 
@@ -48,7 +53,7 @@ export function inputContractOf(
   if (document === undefined) {
     return Result.succeed({ defaults });
   }
-  const compiled = compileAnswerSchema(document);
+  const compiled = compileInputSchema(document);
   if (document['type'] !== 'object') {
     return Result.fail([
       issueAt(lines, '/input/schema', 'The input schema describes an object: its root has "type": "object"'),

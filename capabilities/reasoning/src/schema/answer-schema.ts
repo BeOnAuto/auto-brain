@@ -27,6 +27,10 @@ export function compileAnswerSchema(document: unknown): Result.Result<AnswerSche
   return compileJsonSchema(document, { what: 'answer', nesting: schemaLimits.answerNesting });
 }
 
+export function compileInputSchema(document: unknown): Result.Result<CompiledSchema, readonly Issue[]> {
+  return compileJsonSchema(document, { what: 'input', nesting: schemaLimits.answerNesting });
+}
+
 export function shapedAnswerSchema({ schema, further }: OutputShape): AnswerSchema {
   return Result.getOrThrow(compileJsonSchema(schema, { what: 'answer', nesting: schemaLimits.answerNesting, further }));
 }

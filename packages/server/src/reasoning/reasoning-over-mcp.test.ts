@@ -110,7 +110,7 @@ describe('a reasoning function definition over MCP, on the endpoint of its playb
       problem: {
         status: 422,
         reason: 'invalid_input',
-        errors: [{ pointer: '/input/text', detail: 'Expected string' }],
+        errors: [{ pointer: '/input/text', detail: 'text: expected text.' }],
       },
     });
     expect(server.modelCalls()).toBe(0);

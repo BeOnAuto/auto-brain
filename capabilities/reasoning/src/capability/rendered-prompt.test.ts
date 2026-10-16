@@ -17,7 +17,7 @@ describe('a prompt that cannot be rendered from the input', () => {
 
     expect(await running(documentOf(model, 'Dear {{ input.customer["first/name"] }},'), { customer: {} })).toEqual(
       rejected(
-        'The template reads a field the input does not have',
+        'The template reads input.customer.first/name on line 4, which the input does not have',
         'Line 4: the template reads input.customer.first/name, which this input does not have',
         '/customer/first~1name',
       ),
@@ -32,7 +32,7 @@ describe('a prompt that cannot be rendered from the input', () => {
       await running(documentOf(model, '{% for item in input.items %}{{ item.name }}{% endfor %}'), { items: [{}] }),
     ).toEqual(
       rejected(
-        'The template reads a field the input does not have',
+        'The template reads item.name on line 4, which the input does not have',
         'Line 4: the template reads item.name, which this input does not have',
       ),
     );
