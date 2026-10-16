@@ -26,7 +26,6 @@ export interface CredentialGiving extends LinkUse {
   readonly type: 'give';
   readonly secret_id: string;
   readonly algorithm?: string;
-  readonly ends_with?: string;
 }
 
 export interface ConnectionRemoval {

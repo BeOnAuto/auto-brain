@@ -1,7 +1,7 @@
 import { defineCommand, quoted } from '@on.auto/operations';
 import { Effect, Schema } from 'effect';
 
-import { ConnectionSchema } from '../registry/connection.ts';
+import { ConnectionSchema, connectionShown } from '../registry/connection.ts';
 import { ConnectionIdField } from './connection-fields.ts';
 import type { ConnectionServices } from './connection-services.ts';
 import { connectionNamed } from './connection-words.ts';
@@ -29,7 +29,7 @@ export function defineRemoveConnection({ secrets }: Pick<ConnectionServices, 'se
       if (kept.secretId !== undefined) {
         yield* secrets.forget(kept.secretId);
       }
-      return kept.connection;
+      return connectionShown(kept.connection, null);
     }),
     plainLanguage: {
       task: 'remove a connection',

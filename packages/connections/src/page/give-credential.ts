@@ -5,7 +5,7 @@ import { tokenSha256Of } from '../links/link-token.ts';
 import { ConnectionIdField, TokenField } from '../operations/connection-fields.ts';
 import type { ConnectionServices } from '../operations/connection-services.ts';
 import { actedNow, loadRegistry, recordInRegistry } from '../operations/registry-access.ts';
-import { ConnectionSchema } from '../registry/connection.ts';
+import { ConnectionSchema, connectionShown } from '../registry/connection.ts';
 import type { Credential } from '../registry/credential.ts';
 import { takesNoCredential } from '../registry/registry-decisions.ts';
 import { linkedConnectionOf } from '../registry/registry-lookup.ts';
@@ -29,23 +29,19 @@ const GivingSchema = Schema.Struct({
 
 type Giving = typeof GivingSchema.Type;
 
-interface Recorded {
-  readonly algorithm?: string;
-  readonly ends_with?: string;
-}
-
 interface Given {
   readonly pointer: string;
   readonly value: string;
-  readonly recorded: Recorded;
+  readonly endsWith?: string;
+  readonly algorithm?: string;
 }
 
 const charactersShown = 4;
 
 const fewestCharactersToShowAny = 12;
 
-function endingOf(value: string): Recorded {
-  return value.length < fewestCharactersToShowAny ? {} : { ends_with: value.slice(-charactersShown) };
+function shownEndingOf(value: string): { readonly endsWith?: string } {
+  return value.length < fewestCharactersToShowAny ? {} : { endsWith: value.slice(-charactersShown) };
 }
 
 function refused(pointer: string, detail: string): InvalidInput {
@@ -54,17 +50,17 @@ function refused(pointer: string, detail: string): InvalidInput {
 
 function secretOf({ value, client_secret, private_key, algorithm }: Giving): Result.Result<Given, InvalidInput> {
   return value !== undefined && [client_secret, private_key, algorithm].every((field) => field === undefined)
-    ? Result.succeed({ pointer: '/value', value, recorded: endingOf(value) })
+    ? Result.succeed({ pointer: '/value', value, ...shownEndingOf(value) })
     : Result.fail(refused('', 'Expected value alone, the secret of a credential of the kind secret'));
 }
 
 function clientCredentialsOf(giving: Giving): Result.Result<Given, InvalidInput> {
   const { value, client_secret: clientSecret, private_key: privateKey, algorithm } = giving;
   if (value === undefined && clientSecret !== undefined && privateKey === undefined && algorithm === undefined) {
-    return Result.succeed({ pointer: '/client_secret', value: clientSecret, recorded: endingOf(clientSecret) });
+    return Result.succeed({ pointer: '/client_secret', value: clientSecret, ...shownEndingOf(clientSecret) });
   }
   return value === undefined && clientSecret === undefined && privateKey !== undefined && algorithm !== undefined
-    ? Result.succeed({ pointer: '/private_key', value: privateKey, recorded: { algorithm } })
+    ? Result.succeed({ pointer: '/private_key', value: privateKey, algorithm })
     : Result.fail(refused('', 'Expected client_secret, or private_key with its algorithm, one of the two'));
 }
 
@@ -84,7 +80,7 @@ export function defineGiveCredential({
     title: 'Give credential',
     description: [
       'Gives the credential of a connection through its open link, which approves the connection and uses the link up, and answers it connected.',
-      'The runtime keeps the value sealed in its secret store, and no answer, record or history of the org ever holds it, only the last four characters of a secret or client secret of twelve or more.',
+      'The runtime keeps the value sealed in its secret store, and no answer, record or history of the org ever holds it.',
       'On a runtime that signs people in, only the person who added the connection may give it.',
     ].join(' '),
     route: { method: 'POST', path: '/connections/{id}/credential' },
@@ -98,12 +94,13 @@ export function defineGiveCredential({
       const kept = yield* Effect.fromResult(linkedConnectionOf(yield* loadRegistry, use, yield* actedNow));
       const given = yield* Effect.fromResult(givenOf(kept.connection.name, kept.connection.credential, giving));
       const secretId = yield* secrets
-        .keep(Redacted.make(given.value))
+        .keep(Redacted.make(given.value), given.endsWith)
         .pipe(Effect.mapError(({ detail }) => refused(given.pointer, detail)));
-      const connected = yield* recordInRegistry({ type: 'give', ...use, secret_id: secretId, ...given.recorded }).pipe(
+      const algorithm = given.algorithm === undefined ? {} : { algorithm: given.algorithm };
+      const connected = yield* recordInRegistry({ type: 'give', ...use, secret_id: secretId, ...algorithm }).pipe(
         Effect.tapError(() => secrets.forget(secretId)),
       );
-      return connected.connection;
+      return connectionShown(connected.connection, given.endsWith ?? null);
     }),
   });
 }

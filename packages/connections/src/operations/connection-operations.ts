@@ -5,7 +5,7 @@ import { defineApprove, readLink } from '../page/link-operations.ts';
 import { bindsPerson } from '../policy/policy-rules.ts';
 import { defineAddConnection } from './add-connection.ts';
 import type { ConnectionServices } from './connection-services.ts';
-import { getConnection, listConnections } from './read-connections.ts';
+import { defineGetConnection, defineListConnections } from './read-connections.ts';
 import { defineRemoveConnection } from './remove-connection.ts';
 
 interface OrgOperation {
@@ -18,8 +18,8 @@ export function makeConnectionOperations(services: ConnectionServices): Connecti
   const binding = { bindsPerson: bindsPerson(services.access) };
   return [
     defineAddConnection(services),
-    listConnections,
-    getConnection,
+    defineListConnections(services),
+    defineGetConnection(services),
     defineRemoveConnection(services),
     readLink,
     defineApprove(binding),

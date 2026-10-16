@@ -14,11 +14,17 @@ export async function secretIdOf(fileName: string, org: string, connection: stri
   return state.get(connection)?.secretId;
 }
 
-export async function keptValueOf(fileName: string, id: string): Promise<string | undefined> {
+export interface KeptSecret {
+  readonly value: string | undefined;
+  readonly endsWith: string | undefined;
+}
+
+export async function keptSecretOf(fileName: string, id: string): Promise<KeptSecret> {
   const store = await Effect.runPromise(
     sqliteSecretStore({ fileName, keys: { current: Redacted.make(Uint8Array.from(secretsKey)) } }),
   );
   const value = await Effect.runPromise(store.read(id));
+  const endings = await Effect.runPromise(store.endingsOf([id]));
   await store.close();
-  return value === undefined ? undefined : Redacted.value(value);
+  return { value: value === undefined ? undefined : Redacted.value(value), endsWith: endings.get(id) };
 }

@@ -57,7 +57,7 @@ export function defineAddConnection({ policy, fileEntries, providers, pages, acc
         Effect.catchTags({ not_found: Effect.die, forbidden: Effect.die }),
       );
       const url = connectPageOf(pages, { org, connection, token });
-      return { ...kept.connection, connect: { url, expires_at: link.expires_at } };
+      return { ...kept.connection, credential_ends_with: null, connect: { url, expires_at: link.expires_at } };
     }),
     plainLanguage: {
       task: 'add a connection',

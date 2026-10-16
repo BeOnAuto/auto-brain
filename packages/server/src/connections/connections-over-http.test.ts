@@ -1,7 +1,7 @@
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { keptValueOf, secretIdOf, secretsKey } from '../testing/records/kept-credentials.ts';
+import { keptSecretOf, secretIdOf, secretsKey } from '../testing/records/kept-credentials.ts';
 import { temporaryLedger, type TemporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
@@ -79,7 +79,7 @@ describe('adding a connection over HTTP in local mode', () => {
 });
 
 describe('giving the credential of a connection over HTTP', () => {
-  it('connects it, keeps exactly the value sealed in the secret store, uses the link up, and forgets it on removal', async () => {
+  it('connects it, keeps the value sealed and its ending beside it, uses the link up, and forgets both on removal', async () => {
     const served = await serving();
     const { id, token } = await added(served);
     const fileName = String(ledger?.fileName);
@@ -89,16 +89,21 @@ describe('giving the credential of a connection over HTTP', () => {
       body: { token, value: 'Bearer crm-0f3c' },
     });
     const secretId = String(await secretIdOf(fileName, 'local', id));
-    const keptBefore = await keptValueOf(fileName, secretId);
+    const keptBefore = await keptSecretOf(fileName, secretId);
+    const [read, listed] = [await served.call('GET', `${connections}/${id}`), await served.call('GET', connections)];
     const again = await served.call('POST', `${connections}/${id}/credential`, { body: { token, value: 'x' } });
     const removed = await served.call('DELETE', `${connections}/${id}`);
 
     expect(approval).toMatchObject({ status: 409, body: { reason: 'conflict' } });
-    expect(given).toMatchObject({ status: 200, body: { id, status: 'connected' } });
-    expect(keptBefore).toBe('Bearer crm-0f3c');
+    expect(given).toMatchObject({ status: 200, body: { id, status: 'connected', credential_ends_with: '0f3c' } });
+    expect(keptBefore).toEqual({ value: 'Bearer crm-0f3c', endsWith: '0f3c' });
+    expect([read.body, listed.body]).toMatchObject([
+      { credential: crm.credential, credential_ends_with: '0f3c' },
+      { connections: [{ credential_ends_with: '0f3c' }] },
+    ]);
     expect(again.status).toBe(404);
-    expect(removed).toMatchObject({ status: 200, body: { status: 'removed' } });
-    expect(await keptValueOf(fileName, secretId)).toBeUndefined();
+    expect(removed).toMatchObject({ status: 200, body: { status: 'removed', credential_ends_with: null } });
+    expect(await keptSecretOf(fileName, secretId)).toEqual({ value: undefined, endsWith: undefined });
   });
 
   it('approves one that takes no credential to give', async () => {

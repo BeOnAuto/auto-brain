@@ -37,12 +37,14 @@ export const acmeViewer: CallerIdentity = { ...ada, id: 'acme-viewer', permissio
 
 interface KeptSecrets extends SecretKeeping {
   readonly values: () => ReadonlyMap<string, string>;
+  readonly endings: () => ReadonlyMap<string, string>;
 }
 
 function keptSecrets(beforeKeeping: () => Promise<unknown> = () => Promise.resolve()): KeptSecrets {
   const values = new Map<string, string>();
+  const endings = new Map<string, string>();
   return {
-    keep: (value) =>
+    keep: (value, endsWith) =>
       Effect.andThen(Effect.promise(beforeKeeping), () => {
         const text = Redacted.value(value);
         if (text.length > 64) {
@@ -50,13 +52,20 @@ function keptSecrets(beforeKeeping: () => Promise<unknown> = () => Promise.resol
         }
         const id = `secret-${values.size + 1}`;
         values.set(id, text);
+        if (endsWith !== undefined) {
+          endings.set(id, endsWith);
+        }
         return Effect.succeed(id);
       }),
+    endingsOf: (ids) =>
+      Effect.sync(() => new Map([...endings].filter(([id]: readonly [string, string]) => ids.includes(id)))),
     forget: (id) =>
       Effect.sync(() => {
         values.delete(id);
+        endings.delete(id);
       }),
     values: () => new Map(values),
+    endings: () => new Map(endings),
   };
 }
 

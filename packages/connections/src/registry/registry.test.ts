@@ -75,21 +75,6 @@ describe('an added connection, as the stream folds it', () => {
   });
 });
 
-function endingIn(endsWith: string): ConnectionEvent {
-  return { type: 'connection_connected', data: { connection: '0199-crm', secret_id: 'secret-2', ends_with: endsWith } };
-}
-
-describe('the ending of the credential of a connection, as the stream folds it', () => {
-  it('is the one the newest connection gives, and none where it gives none', () => {
-    expect(crmAfter(endingIn('0f3c'))?.connection.credential).toEqual({ ...crm.credential, ends_with: '0f3c' });
-    expect(crmAfter(endingIn('0f3c'), endingIn('9a7d'))?.connection.credential).toEqual({
-      ...crm.credential,
-      ends_with: '9a7d',
-    });
-    expect(crmAfter(endingIn('0f3c'), connection)?.connection.credential).toEqual(crm.credential);
-  });
-});
-
 describe('a connected connection, as the stream folds it', () => {
   it('takes a break with its sentence, and a removal, which keeps the id of the secret to forget', () => {
     const breaking: ConnectionEvent = {

@@ -58,16 +58,15 @@ function decideApproval(command: ConnectionApproval & CommandMetadata, registry:
 }
 
 function decideGiving(command: CredentialGiving & CommandMetadata, registry: Registry): Decision {
-  const { connection, secret_id: secretId, algorithm, ends_with: endsWith } = command;
-  const named = {
-    ...(algorithm === undefined ? {} : { algorithm }),
-    ...(endsWith === undefined ? {} : { ends_with: endsWith }),
-  };
+  const { connection, secret_id: secretId, algorithm } = command;
   return Result.flatMap(linkedConnectionOf(registry, command, command), (kept) =>
     takesAValue(kept)
       ? Result.succeed([
           { type: 'connection_approved', data: { connection } },
-          { type: 'connection_connected', data: { connection, secret_id: secretId, ...named } },
+          {
+            type: 'connection_connected',
+            data: { connection, secret_id: secretId, ...(algorithm === undefined ? {} : { algorithm }) },
+          },
         ])
       : Result.fail(takesNoCredential(kept.connection.name)),
   );
