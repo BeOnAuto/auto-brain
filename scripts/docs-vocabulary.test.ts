@@ -47,8 +47,10 @@ const allowances: readonly Allowance[] = [
   {
     text: 'https://open-workflow-specification.org/spec/1.0.0/errors',
     in: [
+      'capabilities/coordination/input-logs/refused-input.json',
       'capabilities/coordination/input-logs/retry-with-backoff.json',
       'capabilities/coordination/input-logs/timeout-fires.json',
+      'capabilities/coordination/src/input-logs/input-log-paths.ts',
       'capabilities/coordination/src/workflows/call-results.test.ts',
       'capabilities/coordination/src/workflows/error-tasks.test.ts',
       'docs/reference/workflow-format.md',
