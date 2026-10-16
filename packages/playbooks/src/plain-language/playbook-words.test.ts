@@ -1,7 +1,7 @@
 import type { Registration } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
-import { createPlaybook, getPlaybook, listPlaybooks, retirePlaybook, updatePlaybook } from '../index.ts';
+import { createPlaybook, listPlaybooks, retirePlaybook, updatePlaybook } from '../index.ts';
 
 const sales = {
   id: 'sales',
@@ -72,27 +72,6 @@ describe('the plain language of list_playbooks', () => {
 
   it('says what it tried', () => {
     expect(attemptOf(listPlaybooks.registration, {})).toBe('list the playbooks');
-  });
-});
-
-describe('the plain language of get_playbook', () => {
-  it('says whether the playbook is in use and what it is for', () => {
-    expect(outcomeOf(getPlaybook.registration, sales, { playbook: 'sales' })).toBe(
-      'The playbook “Sales” is in use. What it is for: Answers questions about the pipeline.',
-    );
-  });
-
-  it('says a retired playbook can no longer change', () => {
-    expect(outcomeOf(getPlaybook.registration, { ...retired, description: '' }, { playbook: 'old' })).toBe(
-      'The playbook “Old” has been retired; it can no longer change.',
-    );
-  });
-
-  it('names the playbook it looked for', () => {
-    expect([
-      attemptOf(getPlaybook.registration, { playbook: 'sales' }),
-      attemptOf(getPlaybook.registration, {}),
-    ]).toEqual(['look up the playbook “sales”', 'look up a playbook']);
   });
 });
 

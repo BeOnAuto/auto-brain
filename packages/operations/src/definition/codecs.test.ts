@@ -1,11 +1,13 @@
 import { Effect, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { defineQuery } from '../index.ts';
+import { defineCommand, defineQuery, takesNoBody } from '../index.ts';
 import { acmeAdmin } from '../testing/callers.ts';
 import { harness, toPlaybook } from '../testing/harness.ts';
 import { holdTree } from '../testing/misbehaving.ts';
 import { addNote, listNotes } from '../testing/notes.ts';
+
+const NoInput = Schema.Record(Schema.String, Schema.Never);
 
 const toAlpha = toPlaybook('acme', 'alpha');
 
@@ -112,5 +114,42 @@ describe('the input of a call as strings', () => {
       reason: 'invalid_input',
       issues: [{ detail: 'Expected no excess property', pointer: '/other' }, { pointer: '/limit' }],
     });
+  });
+});
+
+describe('the link a registration asks a person to open', () => {
+  const Linked = Schema.Struct({ opened: Schema.String, at: Schema.Date });
+
+  const linking = defineCommand('org', {
+    title: 'Link',
+    description: 'Links.',
+    inputSchema: NoInput,
+    reasons: [],
+    name: 'link',
+    route: { method: 'DELETE', path: '/link' },
+    outputSchema: Linked,
+    handle: () => Effect.succeed({ opened: 'https://page.example/open', at: new Date(0) }),
+    linkToOpen: ({ opened, at }) => ({ message: `Open it before ${at.toISOString()}`, url: opened }),
+  });
+
+  it('is read from its output as JSON gives it, and is not there unless its definition gives one', () => {
+    const output = { opened: 'https://page.example/open', at: '1970-01-01T00:00:00.000Z' };
+
+    expect(linking.registration.linkToOpen?.(output)).toEqual({
+      message: 'Open it before 1970-01-01T00:00:00.000Z',
+      url: 'https://page.example/open',
+    });
+    expect(addNote.registration.linkToOpen).toBeUndefined();
+  });
+});
+
+describe('a route', () => {
+  it('takes its input outside a body when it is a GET or a DELETE, and in its body when it is a POST or a PUT', () => {
+    expect((['GET', 'DELETE', 'POST', 'PUT'] as const).map((method) => takesNoBody({ method }))).toEqual([
+      true,
+      true,
+      false,
+      false,
+    ]);
   });
 });

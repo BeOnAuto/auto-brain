@@ -10,6 +10,7 @@ COPY packages/server/package.json packages/server/
 COPY packages/api/package.json packages/api/
 COPY packages/playbooks/package.json packages/playbooks/
 COPY packages/config/package.json packages/config/
+COPY packages/connections/package.json packages/connections/
 COPY packages/definitions/package.json packages/definitions/
 COPY packages/identity/package.json packages/identity/
 COPY packages/json-schema/package.json packages/json-schema/
@@ -60,6 +61,7 @@ COPY docs/reference/*-format.md docs/reference/
 COPY packages/api/src packages/api/src
 COPY packages/playbooks/src packages/playbooks/src
 COPY packages/config/src packages/config/src
+COPY packages/connections/src packages/connections/src
 COPY packages/definitions/src packages/definitions/src
 COPY packages/definitions/lib packages/definitions/lib
 COPY packages/identity/src packages/identity/src

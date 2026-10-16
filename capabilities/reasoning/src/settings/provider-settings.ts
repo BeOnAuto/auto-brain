@@ -231,3 +231,23 @@ export function vertexReading({ project, location }: VertexSource): Reading<Vert
         : configured({ project, location }),
   };
 }
+
+export const providerVariables: readonly string[] = [
+  'ANTHROPIC_API_KEY',
+  'ANTHROPIC_AUTH_TOKEN',
+  'ANTHROPIC_BASE_URL',
+  'OPENAI_API_KEY',
+  'OPENAI_BASE_URL',
+  'OPENAI_API',
+  'GOOGLE_GENERATIVE_AI_API_KEY',
+  'AWS_REGION',
+  'AWS_BEARER_TOKEN_BEDROCK',
+  'AWS_ENDPOINT_URL_BEDROCK_RUNTIME',
+  'AWS_ENDPOINT_URL',
+  'AZURE_RESOURCE_NAME',
+  'AZURE_BASE_URL',
+  'AZURE_API_VERSION',
+  'AZURE_API_KEY',
+  'GOOGLE_VERTEX_PROJECT',
+  'GOOGLE_VERTEX_LOCATION',
+];

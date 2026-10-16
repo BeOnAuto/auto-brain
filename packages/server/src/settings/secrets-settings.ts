@@ -17,6 +17,8 @@ export interface LedgerAndSecrets {
   readonly secrets: SecretsSettings;
 }
 
+export const secretsVariables: readonly string[] = ['SECRETS_KEY', 'SECRETS_KEY_PREVIOUS'];
+
 const sources = Config.all({
   current: Config.option(Config.Redacted('SECRETS_KEY')),
   previous: Config.option(Config.Redacted('SECRETS_KEY_PREVIOUS')),

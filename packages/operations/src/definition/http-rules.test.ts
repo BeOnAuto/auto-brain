@@ -17,6 +17,8 @@ const get = "  route: { method: 'GET', path: '/probe' },";
 
 const post = "  route: { method: 'POST', path: '/probe' },";
 
+const remove = "  route: { method: 'DELETE', path: '/probe' },";
+
 const answeringJson = ['  inputSchema: Empty,', "  answer: { kind: 'json', outputSchema: Empty },", '  reasons: [],'];
 
 const answeringAStream = [
@@ -36,8 +38,20 @@ const accepted: Readonly<Record<string, readonly string[]>> = {
     ...answeringAStream,
     answeringTheBody,
   ]),
-  'http-query-takes-no-body.ts': definedOverHttp('query', [
+  'http-query-by-get-takes-no-body.ts': definedOverHttp('query', [
     get,
+    "  body: { kind: 'none' },",
+    ...answeringJson,
+    answering,
+  ]),
+  'http-query-by-post-takes-json.ts': definedOverHttp('query', [
+    post,
+    "  body: { kind: 'json' },",
+    ...answeringJson,
+    answering,
+  ]),
+  'http-command-by-delete-takes-no-body.ts': definedOverHttp('command', [
+    remove,
     "  body: { kind: 'none' },",
     ...answeringJson,
     answering,
@@ -55,9 +69,21 @@ const rejected: Readonly<Record<string, RejectedProbe>> = {
       answerOfEitherKind,
     ),
   },
-  'http-query-takes-a-body.ts': {
+  'http-query-by-get-takes-a-stream.ts': {
     because: 'Type \'"csv"\' is not assignable to type \'"none"\'',
     source: definedOverHttp('query', [get, "  body: { kind: 'csv', mostBytes: 64 },", ...answeringJson, answering]),
+  },
+  'http-query-by-get-takes-json.ts': {
+    because: 'Type \'"json"\' is not assignable to type \'"none"\'',
+    source: definedOverHttp('query', [get, "  body: { kind: 'json' },", ...answeringJson, answering]),
+  },
+  'http-query-by-post-takes-no-body.ts': {
+    because: 'Type \'"none"\' is not assignable to type \'"json"\'',
+    source: definedOverHttp('query', [post, "  body: { kind: 'none' },", ...answeringJson, answering]),
+  },
+  'http-command-by-delete-takes-json.ts': {
+    because: 'Type \'"json"\' is not assignable to type \'"none"\'',
+    source: definedOverHttp('command', [remove, "  body: { kind: 'json' },", ...answeringJson, answering]),
   },
   'http-streamed-body-without-most-bytes.ts': {
     because: "Property 'mostBytes' is missing",
@@ -89,7 +115,7 @@ describe('the compiler, given operations served over HTTP alone', () => {
     errors = compiledErrors('http-rules', { accepted, rejected });
   });
 
-  it('accepts every body a definition may take and rejects every one it may not', () => {
+  it('accepts every body the method of its route may take and rejects every one it may not', () => {
     expect(new Set(errors.map((error) => error.slice(0, error.indexOf('('))))).toEqual(new Set(Object.keys(rejected)));
   });
 

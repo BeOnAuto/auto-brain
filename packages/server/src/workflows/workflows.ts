@@ -1,43 +1,31 @@
 import type { AppRuntime } from '@on.auto/api';
 import { callMarginMs, defineSendRunEvent, makeWorkflowAdapter, type ExpressionCheck } from '@on.auto/coordination';
-import {
-  defineStartVersion,
-  type PlaybookOperation,
-  type PlaybookOwnNames,
-  type Capability,
-  type CapabilityFacts,
-} from '@on.auto/definitions';
-import {
-  makeCatalog,
-  makeDispatcher,
-  type DispatcherServices,
-  type HttpRegistration,
-  type Registration,
-} from '@on.auto/operations';
+import { defineStartVersion, type PlaybookOwnNames, type Capability, type CapabilityFacts } from '@on.auto/definitions';
+import { makeCatalog, makeDispatcher, type DispatcherServices, type RouteRegistration } from '@on.auto/operations';
 import type { WorkflowHost } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { playbookOperationsServing } from '../composition/playbook-operations.ts';
-import { routesFor } from '../composition/served-routes.ts';
+import { routesFor, type ServedCatalog } from '../composition/served-routes.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { openedHost, type HostParts } from './host-dependencies.ts';
 
 interface OrgOperation {
-  readonly registration: Registration<'org'>;
+  readonly registration: RouteRegistration<'org'>;
 }
 
-interface PlaybookRoute {
-  readonly registration: HttpRegistration<'playbook'>;
+interface PlaybookOperation {
+  readonly registration: RouteRegistration<'playbook'>;
 }
 
 export interface WorkflowParts extends HostParts {
   readonly orgOperations: readonly OrgOperation[];
   readonly playbookOperations: readonly PlaybookOperation[];
-  readonly playbookRoutes: readonly PlaybookRoute[];
   readonly check: ExpressionCheck;
   readonly facts: CapabilityFacts;
   readonly names: PlaybookOwnNames;
   readonly identityIssuer: string;
+  readonly retryStateKeys: ServedCatalog['retryStateKeys'];
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -77,9 +65,9 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.orgOperations,
     ...playbookOperationsServing(capabilities, parts),
     ...parts.playbookOperations,
-    ...parts.playbookRoutes,
     defineSendRunEvent(host, names),
   ]);
-  const served = { catalog, dispatcher, capabilities, identityIssuer: parts.identityIssuer };
+  const { identityIssuer, retryStateKeys } = parts;
+  const served = { catalog, dispatcher, capabilities, identityIssuer, retryStateKeys };
   return { routes: routesFor(runtime, served), stopWork: host.stop };
 }

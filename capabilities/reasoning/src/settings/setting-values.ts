@@ -1,4 +1,4 @@
-import { withoutTrailingSlashes, type SettingProblem } from '@on.auto/config';
+import { problem as problemAtPointer, withoutTrailingSlashes, type SettingProblem } from '@on.auto/config';
 import { Config, ConfigProvider, Option, type Redacted } from 'effect';
 
 export type { SettingProblem } from '@on.auto/config';
@@ -49,6 +49,10 @@ export function anySet(...values: readonly unknown[]): boolean {
 
 export function problem(setting: string, detail: string): readonly SettingProblem[] {
   return [{ setting, detail }];
+}
+
+export function problemAt(setting: string, pointer: string, detail: string): readonly SettingProblem[] {
+  return [problemAtPointer(setting, pointer, detail)];
 }
 
 function isWebUrl(url: string): boolean {

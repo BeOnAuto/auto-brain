@@ -12,7 +12,7 @@ import {
   secretsOf,
   type Checked,
 } from './checked.ts';
-import { checkedAuth, checkedHeaders, type ReservedHeaders } from './remote-checks.ts';
+import { checkedAuth, checkedHeaders } from './remote-checks.ts';
 import type { ServerEntryFields } from './server-entries.ts';
 import type { ApiDocumentSource, OpenApiServerSettings } from './server-settings.ts';
 
@@ -20,11 +20,6 @@ export type ApiTransport = Pick<
   OpenApiServerSettings,
   'type' | 'document' | 'base_url' | 'headers' | 'query_params' | 'security' | 'auth'
 >;
-
-const headersOfTheBridge: ReservedHeaders = {
-  names: new Set(['accept', 'content-type', 'content-length', 'host']),
-  setBy: 'the runtime',
-};
 
 const documentShape = `${pinnedUrlShape}, or a path relative to the directory of the configuration file that stays inside it`;
 
@@ -92,7 +87,7 @@ export function apiTransport(
 ): Checked<ApiTransport> {
   const source = checkedDocument(name, document, directory);
   const baseUrl = checkedBaseUrl(name, fields.base_url);
-  const headers = checkedHeaders(name, fields.headers ?? {}, headersOfTheBridge);
+  const headers = checkedHeaders(name, fields.headers ?? {}, 'openapi');
   const query = checkedQuery(name, fields.query_params ?? {});
   const security = checkedSecurity(name, fields.security ?? {});
   const auth = checkedAuth(name, fields);

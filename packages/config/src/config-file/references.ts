@@ -120,6 +120,16 @@ export function literalTextOf(textWithReferences: string): string {
     .join('');
 }
 
+export function referencedVariablesOf(value: Schema.Json): readonly string[] {
+  if (typeof value === 'string') {
+    return piecesOf(value).flatMap((piece) => {
+      const [, name] = environmentReference.exec(piece.text) ?? [];
+      return name === undefined ? [] : [name];
+    });
+  }
+  return entriesOf(value).flatMap(([, item]) => referencedVariablesOf(item));
+}
+
 export function holdsReference(textWithReferences: string): boolean {
   return piecesOf(textWithReferences).some((piece) => environmentReference.test(piece.text));
 }

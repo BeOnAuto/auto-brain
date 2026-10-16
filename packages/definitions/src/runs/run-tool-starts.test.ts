@@ -46,7 +46,7 @@ function starting(request: object = {}): RunCommand {
 
 const startedCallingTools = new Conflict({
   detail:
-    'The run has started and its definition calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another run id, and read with get_run_history what it has called so far',
+    'The run has started and its definition calls tools, so it is not run again under its id: it may still be in progress, or have stopped without recording how it ended, and its tools may have changed something; start a new run with another run id, and read with list_playbook_events, given its run id, what it has called so far',
   kind: 'tools_called',
 });
 

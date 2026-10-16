@@ -9,7 +9,7 @@ import {
   namesAnArn,
   parseModelReference,
 } from '../model/model-reference.ts';
-import { problem, type SettingProblem } from './setting-values.ts';
+import { problemAt, type SettingProblem } from './setting-values.ts';
 
 export interface CatalogReading {
   readonly problems: readonly SettingProblem[];
@@ -64,7 +64,7 @@ const decodeDeclarations: SettingDecoder<Declarations> = Schema.decodeUnknownRes
 const decodeAllowed: SettingDecoder<readonly string[]> = Schema.decodeUnknownResult(AllowedModelsSchema, strictly);
 
 function declaredProblem(pointer: string, detail: string): readonly SettingProblem[] {
-  return problem(declaredSetting, `${pointer}: ${detail}`);
+  return problemAt(declaredSetting, pointer, detail);
 }
 
 function providerProblems(provider: string, gateways: readonly string[]): readonly SettingProblem[] {
@@ -147,11 +147,15 @@ function allowedProblem(
 
 function allowedProblems(allowed: readonly string[], context: CatalogContext): readonly SettingProblem[] {
   if (allowed.length === 0) {
-    return problem(allowedSetting, `/: Expected at least one model; leave ${allowedSetting} out to offer every model`);
+    return problemAt(
+      allowedSetting,
+      '',
+      `Expected at least one model; leave ${allowedSetting} out to offer every model`,
+    );
   }
   return allowed.flatMap((reference, position) => {
     const detail = allowedProblem(reference, position, allowed, context);
-    return detail === undefined ? [] : problem(allowedSetting, `/${position}: ${detail}`);
+    return detail === undefined ? [] : problemAt(allowedSetting, `/${position}`, detail);
   });
 }
 

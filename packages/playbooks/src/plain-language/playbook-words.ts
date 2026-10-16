@@ -39,9 +39,3 @@ function retiredOf(playbooks: readonly Playbook[]): string {
 export function playbooksListed(playbooks: readonly Playbook[]): string {
   return `${inUse(playbooks.filter(({ status }) => status === 'active'))}${retiredOf(playbooks.filter(({ status }) => status === 'retired'))}`;
 }
-
-export function playbookStanding({ name, status }: Pick<Playbook, 'name' | 'status'>): string {
-  return status === 'active'
-    ? `The playbook ${quoted(name)} is in use.`
-    : `The playbook ${quoted(name)} has been retired; it can no longer change.`;
-}
