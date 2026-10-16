@@ -77,7 +77,7 @@ describe('approving a connection', () => {
 
   it('is refused to another person where sign-in is on, and taken from the token alone where it is not', async () => {
     const signedIn = harness();
-    const local = harness({ signIn: false });
+    const local = harness({ access: 'local' });
     const there = await added(signedIn, notes);
     const here = await added(local, notes);
 

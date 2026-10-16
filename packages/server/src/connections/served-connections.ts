@@ -1,5 +1,5 @@
 import type { AppRuntime } from '@on.auto/api';
-import { makeConnectionOperations, type ConnectionOperations } from '@on.auto/connections';
+import { makeConnectionOperations, type ConnectionOperations, type RuntimeAccess } from '@on.auto/connections';
 import { studioOrigin } from '@on.auto/identity';
 import type { SecretStore } from '@on.auto/ledger';
 import type { DispatcherServices } from '@on.auto/operations';
@@ -14,8 +14,17 @@ export interface StoresAndConnections {
   readonly connections: ConnectionOperations;
 }
 
+type ServingSettings = Pick<Settings, 'connections' | 'toolServers' | 'models' | 'signIn' | 'apiKeys'>;
+
+function accessOf({ signIn, apiKeys }: ServingSettings): RuntimeAccess {
+  if (signIn !== undefined) {
+    return 'people';
+  }
+  return apiKeys === undefined ? 'local' : 'keys';
+}
+
 function connectionsServedBy(
-  settings: Pick<Settings, 'connections' | 'toolServers' | 'models' | 'signIn'>,
+  settings: ServingSettings,
   secrets: SecretStore,
   ownOrigin: () => string,
 ): ConnectionOperations {
@@ -26,7 +35,7 @@ function connectionsServedBy(
     fileEntries: settings.toolServers.servers.map(({ name }) => name),
     providers: modelProvidersOf(settings.models),
     pages: { studio: studioOrigin, runtime: () => signIn?.publicUrl ?? ownOrigin() },
-    signIn: signIn !== undefined,
+    access: accessOf(settings),
   });
 }
 

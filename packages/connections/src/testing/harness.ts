@@ -92,7 +92,7 @@ export function harness({ beforeKeeping, ...given }: HarnessOptions = {}): Harne
     fileEntries: ['wiki'],
     providers: ['openai'],
     pages: { studio, runtime: () => runtimeOrigin },
-    signIn: true,
+    access: 'people',
     ...given,
   });
   const dispatcher = makeDispatcher([]);

@@ -1,8 +1,11 @@
-import { Forbidden, listed } from '@on.auto/operations';
+import { isSignedInPerson } from '@on.auto/identity';
+import { Forbidden, listed, type CallerIdentity } from '@on.auto/operations';
 
 import type { ConnectionEntry, ConnectionKind } from '../registry/connection-entry.ts';
 import type { Credential } from '../registry/credential.ts';
 import type { ConnectionPolicy } from './connection-policy.ts';
+
+export type RuntimeAccess = 'people' | 'keys' | 'local';
 
 export interface Addition {
   readonly kind: ConnectionKind;
@@ -57,6 +60,24 @@ function kindRefusal(credentialKinds: ConnectionPolicy['credentialKinds'], { cre
     : new Forbidden({
         detail: `A connection may not take a ${credential.kind} credential on this runtime, which allows ${allowing(credentialKinds, 'no kind of credential')}`,
       });
+}
+
+export function adderRefusalOf(access: RuntimeAccess, caller: CallerIdentity): Forbidden | undefined {
+  if (access === 'keys') {
+    return new Forbidden({
+      detail:
+        'This runtime signs nobody in, so no person can approve a connection: set PUBLIC_URL, or add the server to the configuration',
+    });
+  }
+  return access === 'people' && !isSignedInPerson(caller)
+    ? new Forbidden({
+        detail: 'A connection is added by a person, through an agent signed in as them, and a key cannot add one',
+      })
+    : undefined;
+}
+
+export function bindsPerson(access: RuntimeAccess): boolean {
+  return access === 'people';
 }
 
 export function policyRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {

@@ -1,5 +1,6 @@
-import { signInScopes } from '@on.auto/identity';
+import { createApiKey, signInScopes } from '@on.auto/identity';
 import type { FakeIssuer } from '@on.auto/identity/testing';
+import { allPermissions } from '@on.auto/operations';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
@@ -9,6 +10,8 @@ import { servingReasoning, type ReasoningServer } from '../testing/servers/reaso
 const publicUrl = 'http://localhost:5555';
 
 const connections = '/v1/orgs/acme/connections';
+
+const builder = createApiKey({ id: 'acme-builder', org: 'acme', permissions: allPermissions, playbooks: '*' });
 
 const notes = {
   name: 'notes',
@@ -64,5 +67,35 @@ describe('a connection on a runtime that signs people in', () => {
       body: { detail: 'The connection notes was added by another person, and only they may approve it' },
     });
     expect(byAda).toMatchObject({ status: 200, body: { status: 'connected' } });
+  });
+
+  it('is refused to a key, since no person would approve it', async () => {
+    const issuer = await issuerOverHttps();
+    server = await servingReasoning([], {
+      IDENTITY_ISSUER: issuer.issuer,
+      PUBLIC_URL: publicUrl,
+      API_KEYS: JSON.stringify([builder.entry]),
+    });
+
+    expect(await server.call('POST', connections, { key: builder.key, body: notes })).toMatchObject({
+      status: 403,
+      body: {
+        detail: 'A connection is added by a person, through an agent signed in as them, and a key cannot add one',
+      },
+    });
+  });
+});
+
+describe('a connection on a runtime of keys alone', () => {
+  it('is refused, since the runtime signs in no person to approve it, and says what to set', async () => {
+    server = await servingReasoning([], { API_KEYS: JSON.stringify([builder.entry]) });
+
+    expect(await server.call('POST', connections, { key: builder.key, body: notes })).toMatchObject({
+      status: 403,
+      body: {
+        detail:
+          'This runtime signs nobody in, so no person can approve a connection: set PUBLIC_URL, or add the server to the configuration',
+      },
+    });
   });
 });

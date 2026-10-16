@@ -62,7 +62,10 @@ function givenOf(name: string, credential: Credential, giving: Giving): Result.R
   return credential.kind === 'client_credentials' ? clientCredentialsOf(giving) : Result.fail(takesNoCredential(name));
 }
 
-export function defineGiveCredential({ secrets, signIn }: Pick<ConnectionServices, 'secrets' | 'signIn'>) {
+export function defineGiveCredential({
+  secrets,
+  bindsPerson,
+}: Pick<ConnectionServices, 'secrets'> & { readonly bindsPerson: boolean }) {
   return defineHttpOperation('org', 'command', {
     name: 'give_credential',
     title: 'Give credential',
@@ -78,7 +81,7 @@ export function defineGiveCredential({ secrets, signIn }: Pick<ConnectionService
     answer: { kind: 'json', outputSchema: ConnectionSchema },
     reasons: ['not_found', 'forbidden', 'conflict', 'invalid_input'],
     handle: Effect.fnUntraced(function* (giving) {
-      const use = { connection: giving.id, token_sha256: tokenSha256Of(giving.token), bindsPerson: signIn };
+      const use = { connection: giving.id, token_sha256: tokenSha256Of(giving.token), bindsPerson };
       const kept = yield* Effect.fromResult(linkedConnectionOf(yield* loadRegistry, use, yield* actedNow));
       const given = yield* Effect.fromResult(givenOf(kept.connection.name, kept.connection.credential, giving));
       const secretId = yield* secrets

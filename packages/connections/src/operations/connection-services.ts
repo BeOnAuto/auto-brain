@@ -2,6 +2,7 @@ import type { Effect, Redacted } from 'effect';
 
 import type { ConnectPages } from '../links/connect-page.ts';
 import type { ConnectionPolicy } from '../policy/connection-policy.ts';
+import type { RuntimeAccess } from '../policy/policy-rules.ts';
 
 export interface SecretKeeping {
   readonly keep: (value: Redacted.Redacted) => Effect.Effect<string, { readonly detail: string }>;
@@ -14,5 +15,5 @@ export interface ConnectionServices {
   readonly fileEntries: readonly string[];
   readonly providers: readonly string[];
   readonly pages: ConnectPages;
-  readonly signIn: boolean;
+  readonly access: RuntimeAccess;
 }

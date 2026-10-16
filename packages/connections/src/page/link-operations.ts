@@ -3,7 +3,6 @@ import { Effect, Schema } from 'effect';
 
 import { tokenSha256Of } from '../links/link-token.ts';
 import { ConnectionIdField, TokenField } from '../operations/connection-fields.ts';
-import type { ConnectionServices } from '../operations/connection-services.ts';
 import { actedNow, loadRegistry, recordInRegistry } from '../operations/registry-access.ts';
 import { ConnectionSchema } from '../registry/connection.ts';
 import { linkedConnectionOf } from '../registry/registry-lookup.ts';
@@ -36,7 +35,7 @@ export const readLink = defineHttpOperation('org', 'query', {
   }),
 });
 
-export function defineApprove({ signIn }: Pick<ConnectionServices, 'signIn'>) {
+export function defineApprove({ bindsPerson }: { readonly bindsPerson: boolean }) {
   return defineHttpOperation('org', 'command', {
     name: 'approve',
     title: 'Approve connection',
@@ -53,7 +52,7 @@ export function defineApprove({ signIn }: Pick<ConnectionServices, 'signIn'>) {
     reasons: ['not_found', 'forbidden', 'conflict'],
     handle: ({ id, token }) =>
       Effect.map(
-        recordInRegistry({ type: 'approve', connection: id, token_sha256: tokenSha256Of(token), bindsPerson: signIn }),
+        recordInRegistry({ type: 'approve', connection: id, token_sha256: tokenSha256Of(token), bindsPerson }),
         ({ connection }) => connection,
       ),
   });

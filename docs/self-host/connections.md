@@ -16,6 +16,16 @@ On a runtime that signs people in, only the person who added a connection may ap
 
 `list_connections` shows the connections of the org and whether each is `pending`, `connected`, `broken` or `removed`; Studio reads one with `get_connection`. `remove_connection` removes one for good: no playbook may use it any more, and Auto forgets its credential. The [MCP reference](../reference/mcp.md#connections) describes the three tools, and the [HTTP reference](../reference/http.md#connections) the routes, those of Studio's page among them.
 
+## Which runtimes take connections
+
+A person approves every connection, so a connection is added by a person, and a runtime takes connections only where a person reaches it as themselves:
+
+| Runtime                                         | Who adds a connection                                                                                                                                                                                                      | The runtime the link names     |
+| ----------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ |
+| One that signs people in, with `PUBLIC_URL` set | A person, through an agent signed in as them. `add_connection` refuses a key with `403`, since no person would approve what it adds                                                                                        | `PUBLIC_URL`                   |
+| One in [local mode](security.md#local-mode)     | The local developer                                                                                                                                                                                                        | The runtime's loopback address |
+| One of `API_KEYS` alone, which signs nobody in  | Nobody: `add_connection` refuses every connection with `403`, since no person could approve it. Set `PUBLIC_URL` to sign people in, or add the server to `auto-runtime.yaml` as [Add a tool server](tool-servers.md) shows |                                |
+
 ## What a connection holds
 
 A connection has a name, which a function will give it as a tool server's name, a kind, an entry and a credential.

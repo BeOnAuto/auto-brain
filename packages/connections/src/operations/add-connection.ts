@@ -1,14 +1,20 @@
-import { Conflict, OrgContext, defineCommand, quoted, randomUUIDv7 } from '@on.auto/operations';
+import { Caller, Conflict, OrgContext, defineCommand, quoted, randomUUIDv7 } from '@on.auto/operations';
 import { Effect } from 'effect';
 
 import { additionIssuesOf, invalidAddition } from '../entries/entry-checks.ts';
 import { connectPageOf } from '../links/connect-page.ts';
 import { issuedLink } from '../links/link-token.ts';
-import { policyRefusalOf } from '../policy/policy-rules.ts';
+import { adderRefusalOf, policyRefusalOf } from '../policy/policy-rules.ts';
 import { AddedSchema, AdditionSchema } from './connection-fields.ts';
 import type { ConnectionServices } from './connection-services.ts';
 import { connectionNamed, linkWords } from './connection-words.ts';
 import { recordInRegistry } from './registry-access.ts';
+
+const description = [
+  "Adds a tool server to the org as a connection, which its playbooks may use, and answers it pending with a link to Studio's page.",
+  'Use it when the person wants a function to reach a server the runtime does not set up; search lists the servers there are.',
+  'The entry holds no credential: the person approves the connection, and gives its credential, on the page the link opens within ten minutes.',
+].join(' ');
 
 function takenByTheFile(name: string): Conflict {
   return new Conflict({
@@ -17,21 +23,21 @@ function takenByTheFile(name: string): Conflict {
   });
 }
 
-export function defineAddConnection({ policy, fileEntries, providers, pages }: ConnectionServices) {
+export function defineAddConnection({ policy, fileEntries, providers, pages, access }: ConnectionServices) {
   return defineCommand('org', {
     name: 'add_connection',
     title: 'Add connection',
-    description: [
-      "Adds a tool server to the org as a connection, which its playbooks may use, and answers it pending with a link to Studio's page.",
-      'Use it when the person wants a function to reach a server the runtime does not set up; search lists the servers there are.',
-      'The entry holds no credential: the person approves the connection, and gives its credential, on the page the link opens within ten minutes.',
-    ].join(' '),
+    description,
     route: { method: 'POST', path: '/connections' },
     successStatus: 201,
     inputSchema: AdditionSchema,
     outputSchema: AddedSchema,
     reasons: ['invalid_input', 'forbidden', 'conflict'],
     handle: Effect.fnUntraced(function* (input) {
+      const adderRefusal = adderRefusalOf(access, yield* Caller);
+      if (adderRefusal !== undefined) {
+        return yield* Effect.fail(adderRefusal);
+      }
       const { org } = yield* OrgContext;
       const issues = additionIssuesOf(input, { org, providers });
       if (issues.length > 0) {
