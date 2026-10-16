@@ -76,17 +76,15 @@ export function scoredOf(grid: ScoringGrid, series: readonly SeriesForecast[]): 
   };
 }
 
-function lossesNothingAt(grid: ScoringGrid, series: SeriesForecast, metric: Metric): boolean {
-  return grid.slots.every((slot) =>
-    pairsOf(grid, series, slot).every((pair) => {
-      const loss = lossOf(metric, pair, series.scale);
-      return !Number.isFinite(loss) || loss === 0;
-    }),
-  );
+function finiteLossesOf(grid: ScoringGrid, series: SeriesForecast, metric: Metric): readonly number[] {
+  return grid.slots
+    .flatMap((slot) => pairsOf(grid, series, slot).map((pair) => lossOf(metric, pair, series.scale)))
+    .filter((loss) => Number.isFinite(loss));
 }
 
 export function losesNothing(grid: ScoringGrid, series: readonly SeriesForecast[], metric: Metric): boolean {
-  return series.every((one) => lossesNothingAt(grid, one, metric));
+  const losses = series.flatMap((one) => finiteLossesOf(grid, one, metric));
+  return losses.length > 0 && losses.every((loss) => loss === 0);
 }
 
 export function primaryOf(scores: readonly Score[], metric: Metric): number | undefined {

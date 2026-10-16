@@ -11,7 +11,7 @@ import { featureNamesOf, gridOfTheBuild, rowsFileOf } from '../scoring/scoring-i
 
 function perfectAs(baseline: string, metric: string): Conflict {
   return new Conflict({
-    detail: `The baseline ${baseline} already scores 0 on ${metric} over every period held back, the best a score can be, so no candidate can beat it; ask for a build once the series moves`,
+    detail: `The baseline ${baseline} already scores 0 on ${metric} at every period held back where ${metric} scores it, the best a score can be, so no candidate can beat it; ask for a build once the series moves`,
     kind: 'baseline_perfect',
   });
 }
@@ -28,10 +28,9 @@ export function noBaselinePerfect(
     const rows = yield* Effect.promise(() => seriesRowsIn(path, { features }));
     const grid = gridOfTheBuild(document, assembled);
     const { baselines, metric } = document.evaluation;
-    const perfect = baselines.find((baseline) => {
-      const { forecasts, scored } = baselineWalk({ grid, rows }, baseline);
-      return scored.seriesWalked > 0 && losesNothing(grid, forecasts, metric);
-    });
+    const perfect = baselines.find((baseline) =>
+      losesNothing(grid, baselineWalk({ grid, rows }, baseline).forecasts, metric),
+    );
     return perfect === undefined ? undefined : yield* Effect.fail(perfectAs(perfect, metric));
   });
 }
