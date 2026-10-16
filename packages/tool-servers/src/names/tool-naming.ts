@@ -2,13 +2,12 @@ import { servesPlaybook } from '@on.auto/config';
 import { capitalized, type PlaybookAddress } from '@on.auto/operations';
 import { Result } from 'effect';
 
+import { ToolNotOffered } from '../access/tool-not-offered.ts';
 import type { ListedTool } from '../bounds/tool-results.ts';
 import type { OfferedOnServer } from '../calls/run-parts.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
-import type { ServerLink } from '../connections/server-links.ts';
-import { allowsTool, isAllowed, namesEveryTool, writtenOf, type ToolReference } from '../names/tool-reference.ts';
 import type { ServerSettings } from '../settings/server-settings.ts';
-import { ToolNotOffered } from './tool-not-offered.ts';
+import { allowsTool, isAllowed, namesEveryTool, writtenOf, type ToolReference } from './tool-reference.ts';
 
 export interface Settled {
   readonly settings: Pick<ServerSettings, 'orgs' | 'playbooks' | 'allowed'>;
@@ -18,8 +17,6 @@ export interface NamingOn<Link extends Settled> {
   readonly references: readonly ToolReference[];
   readonly links: ReadonlyMap<string, Link>;
 }
-
-export type Naming = NamingOn<ServerLink>;
 
 export interface Listed {
   readonly slot: ServerSlot;
@@ -91,7 +88,9 @@ export function namedLinks<Link extends Settled>(
   return Result.succeed([...new Set(serving.map(({ link }) => link))]);
 }
 
-type Offering = Pick<Naming, 'references'>;
+export interface Offering {
+  readonly references: readonly ToolReference[];
+}
 
 function namedOn({ slot }: Listed, naming: Offering): readonly ToolReference[] {
   return naming.references.filter((reference) => reference.server === slot.settings.name);

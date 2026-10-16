@@ -1,21 +1,18 @@
 import { Effect, Result } from 'effect';
 
-import type { Timing } from '../bounds/call-bounds.ts';
-import type { Secrets } from '../bounds/secrets.ts';
 import type { KeepIn } from '../calls/recorded-calls.ts';
+import type { RunToolsParts } from '../calls/run-parts.ts';
 import { runTools, type RunTools } from '../calls/run-tools.ts';
 import { ignored } from '../connections/ignored.ts';
-import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
+import type { ServerLink } from '../connections/server-links.ts';
+import { notListed, offeredOn, unlistedOn, type Listed, type Offering } from '../names/tool-naming.ts';
+import type { ToolsNotOpened } from './caller-context.ts';
 import { listedOn, released } from './server-listing.ts';
-import { namedLinks, notListed, offeredOn, unlistedOn, type Listed, type Naming } from './tool-naming.ts';
 import type { ToolServerFailed } from './tool-server-failed.ts';
 
-export interface Opening extends Naming {
-  readonly context: CallerContext;
-  readonly secrets: Secrets;
+export interface Opening extends Offering, Pick<RunToolsParts, 'context' | 'secrets' | 'timing' | 'report'> {
+  readonly links: readonly ServerLink[];
   readonly keepIn: KeepIn;
-  readonly timing: Timing;
-  readonly report: (message: ServerMessage) => void;
 }
 
 type Listing = Promise<Result.Result<readonly Listed[], ToolServerFailed>>;
@@ -31,9 +28,8 @@ function releasedOnceSettled(listing: Listing): Effect.Effect<void> {
 
 export function openedRun(opening: Opening): Effect.Effect<RunTools, ToolsNotOpened> {
   return Effect.gen(function* () {
-    const links = yield* Effect.fromResult(namedLinks(opening.context, opening));
     const context = yield* Effect.context();
-    const listing = yield* Effect.sync(() => listedOn(links, opening));
+    const listing = yield* Effect.sync(() => listedOn(opening.links, opening));
     const settled = yield* Effect.promise(() => listing).pipe(Effect.onInterrupt(() => releasedOnceSettled(listing)));
     const listed = yield* Effect.fromResult(settled);
     const missing = listed.flatMap((each) => unlistedOn(each, opening));

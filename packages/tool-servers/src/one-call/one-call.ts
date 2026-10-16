@@ -1,14 +1,20 @@
-import { Array as Arr, Effect, Option, Result } from 'effect';
+import { Effect } from 'effect';
 
 import type { Listing } from '../access/server-listing.ts';
-import { namedLinks } from '../access/tool-naming.ts';
-import type { ToolNotOffered } from '../access/tool-not-offered.ts';
 import { recordingOf, type CallJournal, type KeepIn } from '../calls/recorded-calls.ts';
 import { journalledCall, type CallJournalling } from '../calls/tool-caller.ts';
 import type { ServerLink } from '../connections/server-links.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
+import { isUnready, type OrgServer, type Unusable } from '../org-servers/org-servers.ts';
 import { openedFor } from './call-opening.ts';
-import { answeredOnce, notOfferedOnce, tracedOnce, type CalledOnce } from './called-once.ts';
+import {
+  answeredOnce,
+  failedToOpenOnce,
+  notOfferedOnce,
+  tracedOnce,
+  type CalledOnce,
+  type UnopenedOnce,
+} from './called-once.ts';
 
 export interface OneCall {
   readonly org: string;
@@ -27,7 +33,6 @@ export interface RunCall {
 export type CallOnce = (call: OneCall, runCall?: RunCall) => Effect.Effect<CalledOnce>;
 
 export interface OneCallAccess extends Listing {
-  readonly links: ReadonlyMap<string, ServerLink>;
   readonly keepIn: KeepIn;
 }
 
@@ -62,6 +67,15 @@ async function calledOnce(call: OneCall, link: ServerLink, { access, journalling
   }
 }
 
+function unopenedBy({ because, detail }: Unusable): UnopenedOnce {
+  return isUnready(because) ? notOfferedOnce({ because, detail }) : failedToOpenOnce({ because, detail });
+}
+
+async function linkedAndCalled(call: OneCall, server: OrgServer, calling: Calling): Promise<CalledOnce> {
+  const linked = await server.linked();
+  return 'refused' in linked ? unopenedBy(linked.refused) : calledOnce(call, linked.link, calling);
+}
+
 type Awaiting = <A>(effect: Effect.Effect<A>) => Promise<A>;
 
 function journallingOf(runCall: RunCall | undefined, awaited: Awaiting): Journalling | undefined {
@@ -77,20 +91,18 @@ function journallingOf(runCall: RunCall | undefined, awaited: Awaiting): Journal
       });
 }
 
-function called(call: OneCall, link: ServerLink, access: OneCallAccess, runCall?: RunCall): Effect.Effect<CalledOnce> {
+export function oneCall(
+  call: OneCall,
+  server: OrgServer,
+  access: OneCallAccess,
+  runCall?: RunCall,
+): Effect.Effect<CalledOnce> {
   return tracedOnce(
-    { server: link.settings.name, tool: call.reference.tool },
-    link.settings.type,
+    { server: server.settings.name, tool: call.reference.tool },
+    server.settings,
     Effect.gen(function* () {
       const journalling = journallingOf(runCall, Effect.runPromiseWith(yield* Effect.context()));
-      return yield* Effect.promise((signal) => calledOnce(call, link, { access, journalling, signal }));
+      return yield* Effect.promise((signal) => linkedAndCalled(call, server, { access, journalling, signal }));
     }),
   );
-}
-
-export function oneCall(call: OneCall, access: OneCallAccess, runCall?: RunCall): Effect.Effect<CalledOnce> {
-  return Result.match(namedLinks(call, { references: [call.reference], links: access.links }), {
-    onFailure: (refusal: Pick<ToolNotOffered, 'because' | 'detail'>) => Effect.succeed(notOfferedOnce(refusal)),
-    onSuccess: (links) => called(call, Option.getOrThrow(Arr.head(links)), access, runCall),
-  });
 }

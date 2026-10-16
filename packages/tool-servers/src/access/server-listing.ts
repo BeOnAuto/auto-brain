@@ -5,7 +5,8 @@ import type { Secrets } from '../bounds/secrets.ts';
 import { takenSlot, type ServerSlot } from '../calls/server-slot.ts';
 import { failureOf, type FailureKind, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
-import type { Listed } from './tool-naming.ts';
+import type { Listed } from '../names/tool-naming.ts';
+import type { ServerSettings } from '../settings/server-settings.ts';
 import { ToolServerFailed, type ServerFailedBecause } from './tool-server-failed.ts';
 
 export interface Listing {
@@ -26,7 +27,7 @@ const failedBecause: Readonly<Record<FailureKind, ServerFailedBecause>> = {
 };
 
 export function serverFailed(
-  { settings }: Pick<ServerLink, 'settings'>,
+  { settings }: { readonly settings: Pick<ServerSettings, 'name'> },
   { kind, message }: ServerFailure,
   { scrub }: Secrets,
 ): ToolServerFailed {

@@ -23,6 +23,7 @@ export type KeepIn = (playbook: PlaybookAddress) => KeepContent;
 export interface Recording {
   readonly content: boolean;
   readonly requestId: boolean;
+  readonly connection: string | null;
   readonly secrets: Pick<Secrets, 'scrub' | 'scrubValue'>;
   readonly keep: KeepContent;
 }
@@ -40,11 +41,17 @@ export interface CallAnswer {
 }
 
 export function recordingOf(
-  settings: Pick<ServerSettings, 'record_content' | 'request_id'>,
+  settings: Pick<ServerSettings, 'record_content' | 'request_id' | 'connection'>,
   secrets: Pick<Secrets, 'scrub' | 'scrubValue'>,
   keep: KeepContent,
 ): Recording {
-  return { content: settings.record_content, requestId: settings.request_id !== null, secrets, keep };
+  return {
+    content: settings.record_content,
+    requestId: settings.request_id !== null,
+    connection: settings.connection,
+    secrets,
+    keep,
+  };
 }
 
 export function scrubbedJsonOf(json: string, { secrets }: Pick<Recording, 'secrets'>): string {
@@ -65,6 +72,7 @@ export async function startedFields(call: StartingCall, recording: Recording): P
   const sha256 = await keptDigestOf(kept, recording);
   return {
     server: call.server,
+    ...(recording.connection === null ? {} : { connection_id: recording.connection }),
     tool: call.tool,
     arguments_bytes: bytesOf(kept),
     ...(sha256 === undefined ? {} : { arguments_sha256: sha256 }),

@@ -24,7 +24,19 @@ export type { AnsweredFields, StartedFields } from './calls/recorded-calls.ts';
 export type { AnsweredOnce, CallAnswer, CalledOnce, UnopenedOnce } from './one-call/called-once.ts';
 export type { OneCall, RunCall } from './one-call/one-call.ts';
 export { answerDocument, isReadOnly, type ToolAnnotations } from './bounds/tool-results.ts';
-export type { NamingCheck, StartOf } from './access/entry-reads.ts';
+export type { StartOf } from './access/entry-reads.ts';
+export type { NamingCheck } from './access/run-ways.ts';
+export {
+  noConnections,
+  type ConnectionServer,
+  type ConnectionServing,
+  type ConnectionSettings,
+  type ConnectionSource,
+  type ConnectionState,
+  type ConnectionUnready,
+  type OrgConnection,
+  type UnreadyBecause,
+} from './org-servers/connection-source.ts';
 export {
   ConversationCallEventSchema,
   conversationCallStreamOf,

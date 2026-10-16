@@ -1,7 +1,7 @@
 import { PlaybookIdSchema } from '@on.auto/operations';
 import { Schema } from 'effect';
 
-import { ServerFailedBecauseSchema } from '../listing/tool-server.ts';
+import { UnavailableBecauseSchema } from '../listing/tool-server.ts';
 import { serverNamePattern } from '../names/tool-reference.ts';
 import { searchBounds, termsWithinTheirBound } from './search-terms.ts';
 
@@ -46,8 +46,14 @@ const serverFields = {
   }),
   record_content: Schema.Boolean.annotate({
     description:
-      "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when whoever runs this server set record_content: false on its entry",
+      "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when its entry sets record_content: false",
   }),
+  connection: Schema.optionalKey(
+    Schema.String.annotate({
+      description:
+        'The id of the connection, for a tool server a person added to the org as one; absent for one whoever runs this server set up',
+    }),
+  ),
 };
 
 const searchedFields = {
@@ -58,9 +64,9 @@ const searchedFields = {
 
 const unavailableFields = {
   unavailable: Schema.String.annotate({ description: 'Why the server could not be asked for its tools, in words' }),
-  because: ServerFailedBecauseSchema.annotate({
+  because: UnavailableBecauseSchema.annotate({
     description:
-      'key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work',
+      'key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work; connection_pending when nobody has approved the connection yet, connection_broken when its credential cannot be read, so it is removed and added again, and connection_not_allowed when a rule of whoever runs this server no longer allows it',
   }),
 };
 

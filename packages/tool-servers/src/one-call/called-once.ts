@@ -7,8 +7,7 @@ import { resultText, type AnswerBlock, type ToolAnnotations } from '../bounds/to
 import type { CallAnswered, CallFailed, CallFailedBecause } from '../calls/call-facts.ts';
 import type { SentCall } from '../calls/tool-caller.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import type { ServerType } from '../settings/server-settings.ts';
-import { answeredEnding, refusedEnding, traced } from './traced-calls.ts';
+import { answeredEnding, refusedEnding, traced, type TracedServer } from './traced-calls.ts';
 
 export interface CallAnswer {
   readonly content: readonly AnswerBlock[];
@@ -76,8 +75,8 @@ function endingOf(once: CalledOnce): Readonly<Record<string, string>> {
 
 export function tracedOnce(
   reference: ToolReference,
-  serverType: ServerType,
+  server: TracedServer,
   calling: Effect.Effect<CalledOnce>,
 ): Effect.Effect<CalledOnce> {
-  return traced(reference, serverType, (endCall) => calling.pipe(Effect.tap((once) => endCall(endingOf(once)))));
+  return traced(reference, server, (endCall) => calling.pipe(Effect.tap((once) => endCall(endingOf(once)))));
 }

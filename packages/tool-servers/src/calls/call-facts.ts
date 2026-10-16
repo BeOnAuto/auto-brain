@@ -6,6 +6,11 @@ const JsonRpcIdSchema = Schema.NullOr(Schema.Union([Schema.String, Schema.Int]))
 
 export const CallSentSchema = Schema.Struct({
   server: Schema.String,
+  connection_id: Schema.optionalKey(
+    Schema.String.annotate({
+      description: 'The id of the connection the call went through, where its tool server is one a person added',
+    }),
+  ),
   tool: Schema.String,
   arguments_bytes: Schema.Int,
   arguments_sha256: Schema.optionalKey(Schema.String),

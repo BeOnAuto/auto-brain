@@ -1,6 +1,7 @@
 import { capitalized, counted, listed, quoted, type Noun } from '@on.auto/operations';
 
 import { inWords, namesListed, toolInWords } from '../names/tool-words.ts';
+import { isUnready } from '../org-servers/org-servers.ts';
 import { everyPlaybook } from '../settings/server-settings.ts';
 import type {
   Found,
@@ -31,16 +32,23 @@ const serverNoun: Noun = { one: 'tool server', other: 'tool servers' };
 const toolNoun: Noun = { one: 'tool', other: 'tools' };
 
 const noServer =
-  'Whoever runs this server has set up no tool server for this playbook, so its functions can call no tools until they set one up; the give-tools guide says what they need.';
+  'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.';
 
 const noServerInOrg =
-  'Whoever runs this server has set up no tool server for this org, so the functions of its playbooks can call no tools until they set one up; the give-tools guide says what they need.';
+  'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.';
+
+function unavailableInWords(server: Extract<SearchedServer, { readonly unavailable: string }>, named: string): string {
+  if (isUnready(server.because)) {
+    return `${named} cannot be used: ${server.unavailable}.`;
+  }
+  return server.because === 'key_refused'
+    ? `${named} did not accept the key this server gives it, so whoever runs this server can check that key.`
+    : `${named} could not be asked for its tools just now.`;
+}
 
 function serverInWords({ server, named, user }: Spoken, tools: FoundTools): string {
   if ('unavailable' in server) {
-    return server.because === 'key_refused'
-      ? `${named} did not accept the key this server gives it, so whoever runs this server can check that key.`
-      : `${named} could not be asked for its tools just now.`;
+    return unavailableInWords(server, named);
   }
   if (server.tool_count === 0) {
     return `${named} offers no tool ${user} may use.`;

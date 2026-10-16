@@ -10,9 +10,10 @@ import {
 import { Effect } from 'effect';
 
 import type { ToolAccess } from '../access/tool-access.ts';
+import type { ToolServer } from '../listing/tool-server.ts';
 import { everyPlaybook } from '../settings/server-settings.ts';
-import { foundIn } from './found-tools.ts';
-import { OrgFoundSchema, OrgSearchInputSchema, type OrgSearchedServer, type SearchedServer } from './search-schemas.ts';
+import { foundIn, searchedServer } from './found-tools.ts';
+import { OrgFoundSchema, OrgSearchInputSchema, type OrgSearchAsked, type OrgSearchedServer } from './search-schemas.ts';
 import { orgSearchAttempted, orgSearched, searchTask } from './search-words.ts';
 import { noServerNamed, searchSentences } from './search.ts';
 
@@ -23,24 +24,15 @@ const description = [
 
 export type PlaybookLookup = (playbook: string) => Effect.Effect<unknown, NotFound, OrgReader>;
 
-type ServedPlaybooks = Pick<ToolAccess, 'playbooksServedBy'>;
-
 function playbooksShownTo(access: PlaybookAccess, playbooks: readonly string[]): readonly string[] {
   return playbooks.filter((playbook) => playbook === everyPlaybook || canAccessPlaybook(access, playbook));
 }
 
-function withServedPlaybooks(
-  server: SearchedServer,
-  served: ServedPlaybooks,
-  access: PlaybookAccess,
-): OrgSearchedServer {
-  return { ...server, playbooks: playbooksShownTo(access, served.playbooksServedBy(server.name)) };
+function withServedPlaybooks(server: ToolServer, asked: OrgSearchAsked, access: PlaybookAccess): OrgSearchedServer {
+  return { ...searchedServer(server, asked), playbooks: playbooksShownTo(access, server.playbooks) };
 }
 
-export function defineSearchInOrg(
-  tools: Pick<ToolAccess, 'listServers' | 'playbooksServedBy'>,
-  lookUpPlaybook: PlaybookLookup,
-) {
+export function defineSearchInOrg(tools: Pick<ToolAccess, 'listServers'>, lookUpPlaybook: PlaybookLookup) {
   return defineQuery('org', {
     name: 'search',
     title: 'Search tools',
@@ -63,7 +55,7 @@ export function defineSearchInOrg(
         return yield* noServerNamed(server, playbook === undefined ? 'This org' : 'This playbook');
       }
       const found = foundIn(servers, asked);
-      return { ...found, servers: found.servers.map((searched) => withServedPlaybooks(searched, tools, access)) };
+      return { ...found, servers: servers.map((listed) => withServedPlaybooks(listed, asked, access)) };
     }),
     plainLanguage: {
       task: searchTask,

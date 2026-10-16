@@ -1,11 +1,11 @@
 import { Array as Arr, Option, Result } from 'effect';
 
 import { listedThrough, serverFailed, type Listing } from '../access/server-listing.ts';
-import { notListed, offeredOn, unlistedOn } from '../access/tool-naming.ts';
 import { isReadOnly, type ListedTool } from '../bounds/tool-results.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
 import { failureOf, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
+import { notListed, offeredOn, unlistedOn } from '../names/tool-naming.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import { failedToOpenOnce, notOfferedOnce, type UnopenedOnce } from './called-once.ts';
 import { boundedSlot, takenWithin } from './connection-bound.ts';

@@ -48,7 +48,7 @@ export function defineDryRun(access: ToolLookup) {
     reasons: ['unavailable'],
     handle: Effect.fnUntraced(function* ({ server, tool, arguments: input }) {
       const address = yield* PlaybookContext;
-      const naming = access.named(address, [{ server, tool }]);
+      const naming = yield* Effect.result(access.named(address, [{ server, tool }]));
       if (Result.isFailure(naming) && naming.failure.because !== 'tool_not_allowed') {
         return yield* Effect.fail(unavailableOf(naming.failure));
       }

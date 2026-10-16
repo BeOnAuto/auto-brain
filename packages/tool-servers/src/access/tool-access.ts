@@ -1,50 +1,34 @@
-import { Effect } from 'effect';
-
-import type { RunTools } from '../calls/run-tools.ts';
+import { ignored } from '../connections/ignored.ts';
 import type { LinkOptions } from '../connections/link-openers.ts';
-import type { ToolServer } from '../listing/tool-server.ts';
-import type { ToolReference } from '../names/tool-reference.ts';
-import type { CallOnce } from '../one-call/one-call.ts';
-import type { ToolServers } from '../openapi/described-api.ts';
-import { playbooksServedBy, isListedFor, type ServersScope } from '../settings/server-settings.ts';
-import type { CallerContext, ServerMessage, ToolsNotOpened } from './caller-context.ts';
-import {
-  namingOf,
-  recordingPartsOf,
-  startsOf,
-  type ContentStore,
-  type NamingCheck,
-  type RecordingParts,
-  type StartOf,
-} from './entry-reads.ts';
+import type { Describing, ToolServers } from '../openapi/described-api.ts';
+import { noConnections, type ConnectionSource } from '../org-servers/connection-source.ts';
+import { orgAccessOf } from '../org-servers/org-access.ts';
+import type { ServerMessage } from './caller-context.ts';
+import { recordingPartsOf, type ContentStore, type RecordingParts } from './entry-reads.ts';
+import type { LinkedAccess } from './linked-access.ts';
+import { listingWaysOf, type ListingWays } from './listing-ways.ts';
+import { runWaysOf, type RunWays } from './run-ways.ts';
 
 export interface ToolAccessOptions {
   readonly client: LinkOptions['client'];
   readonly content: ContentStore;
   readonly reportServerMessage: (report: ServerMessage) => void;
+  readonly connections?: ConnectionSource;
+  readonly reportLeftOut?: Describing['reportLeftOut'];
   readonly fetch?: LinkOptions['fetch'];
   readonly now?: () => number;
   readonly timing?: LinkOptions['timing'];
   readonly traceMeta?: LinkOptions['traceMeta'];
 }
 
-export interface ToolAccess {
+export interface ToolAccess extends RunWays, ListingWays {
   readonly configured: boolean;
-  readonly open: (
-    context: CallerContext,
-    references: readonly ToolReference[],
-  ) => Effect.Effect<RunTools, ToolsNotOpened>;
-  readonly named: NamingCheck;
-  readonly startOf: StartOf;
-  readonly callOnce: CallOnce;
-  readonly listServers: (scope: ServersScope, named?: string) => Effect.Effect<readonly ToolServer[]>;
-  readonly playbooksServedBy: (server: string) => readonly string[];
   readonly close: () => Promise<void>;
 }
 
-export type LinkedAccess = Omit<ToolAccess, 'playbooksServedBy' | 'named' | 'startOf'>;
-
-export type LinkedOptions = ToolAccessOptions & RecordingParts;
+export interface LinkedOptions extends ToolAccessOptions, RecordingParts {
+  readonly reportLeftOut: Describing['reportLeftOut'];
+}
 
 async function linked(settings: ToolServers, options: LinkedOptions): Promise<LinkedAccess> {
   const { linkedAccess } = await import('./linked-access.ts');
@@ -53,25 +37,20 @@ async function linked(settings: ToolServers, options: LinkedOptions): Promise<Li
 
 export function makeToolAccess(settings: ToolServers, options: ToolAccessOptions): ToolAccess {
   const loading: { access?: Promise<LinkedAccess> } = {};
-  const recordingParts = recordingPartsOf(settings.servers, options.content);
-  const loaded = (): Promise<LinkedAccess> => {
-    loading.access ??= linked(settings, { ...options, ...recordingParts });
+  const recording = recordingPartsOf(settings.servers, options.content);
+  const source = options.connections ?? noConnections;
+  const access = orgAccessOf(settings, source, () => {
+    loading.access ??= linked(settings, { ...options, ...recording, reportLeftOut: options.reportLeftOut ?? ignored });
     return loading.access;
-  };
+  });
   return {
-    configured: settings.servers.length > 0,
-    open: (context, references) => Effect.flatMap(Effect.promise(loaded), (access) => access.open(context, references)),
-    named: namingOf(settings.servers),
-    startOf: startsOf(settings.servers, recordingParts),
-    callOnce: (call, runCall) => Effect.flatMap(Effect.promise(loaded), (access) => access.callOnce(call, runCall)),
-    listServers: (scope, named) =>
-      settings.servers.some((server) => isListedFor(server, scope, named))
-        ? Effect.flatMap(Effect.promise(loaded), (access) => access.listServers(scope, named))
-        : Effect.succeed([]),
-    playbooksServedBy: (server) => playbooksServedBy(settings.servers, server),
+    configured: settings.servers.length > 0 || source.takesConnections,
+    ...runWaysOf(access),
+    ...listingWaysOf(access, recording),
     close: async () => {
-      const access = await loading.access;
-      await access?.close();
+      await access.close();
+      const loaded = await loading.access;
+      await loaded?.close();
     },
   };
 }

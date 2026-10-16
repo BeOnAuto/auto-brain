@@ -18,11 +18,11 @@ export function offered(
   ports: InteractionPorts,
   playbook: PlaybookAddress,
 ): Effect.Effect<void, Unavailable> {
-  return Result.match(ports.tools.named(playbook, tools), {
-    onSuccess: () => Effect.void,
-    onFailure: ({ because, detail }: Pick<ToolNotOffered, 'because' | 'detail'>) =>
-      Effect.fail(new Unavailable({ detail, kind: 'tool_not_offered', because })),
-  });
+  return Effect.mapError(
+    ports.tools.named(playbook, tools),
+    ({ because, detail }: Pick<ToolNotOffered, 'because' | 'detail'>) =>
+      new Unavailable({ detail, kind: 'tool_not_offered', because }),
+  );
 }
 
 export function roomFor(ports: InteractionPorts, playbook: PlaybookAddress): Effect.Effect<void, Unavailable> {

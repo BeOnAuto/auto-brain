@@ -106,8 +106,20 @@ function argumentsOf(start: StartedFields | ToolReference) {
   return { arguments_bytes, ...(arguments_sha256 === undefined ? {} : { arguments_sha256 }) };
 }
 
+function connectionOf(start: StartedFields | ToolReference) {
+  return 'connection_id' in start && start.connection_id !== undefined ? { connection_id: start.connection_id } : {};
+}
+
 function ofTheRead({ callId, start, conversation, since }: ReadPlace) {
-  return { call_id: callId, server: start.server, tool: start.tool, conversation, since, ...argumentsOf(start) };
+  return {
+    call_id: callId,
+    server: start.server,
+    ...connectionOf(start),
+    tool: start.tool,
+    conversation,
+    since,
+    ...argumentsOf(start),
+  };
 }
 
 export function repliesReadOf(read: RepliesRead, recorded: Recorded): ConversationCall {

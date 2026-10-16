@@ -42,6 +42,7 @@ function stdioSettings(args: readonly string[], changes: Partial<StdioServerSett
     record_content: false,
     request_id: null,
     secrets: [],
+    connection: null,
     ...changes,
   };
 }

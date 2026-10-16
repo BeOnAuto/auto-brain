@@ -5,10 +5,8 @@ import { defineSearch, defineSearchInOrg } from '../index.ts';
 
 const words = defineSearch({ listServers: () => Effect.succeed([]) }).registration.plainLanguage;
 
-const inOrg = defineSearchInOrg(
-  { listServers: () => Effect.succeed([]), playbooksServedBy: () => [] },
-  () => Effect.void,
-).registration.plainLanguage;
+const inOrg = defineSearchInOrg({ listServers: () => Effect.succeed([]) }, () => Effect.void).registration
+  .plainLanguage;
 
 function available(name: string, toolCount: number) {
   return { name, type: 'mcp', record_content: true, tool_count: toolCount };
@@ -61,7 +59,7 @@ describe('the plain words of search', () => {
 
   it('say that no tool server is set up for the playbook, who can set one up and where it says what they need', () => {
     expect(words?.outcome({ servers: [], tools: [], scopes: [] }, {})).toBe(
-      'Whoever runs this server has set up no tool server for this playbook, so its functions can call no tools until they set one up; the give-tools guide says what they need.',
+      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.',
     );
   });
 
@@ -124,7 +122,7 @@ describe('the plain words of search for the org', () => {
 
   it('say that no tool server is set up for the org, who can set one up and where it says what they need', () => {
     expect(inOrg?.outcome({ servers: [], tools: [], scopes: [] }, {})).toBe(
-      'Whoever runs this server has set up no tool server for this org, so the functions of its playbooks can call no tools until they set one up; the give-tools guide says what they need.',
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.',
     );
   });
 });

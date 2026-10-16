@@ -25,6 +25,7 @@ export interface FakeApiServer {
   readonly documentUrl: string;
   readonly issuing: FakeIssuing | undefined;
   readonly seen: () => readonly SeenApiRequest[];
+  readonly documentReads: () => number;
   readonly answerNextWith: (answer: ProgrammedAnswer, times?: number) => void;
   readonly close: () => Promise<void>;
 }
@@ -84,6 +85,7 @@ function apiHandler(options: FakeApiOptions, answering: ApiAnswering, issuing: I
   return async (request) => {
     const { pathname } = new URL(request.url);
     if (pathname === documentPath) {
+      answering.documentRead();
       return Response.json(fakeApiDocument(options.version ?? '3.1', basePath));
     }
     answering.see(await seenOf(request));
@@ -121,9 +123,13 @@ export async function serveFakeApi(options: FakeApiOptions = {}): Promise<FakeAp
   const seen: SeenApiRequest[] = [];
   const programmed: ProgrammedAnswer[] = [];
   let answered = 0;
+  let documentReads = 0;
   const answering: ApiAnswering = {
     see: (request) => {
       seen.push(request);
+    },
+    documentRead: () => {
+      documentReads += 1;
     },
     programmed: () => programmed.shift(),
     requestIdHeader: options.requestIdHeader,
@@ -141,6 +147,7 @@ export async function serveFakeApi(options: FakeApiOptions = {}): Promise<FakeAp
     documentUrl: `${listening.origin}${documentPath}`,
     issuing,
     seen: () => [...seen],
+    documentReads: () => documentReads,
     answerNextWith: (answer, times = 1) => {
       programmed.push(...Array.from({ length: times }, () => answer));
     },

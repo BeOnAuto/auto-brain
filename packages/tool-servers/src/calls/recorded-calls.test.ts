@@ -281,7 +281,7 @@ describe('the id a server gives a request', () => {
 
 describe('the failure of a call', () => {
   it('carries no detail when the failure said nothing', () => {
-    const recording = recordingOf({ record_content: true, request_id: null }, secretsOf([]), () =>
+    const recording = recordingOf({ record_content: true, request_id: null, connection: null }, secretsOf([]), () =>
       Promise.resolve('a'.repeat(64)),
     );
 

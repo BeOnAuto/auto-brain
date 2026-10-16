@@ -10,6 +10,8 @@ export interface ServedUnderTest {
   readonly echoed: (input: Readonly<Record<string, unknown>>) => Readonly<Record<string, unknown>>;
   readonly failNextCall: (status: number, headers?: Readonly<Record<string, string>>) => void;
   readonly calls: () => number;
+  readonly requests: () => number;
+  readonly sessionsOpen: () => number;
   readonly jsonrpcId: unknown;
   readonly close: () => Promise<void>;
 }
@@ -33,6 +35,8 @@ export const mcpUnderTest: ServerUnderTest = {
         fake.answerNextOf('tools/call', status, 1, headers);
       },
       calls: () => fake.seen().filter(({ rpc }) => rpc === 'tools/call').length,
+      requests: () => fake.seen().length,
+      sessionsOpen: fake.openSessions,
       jsonrpcId: expect.any(Number),
       close: fake.close,
     };
@@ -53,6 +57,8 @@ export const apiUnderTest: ServerUnderTest = {
         fake.answerNextWith({ status, headers });
       },
       calls: () => fake.seen().length,
+      requests: () => fake.seen().length + fake.documentReads(),
+      sessionsOpen: () => 0,
       jsonrpcId: null,
       close: fake.close,
     };

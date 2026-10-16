@@ -1,6 +1,6 @@
 import { Schema } from 'effect';
 
-import { ServerFailedBecauseSchema } from '../listing/tool-server.ts';
+import { UnavailableBecauseSchema } from '../listing/tool-server.ts';
 import { ArgumentCheckSchema } from './argument-checks.ts';
 
 const ReachedSchema = Schema.Struct({
@@ -8,9 +8,9 @@ const ReachedSchema = Schema.Struct({
     description: 'yes when the server listed its tools just now, no when it could not be asked for them',
   }),
   because: Schema.optionalKey(
-    ServerFailedBecauseSchema.annotate({
+    UnavailableBecauseSchema.annotate({
       description:
-        'Why it could not be asked: key_refused when it did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work',
+        'Why it could not be asked: key_refused when it did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work; connection_not_allowed when a rule of whoever runs this server no longer allows the connection',
     }),
   ),
 });

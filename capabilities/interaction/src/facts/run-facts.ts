@@ -26,6 +26,7 @@ const DeliveryStartedSchema = Schema.Struct({
   ...numbered,
   target: Schema.String,
   server: sent.server,
+  connection_id: sent.connection_id,
   tool: sent.tool,
   arguments_bytes: Schema.optionalKey(sent.arguments_bytes),
   arguments_sha256: sent.arguments_sha256,

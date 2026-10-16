@@ -5,6 +5,7 @@ import { Redacted } from 'effect';
 import { authOf, type AuthSettings, type ServerSettings } from '../settings/server-settings.ts';
 
 export interface Secrets {
+  readonly keep: (redacted: readonly Redacted.Redacted[]) => void;
   readonly replace: (source: string, secret: string) => void;
   readonly scrub: (text: string) => string;
   readonly scrubValue: (value: unknown) => unknown;
@@ -75,17 +76,24 @@ function formsOfEach(secrets: readonly string[]): readonly string[] {
 }
 
 export function secretsOf(redacted: readonly Redacted.Redacted[]): Secrets {
-  const configured = redacted.map((value) => Redacted.value(value));
+  const kept = redacted.map((value) => Redacted.value(value));
   const heldBySource = new Map<string, readonly string[]>();
-  let known = formsOfEach(configured);
+  let known = formsOfEach(kept);
+  const learned = (): void => {
+    known = formsOfEach([...kept, ...[...heldBySource.values()].flat()]);
+  };
+  const keep = (more: readonly Redacted.Redacted[]): void => {
+    kept.push(...more.map((value) => Redacted.value(value)));
+    learned();
+  };
   const replace = (source: string, secret: string): void => {
     const [replaced] = heldBySource.get(source) ?? [];
     heldBySource.set(source, replaced === undefined ? [secret] : [secret, replaced]);
-    known = formsOfEach([...configured, ...[...heldBySource.values()].flat()]);
+    learned();
   };
   const scrub = (text: string): string =>
     known.reduce((scrubbed, secret) => scrubbed.replaceAll(secret, redactedMark), text);
-  return { replace, scrub, scrubValue: (value) => scrubbedValueOf(value, scrub) };
+  return { keep, replace, scrub, scrubValue: (value) => scrubbedValueOf(value, scrub) };
 }
 
 function credentialOf(auth: AuthSettings | null): readonly Redacted.Redacted[] {
@@ -96,6 +104,10 @@ function credentialOf(auth: AuthSettings | null): readonly Redacted.Redacted[] {
   return [credential.kind === 'client_secret' ? credential.client_secret : credential.private_key];
 }
 
+export function secretsOfServer(server: ServerSettings): readonly Redacted.Redacted[] {
+  return [...server.secrets, ...credentialOf(authOf(server))];
+}
+
 export function secretsOfServers(servers: readonly ServerSettings[]): Secrets {
-  return secretsOf(servers.flatMap((server) => [...server.secrets, ...credentialOf(authOf(server))]));
+  return secretsOf(servers.flatMap((server) => secretsOfServer(server)));
 }

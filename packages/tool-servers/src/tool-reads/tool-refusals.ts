@@ -2,6 +2,8 @@ import { Unavailable, type Remedies } from '@on.auto/operations';
 
 import type { ToolsNotOpened } from '../access/caller-context.ts';
 import { cutToFailureBound } from '../bounds/call-bounds.ts';
+import type { UnavailableBecause, UnavailableServer } from '../listing/tool-server.ts';
+import type { UnreadyBecause } from '../org-servers/connection-source.ts';
 
 export function unavailableOf({
   _tag: kind,
@@ -9,6 +11,20 @@ export function unavailableOf({
   detail,
 }: Pick<ToolsNotOpened, '_tag' | 'because' | 'detail'>): Unavailable {
   return new Unavailable({ detail: cutToFailureBound(detail), kind, because });
+}
+
+const unreadyReasons: ReadonlySet<UnavailableBecause> = new Set<UnreadyBecause>([
+  'connection_pending',
+  'connection_broken',
+  'connection_not_allowed',
+]);
+
+export function unavailableServerOf({
+  because,
+  unavailable,
+}: Pick<UnavailableServer, 'because' | 'unavailable'>): Unavailable {
+  const kind = unreadyReasons.has(because) ? 'tool_not_offered' : 'tool_server_failed';
+  return new Unavailable({ detail: unavailable, kind, because });
 }
 
 export const toolRemedies: Remedies = {

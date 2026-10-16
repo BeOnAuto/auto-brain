@@ -22,11 +22,12 @@ function consideredOn({ tools }: AvailableServer, { only }: SearchAsked): readon
   return only === undefined ? tools : tools.filter((tool) => keptBy[only](tool));
 }
 
-function searchedServer(server: ToolServer, asked: SearchAsked): SearchedServer {
-  const { name, type, record_content } = server;
+export function searchedServer(server: ToolServer, asked: SearchAsked): SearchedServer {
+  const { name, type, record_content, connection } = server;
+  const fields = { name, type, record_content, ...(connection === undefined ? {} : { connection }) };
   return 'unavailable' in server
-    ? { name, type, record_content, unavailable: server.unavailable, because: server.because }
-    : { name, type, record_content, tool_count: consideredOn(server, asked).length };
+    ? { ...fields, unavailable: server.unavailable, because: server.because }
+    : { ...fields, tool_count: consideredOn(server, asked).length };
 }
 
 function candidatesOn(server: ToolServer, asked: SearchAsked): readonly Candidate[] {

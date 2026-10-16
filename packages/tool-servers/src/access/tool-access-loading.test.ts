@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { reportingAccess, serveFakeMcp, type FakeMcpServer } from '../testing/index.ts';
+import { fakeConnections } from '../testing/fake-connections.ts';
+import { noToolServers, reportingAccess, serveFakeMcp, type FakeMcpServer } from '../testing/index.ts';
 
 const apiKey = 'graph-api-key-4f1d9a7c2b';
 
@@ -28,5 +29,15 @@ describe('an access to tool servers', () => {
 
     expect(access.configured).toBe(true);
     expect(fake.seen()).toEqual([]);
+  });
+});
+
+describe('an access to the tool servers of connections alone', () => {
+  it('may reach outside where people may add connections, and not where nothing serves a playbook', async () => {
+    const { access } = reportingAccess({}, { connections: fakeConnections() });
+
+    await access.close();
+
+    expect([access.configured, noToolServers.configured]).toEqual([true, false]);
   });
 });

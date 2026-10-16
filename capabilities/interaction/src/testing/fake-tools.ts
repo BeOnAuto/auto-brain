@@ -9,7 +9,7 @@ import type {
   ToolAccess,
 } from '@on.auto/tool-servers';
 import { ToolNotOffered } from '@on.auto/tool-servers';
-import { Effect, Result } from 'effect';
+import { Effect } from 'effect';
 
 import { chatBoard, type BoardAnswer, type ChatBoard } from './chat-board.ts';
 
@@ -98,9 +98,9 @@ function answeredWith(answer: BoardAnswer, number: number): AnsweredOnce {
   return { ...answering, outcome, failed: { because: outcome, duration_ms: 3, jsonrpc_id: number } };
 }
 
-function namedBy(refusals: readonly (Refusal | undefined)[]): Result.Result<void, ToolNotOffered> {
+function namedBy(refusals: readonly (Refusal | undefined)[]): Effect.Effect<void, ToolNotOffered> {
   const refusal = refusals.find((each) => each !== undefined);
-  return refusal === undefined ? Result.void : Result.fail(new ToolNotOffered(refusal));
+  return refusal === undefined ? Effect.void : Effect.fail(new ToolNotOffered(refusal));
 }
 
 export function fakeTools(duringCall: (call: OneCall) => Effect.Effect<unknown> = () => Effect.void): FakeTools {

@@ -3,6 +3,11 @@ import { Clock, Effect, Metric } from 'effect';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { ServerType } from '../settings/server-settings.ts';
 
+export interface TracedServer {
+  readonly type: ServerType;
+  readonly connection: string | null;
+}
+
 type CallEnding = Readonly<Record<string, string>>;
 
 type EndCall = (ending: CallEnding) => Effect.Effect<void>;
@@ -22,8 +27,13 @@ export function answeredEnding(outcome: string): CallEnding {
   return outcome === 'result' ? {} : { 'error.type': outcome };
 }
 
+function connectionAttributeOf(connection: string | null): Readonly<Record<string, string>> {
+  return connection === null ? {} : { 'auto.on.connection_id': connection };
+}
+
 function spanned<A, E, R>(
   { server, tool }: ToolReference,
+  connection: string | null,
   calling: (endCall: EndCall) => Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> {
   const attributes = {
@@ -44,23 +54,28 @@ function spanned<A, E, R>(
         );
       });
     return yield* calling(endCall);
-  }).pipe(Effect.withSpan(`tools/call ${tool}`, { kind: 'client', attributes }));
+  }).pipe(
+    Effect.withSpan(`tools/call ${tool}`, {
+      kind: 'client',
+      attributes: { ...attributes, ...connectionAttributeOf(connection) },
+    }),
+  );
 }
 
 export function traced<A, E, R>(
   reference: ToolReference,
-  serverType: ServerType,
+  server: TracedServer,
   calling: (endCall: EndCall) => Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> {
-  return serverType === 'openapi' ? calling(untraced) : spanned(reference, calling);
+  return server.type === 'openapi' ? calling(untraced) : spanned(reference, server.connection, calling);
 }
 
 export function tracedByHand<A extends { readonly outcome: string }, E, R>(
   reference: ToolReference,
-  serverType: ServerType,
+  server: TracedServer,
   calling: Effect.Effect<A, E, R>,
 ): Effect.Effect<A, E, R> {
-  return traced(reference, serverType, (endCall) =>
+  return traced(reference, server, (endCall) =>
     calling.pipe(Effect.tap(({ outcome }) => endCall(answeredEnding(outcome)))),
   );
 }

@@ -17,6 +17,7 @@ export interface AccessOptions {
   readonly timing?: Timing;
   readonly fetch?: ToolAccessOptions['fetch'];
   readonly traceMeta?: ToolAccessOptions['traceMeta'];
+  readonly connections?: ToolAccessOptions['connections'];
 }
 
 export interface ReportingAccess {
@@ -37,7 +38,7 @@ function servers(
   );
 }
 
-function accessOver(settings: ToolServers, { timing, fetch, traceMeta }: AccessOptions): ReportingAccess {
+function accessOver(settings: ToolServers, { timing, fetch, traceMeta, connections }: AccessOptions): ReportingAccess {
   const messages: ServerMessage[] = [];
   const content = memoryRecordedContent();
   const access = makeToolAccess(settings, {
@@ -49,6 +50,7 @@ function accessOver(settings: ToolServers, { timing, fetch, traceMeta }: AccessO
     ...(timing === undefined ? {} : { timing }),
     ...(fetch === undefined ? {} : { fetch }),
     ...(traceMeta === undefined ? {} : { traceMeta }),
+    ...(connections === undefined ? {} : { connections }),
   });
   return { access, content, messages: () => [...messages] };
 }
