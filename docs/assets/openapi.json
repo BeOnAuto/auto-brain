@@ -1067,7 +1067,11 @@
                               },
                               "record_content": {
                                 "type": "boolean",
-                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when whoever runs this server set record_content: false on its entry"
+                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when its entry sets record_content: false"
+                              },
+                              "connection": {
+                                "type": "string",
+                                "description": "The id of the connection, for a tool server a person added to the org as one; absent for one whoever runs this server set up"
                               },
                               "playbooks": {
                                 "type": "array",
@@ -1108,7 +1112,11 @@
                               },
                               "record_content": {
                                 "type": "boolean",
-                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when whoever runs this server set record_content: false on its entry"
+                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when its entry sets record_content: false"
+                              },
+                              "connection": {
+                                "type": "string",
+                                "description": "The id of the connection, for a tool server a person added to the org as one; absent for one whoever runs this server set up"
                               },
                               "playbooks": {
                                 "type": "array",
@@ -1127,9 +1135,12 @@
                                   "failing",
                                   "rate_limited",
                                   "unreachable",
-                                  "key_refused"
+                                  "key_refused",
+                                  "connection_pending",
+                                  "connection_broken",
+                                  "connection_not_allowed"
                                 ],
-                                "description": "key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work"
+                                "description": "key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work; connection_pending when nobody has approved the connection yet, connection_broken when its credential cannot be read, so it is removed and added again, and connection_not_allowed when a rule of whoever runs this server no longer allows it"
                               }
                             },
                             "required": [
@@ -1347,10 +1358,15 @@
                           "authorization"
                         ]
                       },
+                      "variable": {
+                        "type": "string",
+                        "minLength": 1,
+                        "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                      },
                       "name": {
                         "type": "string",
                         "minLength": 1,
-                        "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                        "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                       },
                       "in": {
                         "type": "string",
@@ -1359,7 +1375,7 @@
                           "query",
                           "security"
                         ],
-                        "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                        "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                       },
                       "issuer": {
                         "type": "string",
@@ -1486,10 +1502,15 @@
                             "authorization"
                           ]
                         },
+                        "variable": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                        },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                          "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                         },
                         "in": {
                           "type": "string",
@@ -1498,7 +1519,7 @@
                             "query",
                             "security"
                           ],
-                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                          "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
                         "issuer": {
                           "type": "string",
@@ -1797,10 +1818,15 @@
                                 "authorization"
                               ]
                             },
+                            "variable": {
+                              "type": "string",
+                              "minLength": 1,
+                              "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                            },
                             "name": {
                               "type": "string",
                               "minLength": 1,
-                              "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                              "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                             },
                             "in": {
                               "type": "string",
@@ -1809,7 +1835,7 @@
                                 "query",
                                 "security"
                               ],
-                              "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                              "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                             },
                             "issuer": {
                               "type": "string",
@@ -2076,10 +2102,15 @@
                             "authorization"
                           ]
                         },
+                        "variable": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                        },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                          "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                         },
                         "in": {
                           "type": "string",
@@ -2088,7 +2119,7 @@
                             "query",
                             "security"
                           ],
-                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                          "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
                         "issuer": {
                           "type": "string",
@@ -2351,10 +2382,15 @@
                             "authorization"
                           ]
                         },
+                        "variable": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                        },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                          "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                         },
                         "in": {
                           "type": "string",
@@ -2363,7 +2399,7 @@
                             "query",
                             "security"
                           ],
-                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                          "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
                         "issuer": {
                           "type": "string",
@@ -2642,10 +2678,15 @@
                             "authorization"
                           ]
                         },
+                        "variable": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                        },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                          "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                         },
                         "in": {
                           "type": "string",
@@ -2654,7 +2695,7 @@
                             "query",
                             "security"
                           ],
-                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                          "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
                         "issuer": {
                           "type": "string",
@@ -2958,10 +2999,15 @@
                             "authorization"
                           ]
                         },
+                        "variable": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                        },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                          "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                         },
                         "in": {
                           "type": "string",
@@ -2970,7 +3016,7 @@
                             "query",
                             "security"
                           ],
-                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                          "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
                         "issuer": {
                           "type": "string",
@@ -3296,10 +3342,15 @@
                             "authorization"
                           ]
                         },
+                        "variable": {
+                          "type": "string",
+                          "minLength": 1,
+                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY"
+                        },
                         "name": {
                           "type": "string",
                           "minLength": 1,
-                          "description": "For reference, the variable of the runtime that holds the value, such as CRM_API_KEY; for secret, the header, query parameter or security scheme the value is sent as"
+                          "description": "For secret and reference, the header, query parameter or security scheme the value is sent as"
                         },
                         "in": {
                           "type": "string",
@@ -3308,7 +3359,7 @@
                             "query",
                             "security"
                           ],
-                          "description": "For secret, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
+                          "description": "For secret and reference, what name is: header, or for an HTTP API query, a query parameter, or security, a security scheme of its document"
                         },
                         "issuer": {
                           "type": "string",
@@ -5273,6 +5324,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -5289,7 +5343,7 @@
                                 "not_in_order",
                                 "baseline_check"
                               ],
-                              "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
+                              "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed, or connection_pending, connection_broken or connection_not_allowed for a connection a person added. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
                           },
                           "required": [
@@ -5341,6 +5395,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -5663,6 +5720,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -5679,7 +5739,7 @@
                                 "not_in_order",
                                 "baseline_check"
                               ],
-                              "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
+                              "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed, or connection_pending, connection_broken or connection_not_allowed for a connection a person added. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
                           },
                           "required": [
@@ -5731,6 +5791,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -6068,6 +6131,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -6084,7 +6150,7 @@
                                 "not_in_order",
                                 "baseline_check"
                               ],
-                              "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
+                              "description": "Why. With model_not_offered: provider_not_configured when its provider is not set up on this server while others are, model_not_allowed when it is outside the models the operator allows. With tool_not_offered: tool_server_not_configured, tool_not_allowed or tool_not_listed, or connection_pending, connection_broken or connection_not_allowed for a connection a person added. With tool_server_failed: failing, rate_limited, unreachable or key_refused. With tools_unfinished: server_failed, tool_error, model_unavailable, run_bound or no_answer"
                             }
                           },
                           "required": [
@@ -6136,6 +6202,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -6525,6 +6594,9 @@
                                 "tool_server_not_configured",
                                 "tool_not_allowed",
                                 "tool_not_listed",
+                                "connection_pending",
+                                "connection_broken",
+                                "connection_not_allowed",
                                 "failing",
                                 "rate_limited",
                                 "unreachable",
@@ -8207,7 +8279,11 @@
                               },
                               "record_content": {
                                 "type": "boolean",
-                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when whoever runs this server set record_content: false on its entry"
+                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when its entry sets record_content: false"
+                              },
+                              "connection": {
+                                "type": "string",
+                                "description": "The id of the connection, for a tool server a person added to the org as one; absent for one whoever runs this server set up"
                               },
                               "tool_count": {
                                 "type": "integer",
@@ -8240,7 +8316,11 @@
                               },
                               "record_content": {
                                 "type": "boolean",
-                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when whoever runs this server set record_content: false on its entry"
+                                "description": "Whether the arguments and the answers of the server's calls are kept whole in the playbook's ledger, where anyone who may read the playbook reads them; false only when its entry sets record_content: false"
+                              },
+                              "connection": {
+                                "type": "string",
+                                "description": "The id of the connection, for a tool server a person added to the org as one; absent for one whoever runs this server set up"
                               },
                               "unavailable": {
                                 "type": "string",
@@ -8252,9 +8332,12 @@
                                   "failing",
                                   "rate_limited",
                                   "unreachable",
-                                  "key_refused"
+                                  "key_refused",
+                                  "connection_pending",
+                                  "connection_broken",
+                                  "connection_not_allowed"
                                 ],
-                                "description": "key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work"
+                                "description": "key_refused when the server did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work; connection_pending when nobody has approved the connection yet, connection_broken when its credential cannot be read, so it is removed and added again, and connection_not_allowed when a rule of whoever runs this server no longer allows it"
                               }
                             },
                             "required": [
@@ -8820,9 +8903,12 @@
                             "failing",
                             "rate_limited",
                             "unreachable",
-                            "key_refused"
+                            "key_refused",
+                            "connection_pending",
+                            "connection_broken",
+                            "connection_not_allowed"
                           ],
-                          "description": "Why it could not be asked: key_refused when it did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work"
+                          "description": "Why it could not be asked: key_refused when it did not accept the key this server gives it, which only whoever runs this server can put right; failing, rate_limited or unreachable when asking again later may work; connection_not_allowed when a rule of whoever runs this server no longer allows the connection"
                         }
                       },
                       "required": [
@@ -10557,6 +10643,9 @@
               "tool_server_not_configured",
               "tool_not_allowed",
               "tool_not_listed",
+              "connection_pending",
+              "connection_broken",
+              "connection_not_allowed",
               "failing",
               "rate_limited",
               "unreachable",

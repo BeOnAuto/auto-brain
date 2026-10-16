@@ -1,6 +1,8 @@
 # Add a tool server
 
-A tool server is a service or program that offers tools for a function to call. Its tools might read files, search the news or look up records in a business system. This page is for whoever runs Auto. You add the server to Auto's settings file, restart Auto and check that Auto lists the server. After that, people give its tools to their functions through their agents, as [Give a function tools](../guides/tools.md) shows.
+A tool server is a service or program that offers tools for a function to call. Its tools might read files, search the news or look up records in a business system. A tool server comes from one of two places: Auto's settings file, which this page is about, or a connection a person adds to an org through their agent, which [Let people add connections](connections.md) describes. A function names either in the same way.
+
+This page is for whoever runs Auto. You add the server to Auto's settings file, restart Auto and check that Auto lists the server. After that, people give its tools to their functions through their agents, as [Give a function tools](../guides/tools.md) shows.
 
 ## Before you start
 

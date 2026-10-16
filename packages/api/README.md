@@ -108,7 +108,7 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | `get_definition`       | true           | false             | true             | false           |
 | `update_definition`    | false          | false             | true             | false           |
 | `retire_definition`    | false          | true              | true             | false           |
-| `run_definition`       | false          | false             | false            | true            |
+| `run_definition`       | false          | true              | false            | true            |
 | `get_run`              | true           | false             | true             | false           |
 | `cancel_run`           | false          | true              | true             | false           |
 | `list_runs`            | true           | false             | true             | false           |
@@ -117,13 +117,13 @@ The HTTP method decides nothing. The server serves these, which `packages/server
 | `publish_event`        | false          | false             | false            | false           |
 | `introspect`           | true           | false             | true             | true            |
 | `dry_run`              | true           | false             | true             | true            |
-| `execute`              | false          | false             | false            | true            |
+| `execute`              | false          | true              | false            | true            |
 | `answer_interaction`   | false          | true              | true             | false           |
 | `list_interactions`    | true           | false             | true             | false           |
 | `send_run_event`       | false          | false             | false            | false           |
 | `get_guide`            | true           | false             | true             | false           |
 
-`run_definition` and `execute` are destructive while a tool server is configured, since a reasoning function's tools, the tool an interaction function calls or sends through, and the tool `execute` calls may then change something outside; the table is the server without one, as the test serves it. `list_models` and `run_definition` reach model providers, and `search`, `introspect`, `dry_run` and `execute` reach the tool servers. `dry_run` is routed by `POST`, since its arguments are an object a query string cannot carry, and is a query, so it is read-only and idempotent as every query is. Five operations of the catalog are served over HTTP alone besides the routes of a prediction function's trainer and of Studio's page: `get_playbook`, since a playbook `list_playbooks` lists holds the same fields; `get_connection`, which Studio reads; `get_run_history`, since `list_playbook_events` given a `run_id` answers the run's events and those of every run it started; `get_playbook_analytics`, which Studio presents; and `validate`, since `dry_run` reports the same check of the arguments.
+`run_definition` and `execute` are destructive while a tool server is configured or people may add connections, as they may by default, since a reasoning function's tools, the tool an interaction function calls or sends through, and the tool `execute` calls may then change something outside; the table is the server of the test, which sets up no tool server and lets people add connections. Where the configuration sets up no tool server and `connections.people_may_add` is `false`, neither is destructive. `list_models` and `run_definition` reach model providers, and `search`, `introspect`, `dry_run` and `execute` reach the tool servers. `dry_run` is routed by `POST`, since its arguments are an object a query string cannot carry, and is a query, so it is read-only and idempotent as every query is. Five operations of the catalog are served over HTTP alone besides the routes of a prediction function's trainer and of Studio's page: `get_playbook`, since a playbook `list_playbooks` lists holds the same fields; `get_connection`, which Studio reads; `get_run_history`, since `list_playbook_events` given a `run_id` answers the run's events and those of every run it started; `get_playbook_analytics`, which Studio presents; and `validate`, since `dry_run` reports the same check of the arguments.
 
 **Calls.** On a scoped endpoint the org, and the playbook of a playbook endpoint, come from the URL, and the arguments are the whole input; on `/mcp` the org is the caller's own and the playbook an argument. The input is decoded with the `json` encoding. A call goes through the same dispatcher and the same `settle` as an HTTP request, with the caller in the URL's org.
 
@@ -171,11 +171,11 @@ The bound on a listing is bytes because a listing is what an agent's client load
 
 | Endpoint                                    | Tools | Bytes on the wire | Bound  |
 | ------------------------------------------- | ----- | ----------------- | ------ |
-| `POST /mcp`                                 | 28    | 43,095            | 48,000 |
-| `POST /orgs/{org}/mcp`                      | 10    | 12,550            | 13,000 |
-| `POST /orgs/{org}/playbooks/{playbook}/mcp` | 20    | 30,769            | 40,000 |
+| `POST /mcp`                                 | 28    | 43,179            | 48,000 |
+| `POST /orgs/{org}/mcp`                      | 10    | 12,636            | 13,000 |
+| `POST /orgs/{org}/playbooks/{playbook}/mcp` | 20    | 30,767            | 40,000 |
 
-The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, since its listing takes 12,550 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
+The bound of the org endpoint moved from 12,000 bytes to 13,000 with the tools of connections, the least that holds them, since its listing takes 12,636 with every tool at its shortest. A listing takes 3.9 to 4.2 bytes a token, as two open byte-pair vocabularies of 100,000 and 200,000 count it, so the 48,000 bytes of `/mcp` come to about 11,400 to 12,300 tokens (the rate counted on 2026-10-13 over the `tools/list` answer as it is sent, the server-sent event's framing included). A model's own tokenizer counts differently, by a few percent either way.
 
 **Which errors look how.** An MCP endpoint answers in three shapes:
 

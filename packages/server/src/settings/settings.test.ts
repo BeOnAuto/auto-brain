@@ -50,6 +50,7 @@ describe('readSettings', () => {
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
       connections: { peopleMayAdd: true, allowedHosts: null, credentialKinds: null, variables: [] },
+      connectionVariables: new Map(),
       telemetry: undefined,
       configFile: undefined,
     });
@@ -106,6 +107,7 @@ describe('readSettings given every setting', () => {
       recall: { mostFunctions: 32, rebuildsAtOnce: 4, playbooksAtOnce: 4 },
       prediction: defaultPrediction,
       connections: { peopleMayAdd: false, allowedHosts: ['*.example.com'], credentialKinds: ['none'], variables: [] },
+      connectionVariables: new Map(),
       telemetry: undefined,
       configFile: undefined,
     });

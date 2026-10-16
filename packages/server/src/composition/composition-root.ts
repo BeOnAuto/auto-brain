@@ -25,8 +25,12 @@ export function compositionRootWith(
         services: applicationLayer(ledgerLayerFor(settings, database, wiring.projections.appends)),
         serve: async (runtime, ownOrigin) => {
           const { ledger, workflows, identityIssuer } = settings;
-          const { stores, connections } = await storesAndConnectionsOf(runtime, settings, database, ownOrigin);
-          const functions = await functionsServedBy(runtime, settings, database, { ...wiring, telemetry });
+          const { stores, connections, source } = await storesAndConnectionsOf(runtime, settings, database, ownOrigin);
+          const functions = await functionsServedBy(runtime, settings, database, {
+            ...wiring,
+            telemetry,
+            connections: source,
+          });
           const parts = {
             ledger,
             workflows,

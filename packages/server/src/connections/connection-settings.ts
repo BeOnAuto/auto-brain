@@ -1,12 +1,13 @@
 import { referencedVariablesOf, type Environment, type FileUse, type SettingProblem } from '@on.auto/config';
 import { ConnectionPolicyInvalid, readConnectionPolicy, type ConnectionPolicy } from '@on.auto/connections';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 
 import { problemsListed } from '../config-file/placed-problems.ts';
 import { variablesTheRuntimeReads } from './variables-the-runtime-reads.ts';
 
 export interface ConnectionSettings {
   readonly connections: ConnectionPolicy;
+  readonly connectionVariables: ReadonlyMap<string, Redacted.Redacted>;
 }
 
 const decodeGateways = Schema.decodeUnknownSync(
@@ -49,7 +50,17 @@ function placed({ problems }: Problems, file: FileUse | undefined): ConnectionPo
   });
 }
 
+function valuesOf(environment: Environment, { variables }: ConnectionPolicy): ReadonlyMap<string, Redacted.Redacted> {
+  return new Map(
+    variables.flatMap((name) => {
+      const value = environment[name];
+      return isGiven(value) ? [[name, Redacted.make(value)] as const] : [];
+    }),
+  );
+}
+
 export function readConnectionSettings(environment: Environment, file: FileUse | undefined): ConnectionSettings {
   const policy = readConnectionPolicy(environment, ownVariablesOf(environment, file));
-  return { connections: Effect.runSync(policy.pipe(Effect.mapError((invalid: Problems) => placed(invalid, file)))) };
+  const connections = Effect.runSync(policy.pipe(Effect.mapError((invalid: Problems) => placed(invalid, file))));
+  return { connections, connectionVariables: valuesOf(environment, connections) };
 }

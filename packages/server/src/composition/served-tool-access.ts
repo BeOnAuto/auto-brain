@@ -3,6 +3,8 @@ import type { DispatcherServices } from '@on.auto/operations';
 import {
   describedToolServers,
   makeToolAccess,
+  type ConnectionSource,
+  type Describing,
   type Timing,
   type ToolAccess,
   type ToolAccessOptions,
@@ -21,21 +23,24 @@ export interface ToolAccessWiring {
   };
 }
 
+export interface ServedConnections {
+  readonly connections: ConnectionSource;
+}
+
 export async function toolAccessOf(
   runtime: AppRuntime<DispatcherServices>,
   { toolServers }: Pick<Settings, 'toolServers'>,
-  { toolTiming, telemetry }: ToolAccessWiring,
+  { toolTiming, connections, telemetry }: ToolAccessWiring & ServedConnections,
 ): Promise<ToolAccess> {
   const traceMeta = telemetry?.traceMeta;
-  const servers = await Effect.runPromise(
-    describedToolServers(toolServers, {
-      reportLeftOut: (server, leftOut) => {
-        void runtime.run(logLeftOutOperation(server, leftOut));
-      },
-    }),
-  );
+  const reportLeftOut: Describing['reportLeftOut'] = (server, leftOut) => {
+    void runtime.run(logLeftOutOperation(server, leftOut));
+  };
+  const servers = await Effect.runPromise(describedToolServers(toolServers, { reportLeftOut }));
   return makeToolAccess(servers, {
     client: release,
+    connections,
+    reportLeftOut,
     ...(toolTiming === undefined ? {} : { timing: toolTiming }),
     ...(traceMeta === undefined ? {} : { traceMeta }),
     content: runtimeLedger(runtime).content,

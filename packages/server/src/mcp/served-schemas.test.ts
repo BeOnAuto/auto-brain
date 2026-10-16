@@ -87,9 +87,9 @@ interface Endpoint {
 }
 
 const endpoints: readonly Endpoint[] = [
-  { path: '/mcp', tools: 28, bytes: 43_095, mostBytes: mostListingBytes['own org'] },
-  { path: '/orgs/local/mcp', tools: 10, bytes: 12_550, mostBytes: mostListingBytes.org },
-  { path: '/orgs/local/playbooks/alpha/mcp', tools: 20, bytes: 30_769, mostBytes: mostListingBytes.playbook },
+  { path: '/mcp', tools: 28, bytes: 43_179, mostBytes: mostListingBytes['own org'] },
+  { path: '/orgs/local/mcp', tools: 10, bytes: 12_636, mostBytes: mostListingBytes.org },
+  { path: '/orgs/local/playbooks/alpha/mcp', tools: 20, bytes: 30_767, mostBytes: mostListingBytes.playbook },
 ];
 
 describe('the tools of each endpoint', () => {
@@ -142,7 +142,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
 
     expect(outcome.compiled).toEqual([]);
     expect(outcome.results.map((result) => plainTextIn(result))).toEqual([
-      'Whoever runs this server has set up no tool server for this org, so the functions of its playbooks can call no tools until they set one up; the give-tools guide says what they need.',
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up or a person adds one as a connection; the give-tools guide says how.',
       'There is 1 playbook: “Alpha”.',
       'Ran the reasoning function “summary”. Its answer: “Profits rose.”',
     ]);

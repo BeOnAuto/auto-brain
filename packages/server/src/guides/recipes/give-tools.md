@@ -1,6 +1,6 @@
 # Give the playbook tools
 
-A reasoning function can call the tools of the tool servers that whoever runs this server set up for the playbook, naming each tool as `server/tool`, or `server/*` for every tool of a server. Read the reasoning-function guide with get_guide before you write one.
+A reasoning function can call the tools of the tool servers that whoever runs this server set up for the playbook, naming each tool as `server/tool`, or `server/*` for every tool of a server; a connection a person added to the org is named the same way, by its name. Read the reasoning-function guide with get_guide before you write one.
 
 1. Call search to see the tool servers this playbook may use and their tools; when the person named a server, give its name as `server`, and give `terms`, a few words of what the person wants done, to find the tools that fit among many. Call introspect for the input_schema of a tool before writing its arguments.
 2. When no server is listed, tell the person that whoever runs this server sets tool servers up in its settings file, `auto-runtime.yaml`, under `tool_servers`: the server's address, a header that takes its key from an environment variable, and the org it serves, with `allowed` naming the tools a function may call. The server reads them when it starts again. Nothing more can be done here until then.

@@ -2,6 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
+import { Redacted } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { readSettings } from '../settings/settings.ts';
@@ -49,7 +50,26 @@ describe('the connections section of the configuration file', () => {
       variables: ['CRM_API_KEY'],
     });
   });
+});
 
+describe('the variables of the connections section', () => {
+  it('hold the value of each variable it lists that the environment sets, and nothing of one it leaves unset or empty', () => {
+    const settings = readSettings({
+      CONFIG_FILE: fileOf(policy.replace('[CRM_API_KEY]', '[CRM_API_KEY, WIKI_TOKEN, NOTES_KEY]')),
+      CRM_API_KEY: 'crm-key-0f3c9a71',
+      NOTES_KEY: '',
+    });
+
+    expect(
+      [...settings.connectionVariables].map(([name, value]: readonly [string, Redacted.Redacted]) => [
+        name,
+        Redacted.value(value),
+      ]),
+    ).toEqual([['CRM_API_KEY', 'crm-key-0f3c9a71']]);
+  });
+});
+
+describe('the connections section, of the variables the runtime reads for itself', () => {
   it('stops the start at a variable the runtime reads for itself, of its own or one the file refers to, at its place', () => {
     const naming = `model_gateways:
   - { name: corp, base_url: 'https://llm.example.com/v1', api_key: '\${CORP_KEY}' }

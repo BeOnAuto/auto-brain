@@ -6,7 +6,7 @@ import type { Served } from '../lifecycle/lifecycle.ts';
 import type { Settings } from '../settings/settings.ts';
 import { interactionServedBy, type ServedInteraction } from './served-interaction.ts';
 import { reasoningServedBy, type ModelAccessOf, type ServedReasoning } from './served-reasoning.ts';
-import { toolAccessOf, type ToolAccessWiring } from './served-tool-access.ts';
+import { toolAccessOf, type ServedConnections, type ToolAccessWiring } from './served-tool-access.ts';
 import { toolOperationsOf, type ServedToolOperations } from './served-tool-operations.ts';
 
 export interface ToolWiring extends ToolAccessWiring {
@@ -16,6 +16,8 @@ export interface ToolWiring extends ToolAccessWiring {
     readonly traceMeta: ToolAccessOptions['traceMeta'];
   };
 }
+
+export type ToolUsersWiring = ToolWiring & ServedConnections;
 
 export interface ServedToolUsers {
   readonly reasoning: ServedReasoning;
@@ -27,7 +29,7 @@ export interface ServedToolUsers {
 export async function toolUsersServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
-  { modelAccessOf, ...wiring }: ToolWiring,
+  { modelAccessOf, ...wiring }: ToolUsersWiring,
 ): Promise<ServedToolUsers> {
   const tools = await toolAccessOf(runtime, settings, wiring);
   const models = wiring.telemetry?.models;

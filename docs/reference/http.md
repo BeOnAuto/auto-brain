@@ -584,7 +584,7 @@ A retired playbook stays readable: these reads work on it, while every change to
 
 Runs that use tools (a reasoning function's, and an interaction function's that calls a tool) also record each call:
 
-- `tool_call_started`, with `read_only: true` when the server marks the tool read-only;
+- `tool_call_started`, with `read_only: true` when the server marks the tool read-only, and `connection_id` beside `server` when the server is a connection a person added;
 - then `tool_call_answered` when the tool answered, with `is_error` when its result is an error of its own;
 - or `tool_call_failed` when it never answered, with `because`: `arguments_refused`, `server_failure`, `timed_out`, `cancelled`, or `too_large` when the tool's result was larger than one call may return.
 
@@ -593,7 +593,7 @@ The run of an interaction function records its request and its deliveries. Each 
 | Event                   | Shows                                                                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
 | `interaction_requested` | The delivery, the party, the size of the message and the expiry                                                                       |
-| `delivery_started`      | The tool, and the size and digest of its arguments                                                                                    |
+| `delivery_started`      | The tool, the connection's `connection_id` where its server is one, and the size and digest of its arguments                          |
 | `delivery_succeeded`    | Where the request landed and where its replies are read                                                                               |
 | `delivery_failed`       | `because`, including `too_large` for a result larger than one call may return, and `retry_after_ms` when the server asked for a delay |
 | `delivery_refused`      | `because`, `too_large` or `unworkable`                                                                                                |
@@ -812,7 +812,7 @@ The result comes from a table the runtime updates as each run is recorded, so it
 
 ## Tool servers
 
-Five operations find and call the tools of the tool servers the operator set up for a playbook: MCP servers, and HTTP APIs described by an OpenAPI document. A [reasoning function](reasoning-format.md#tools) names their tools in `tools` as `server/tool` or `server/*`. These routes are relative to `/v1/orgs/{org}`:
+Five operations find and call the tools of the tool servers of a playbook: those the operator set up, and the [connections](#connections) people added to its org, MCP servers and HTTP APIs described by an OpenAPI document alike. A [reasoning function](reasoning-format.md#tools) names their tools in `tools` as `server/tool` or `server/*`, a connection by its name. These routes are relative to `/v1/orgs/{org}`:
 
 | Operation    | Method and route                                                         | Permission                    | Input                                                      |
 | ------------ | ------------------------------------------------------------------------ | ----------------------------- | ---------------------------------------------------------- |
@@ -823,14 +823,14 @@ Five operations find and call the tools of the tool servers the operator set up 
 | `dry_run`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/dry-run`  | `playbook:read`               | Server and tool in the path; optional `arguments`          |
 | `execute`    | `POST /playbooks/{playbook}/tool-servers/{server}/tools/{tool}/execute`  | `playbook:write`              | Server and tool in the path; optional `arguments`          |
 
-- `execute` needs `playbook:write` for every tool, since a call acts as the playbook, under the credential of the server's entry.
+- `execute` needs `playbook:write` for every tool, since a call acts as the playbook, under the credential of the server's entry or of the connection.
 - `validate` and `dry_run` are routed by `POST` because their `arguments` are an object a query string cannot carry. They are still reads: they change nothing, call no tool and need only `playbook:read`. A query string beside their body returns `bad_request`.
 - The four reads ask each server they need for its tool list when you call them, as a run does, with the same time limits to connect and to list. They record nothing. An HTTP API is not asked, since its OpenAPI document is the list.
 - On a playbook route, a playbook that does not exist returns `not_found`. A retired playbook serves the reads like any other. It refuses `execute` with `conflict` of the kind `retired`, as it refuses every command.
 
 ### Searching the tools
 
-`search` returns the servers set up for the playbook, and the tools of each that the operator allows.
+`search` returns the servers of the playbook, those set up in the configuration and the connections of its org that serve it, and the tools of each that its entry allows.
 
 - Without `terms`, it lists every tool when the servers offer at most 100 in total, in the order of the servers and of each server's own list. When they offer more, it returns only the servers, each with its count of tools; search them with `terms`.
 - `terms` is up to 8 words of up to 64 characters each, separated by spaces. Tools with a score come best first, those with the same score by name and then by server, at most 100.
@@ -883,15 +883,16 @@ Authorization: Bearer <key>
 
 Each server has these fields:
 
-| Field            | Contents                                                                                                                                                                                                    |
-| ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`           | The name a function writes before the slash                                                                                                                                                                 |
-| `type`           | `mcp` for a remote MCP server, `stdio` for an MCP server the runtime starts as a process, or `openapi` for an HTTP API described by an OpenAPI document                                                     |
-| `record_content` | Whether the content of its calls is kept                                                                                                                                                                    |
-| `tool_count`     | How many tools of the server the operator allows, of those `only` keeps                                                                                                                                     |
-| `unavailable`    | Instead of `tool_count`: why the server could not be asked for its tools, in words cut to 1 KiB. The other servers are still searched                                                                       |
-| `because`        | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can fix; `failing`, `rate_limited` or `unreachable` when asking again later may work |
-| `playbooks`      | On the org route only: the playbooks of the org whose functions may use it, or `["*"]` for every playbook of the org                                                                                        |
+| Field            | Contents                                                                                                                                                                                                                                                                                                                                          |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `name`           | The name a function writes before the slash                                                                                                                                                                                                                                                                                                       |
+| `connection`     | For a connection a person added, its id; absent for a server of the configuration. A connection whose name the configuration now sets up is listed beside that server, unavailable                                                                                                                                                                |
+| `type`           | `mcp` for a remote MCP server, `stdio` for an MCP server the runtime starts as a process, or `openapi` for an HTTP API described by an OpenAPI document                                                                                                                                                                                           |
+| `record_content` | Whether the content of its calls is kept                                                                                                                                                                                                                                                                                                          |
+| `tool_count`     | How many tools of the server the operator allows, of those `only` keeps                                                                                                                                                                                                                                                                           |
+| `unavailable`    | Instead of `tool_count`: why the server could not be asked for its tools, in words cut to 1 KiB. The other servers are still searched                                                                                                                                                                                                             |
+| `because`        | With `unavailable`: `key_refused` when the server did not accept the key the runtime gives it, which only the operator can fix; `failing`, `rate_limited` or `unreachable` when asking again later may work; for a connection, `connection_pending`, `connection_broken` or `connection_not_allowed`, as [below](#a-connection-that-is-not-ready) |
+| `playbooks`      | On the org route only: the playbooks of the org whose functions may use it, or `["*"]` for every playbook of the org                                                                                                                                                                                                                              |
 
 Each tool has these fields:
 
@@ -977,12 +978,13 @@ Content-Type: application/json
 
 When a server or a tool cannot be used, the reads respond as below. Each refusal is `unavailable`, and no tool is called:
 
-| Case                                 | `introspect` and `validate`                                                                  | `dry_run`                                            |
-| ------------------------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| A server not set up for the playbook | Kind `tool_not_offered`, `because: "tool_server_not_configured"`, before any server is asked | The same                                             |
-| A tool the operator does not allow   | Kind `tool_not_offered`, `because: "tool_not_allowed"`, before any server is asked           | Returns `allowed: false`                             |
-| A tool the server does not list      | Kind `tool_not_offered`, `because: "tool_not_listed"`                                        | The same                                             |
-| A server that cannot be asked        | Kind `tool_server_failed`, with its `because`, as `execute` returns it                       | Returns `server.reachable: "no"`, with its `because` |
+| Case                                 | `introspect` and `validate`                                                                  | `dry_run`                                                                                                        |
+| ------------------------------------ | -------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| A server not set up for the playbook | Kind `tool_not_offered`, `because: "tool_server_not_configured"`, before any server is asked | The same                                                                                                         |
+| A tool the operator does not allow   | Kind `tool_not_offered`, `because: "tool_not_allowed"`, before any server is asked           | Returns `allowed: false`                                                                                         |
+| A tool the server does not list      | Kind `tool_not_offered`, `because: "tool_not_listed"`                                        | The same                                                                                                         |
+| A connection that is not ready       | Kind `tool_not_offered`, with its `because`, as [below](#a-connection-that-is-not-ready)     | The same, or `server.reachable: "no"` with `because: "connection_not_allowed"` for an address its document names |
+| A server that cannot be asked        | Kind `tool_server_failed`, with its `because`, as `execute` returns it                       | Returns `server.reachable: "no"`, with its `because`                                                             |
 
 ### Calling a tool by hand
 
@@ -1033,12 +1035,12 @@ Content-Type: application/json
 
 The response is `200` whenever the call was made, whatever the tool returned. Nothing is called when:
 
-- the operator does not allow the tool, the server is not set up for the playbook, or the server does not list the tool: `unavailable` with kind `tool_not_offered` and `because` set to `tool_not_allowed`, `tool_server_not_configured` or `tool_not_listed`;
+- the operator does not allow the tool, the server is not set up for the playbook, or the server does not list the tool: `unavailable` with kind `tool_not_offered` and `because` set to `tool_not_allowed`, `tool_server_not_configured` or `tool_not_listed`, or for a connection that is not ready `connection_pending`, `connection_broken` or `connection_not_allowed`;
 - the server cannot be used: `unavailable` with kind `tool_server_failed`.
 
-A call is live: a tool its server does not mark read-only may change something. That is why `execute` is marked destructive over MCP while a tool server is configured.
+A call is live: a tool its server does not mark read-only may change something. That is why `execute` is marked destructive over MCP while a tool server is configured or people may add connections.
 
-Each call is recorded in the playbook's history: as `tool_call_started` before it is sent, and as `tool_call_answered` or `tool_call_failed` after. These are the same facts a run's tool calls record, with the caller who made the call as the one who acted.
+Each call is recorded in the playbook's history: as `tool_call_started` before it is sent, with `connection_id` beside `server` for a connection, and as `tool_call_answered` or `tool_call_failed` after. These are the same facts a run's tool calls record, with the caller who made the call as the one who acted.
 
 - The call is recorded on a stream of its own, with no run. `list_runs` and `get_run_history` never show it, while `list_playbook_events` does.
 - The arguments and the result are kept unless the operator turns `record_content` off for the server.
@@ -1062,7 +1064,7 @@ A connection is a tool server that a person adds to the org through their agent,
 Every operation answers the connection: `id`, a UUIDv7; `name`; `kind`, `mcp` or `openapi`; `entry`; `credential`, how it is credentialled, never its value; `status`, `pending`, `connected`, `broken` or `removed`; `added_by`; `added_at`; `connected_at`; `connected_by`, the id of the caller who connected it, by approving it or giving its credential, or `null`; `credential_ends_with`, the last four characters of a secret or client secret of twelve characters or more, which the secret store keeps beside the value, or `null`; and `broken`, why it is broken, or `null`. `add_connection` answers `201` with the connection and `connect`, `{ url, expires_at }`: `url` is Studio's page, `https://studio.on.auto/connect?server=<the runtime's origin>&org=<org>&connection=<id>&token=<token>`, whose origin is `PUBLIC_URL`, or the server's own address in local mode, and the link expires ten minutes on. `list_connections` answers them newest first in `connections`, the removed ones only with `include_removed`.
 
 - `entry` holds the server without its credential: `url` for `mcp`; `document` and `base_url` for `openapi`; and `headers`, `query_params`, `allowed`, `playbooks`, `record_content` and `request_id`, as an entry of the configuration file has them.
-- `credential` is one object, `kind` and the fields that kind takes, each optional in the schema and refused as `invalid_input` at the field where its kind lacks it or does not take it: `none` takes no other field; `reference` takes `name`, a variable of the runtime such as `CRM_API_KEY` that the operator lists in `connections.variables`; `secret` takes `name` and `in`, `header`, `query` or `security`, so `name` is the header, the query parameter or the security scheme of the document the value is sent as, and only an `openapi` connection takes `query` or `security`; `client_credentials` takes `issuer`, an `https` URL or an `http` URL on a loopback address, `client_id` and an optional `scope`; and `authorization`, which takes no other field, is refused until a later release adds it. The same object is what every operation answers and what the org's record keeps.
+- `credential` is one object, `kind` and the fields that kind takes, each optional in the schema and refused as `invalid_input` at the field where its kind lacks it or does not take it: `none` takes no other field; `secret` takes `name` and `in`, `header`, `query` or `security`, so `name` is the header, the query parameter or the security scheme of the document the value is sent as, and only an `openapi` connection takes `query` or `security`; `reference` takes `variable`, a variable of the runtime such as `CRM_API_KEY` that the operator lists in `connections.variables`, whose value is sent where its `name` and `in` say, as a secret's; `client_credentials` takes `issuer`, an `https` URL or an `http` URL on a loopback address, `client_id` and an optional `scope`; and `authorization`, which takes no other field, is refused until a later release adds it. The same object is what every operation answers and what the org's record keeps.
 - `get_connection`, which Studio reads, and the three routes of the link are served over HTTP alone, and no MCP endpoint serves them. The three routes of the link are Studio's page's alone. Each takes the token, which the runtime keeps only as its SHA-256, and matches it to the open link of the connection: one given less than ten minutes ago that nothing has used up.
 - `approve` connects a connection whose credential is `none` or `reference` and uses its link up. `give_credential` keeps the value sealed in the runtime's secret store, connects the connection and uses its link up: giving the credential is its approval.
 - A connection is added by a person: on a runtime that signs people in, `add_connection` refuses a key, and a runtime of API keys alone, which signs nobody in, refuses every connection, since no person could approve it.
@@ -1075,10 +1077,21 @@ Every operation answers the connection: `id`, a UUIDv7; `name`; `kind`, `mcp` or
 | The credential `authorization`, or a field its kind lacks or does not take                                                              | `invalid_input`                            |
 | A connection the operator's rules do not take: no one may add one, its host, its kind of credential or the variable its reference names | `forbidden`, with the sentence of the rule |
 | A name of an entry of `tool_servers`, or of a connection of the org that is not removed                                                 | `conflict`                                 |
+| An org that holds 50 connections that are not removed, the most it may                                                                  | `conflict`                                 |
 | A token that is unknown, used up or expired, or an id the org does not have                                                             | `not_found`                                |
 | `add_connection` by a key where people sign in, or by anyone on a runtime of API keys alone                                             | `forbidden`                                |
 | `approve` or `give_credential` with the session of another person, where people sign in                                                 | `forbidden`                                |
 | `approve` of a connection whose credential is to be given, or `give_credential` of one that takes none                                  | `conflict`                                 |
+
+### A connection that is not ready
+
+A connected connection is a tool server of its org: `search` lists it with `connection`, its id, a function names it by its name as `name/tool`, and `introspect`, `validate`, `dry_run` and `execute` reach it, as [Tool servers](#tool-servers) describes. The runtime checks the operator's rules and reads its credential when it is first used after the runtime starts. A connection that is not ready is refused as `unavailable` of the kind `tool_not_offered`, and `search` lists it unavailable with the same `because` and words:
+
+| `because`                | The connection                                                                                                                                |
+| ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------- |
+| `connection_pending`     | Nobody has approved it yet; the person who added it opens its link, or removes it and adds it again                                           |
+| `connection_broken`      | Its credential cannot be read, and the runtime recorded it `broken`, with why in `broken`; the person removes it and adds it again            |
+| `connection_not_allowed` | A rule of the operator no longer takes it, in the sentence `add_connection` would give, or the configuration now sets up a server of its name |
 
 ## Responses and errors
 

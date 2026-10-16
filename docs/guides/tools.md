@@ -4,7 +4,7 @@ description: Find the tools your Auto offers a playbook, try one, name it in a r
 
 # Give a function tools
 
-Let a reasoning function call tools while it runs, such as tools that read files, search the news or look up records in a business system. Tools come from a tool server: a service or program that offers tools for a function to call. Whoever runs Auto adds tool servers, and one server can serve many playbooks. This guide uses the servers your Auto already has, and needs only your agent.
+Let a reasoning function call tools while it runs, such as tools that read files, search the news or look up records in a business system. Tools come from a tool server: a service or program that offers tools for a function to call. Whoever runs Auto adds tool servers, and one server can serve many playbooks; a person can also add one to the org as a connection, through their agent. This guide uses the servers your Auto already has, and needs only your agent.
 
 If no server offers the tools you need, [ask for one](#ask-for-a-tool-server). If you run Auto yourself, [Add a tool server](../self-host/tool-servers.md) shows how to add it.
 
@@ -63,7 +63,7 @@ say when to use the tool and what to do if the tool returns an error or finds
 nothing. Show me the definition before saving it.
 ```
 
-Check the definition's `tools`. Each entry is `server/tool`, or `server/*` for every tool the server's entry allows (the `*` stands for all of them). A tool written in another form, or listed twice, is refused when you save. The function can call only the tools it names.
+Check the definition's `tools`. Each entry is `server/tool`, or `server/*` for every tool the server's entry allows (the `*` stands for all of them). A connection is named the same way, by its name, as in `crm/search`. A tool written in another form, or listed twice, is refused when you save. The function can call only the tools it names.
 
 Check the prompt too:
 
