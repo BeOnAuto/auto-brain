@@ -46,7 +46,7 @@ describe('the words of a simple schema', () => {
     ]).toEqual([
       'Text.',
       'A date and time.',
-      'Text.',
+      'Text in the form the schema calls email.',
       'A whole number.',
       'A number.',
       'Yes or no.',
@@ -126,6 +126,13 @@ describe('the bounds of the items of a list in words', () => {
       'A list of whole numbers, each at least 1 or text.',
       'A record of at most 3 entries, each a whole number, at least 1.',
     ]);
+  });
+
+  it('say a number that is a multiple of another, and a list that holds no item twice', () => {
+    expect([
+      wordsOf({ type: 'integer', minimum: 5, multipleOf: 5 }),
+      wordsOf({ type: 'array', uniqueItems: true, items: { type: 'string' } }),
+    ]).toEqual(['A whole number, at least 5, a multiple of 5.', 'A list of text, no item twice.']);
   });
 });
 
@@ -216,6 +223,20 @@ describe('the references of a schema', () => {
         astray: 'Any value.',
         self: 'A record with: **tag** (A tag; text, at least 1 character, optional), **named** (Its own words; text, at least 1 character, optional), **older** (yes or no, optional), **missing** (any value, optional), **outside** (any value, optional), **tree** (a list of lists of lists of any values, optional), **self** (a record, optional), **astray** (any value, optional).',
       },
+    ]);
+  });
+});
+
+describe('the examples of a field', () => {
+  it('are said in words after its rules, unless its description gives one already', () => {
+    expect([
+      wordsOf({ type: 'string', minLength: 6, description: 'The month to report on', examples: ['April 2026', 7] }),
+      wordsOf({ type: 'string', description: 'The month, such as April 2026', examples: ['April 2026'] }),
+      wordsOf({ type: 'string', examples: [] }),
+    ]).toEqual([
+      'The month to report on. Text, at least 6 characters, such as “April 2026” or 7.',
+      'The month, such as April 2026. Text.',
+      'Text.',
     ]);
   });
 });

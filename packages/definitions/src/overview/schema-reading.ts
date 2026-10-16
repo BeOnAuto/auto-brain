@@ -93,3 +93,68 @@ export function propertiesOf(schema: JsonSchema): readonly (readonly [string, Js
 export function requiredOf(schema: JsonSchema): ReadonlySet<string> {
   return new Set(listOf(schema, 'required').filter((name) => typeof name === 'string'));
 }
+
+export interface PlaceStep {
+  readonly token: string;
+  readonly within: readonly JsonSchema[];
+}
+
+export interface SchemaPlace {
+  readonly steps: readonly PlaceStep[];
+  readonly schemas: readonly JsonSchema[];
+}
+
+const combinators = ['allOf', 'anyOf', 'oneOf'];
+
+const listIndex = /^(?:0|[1-9]\d*)$/u;
+
+function appliedSchemas(schema: JsonSchema, reading: SchemaReading): readonly JsonSchema[] {
+  const { schema: read, reading: within } = resolvedSchema(schema, reading);
+  return [
+    read,
+    ...combinators
+      .flatMap((keyword) => listOf(read, keyword))
+      .filter((member) => isJsonSchema(member))
+      .flatMap((member) => appliedSchemas(member, deeper(within))),
+  ];
+}
+
+function fieldSchema(schema: JsonSchema, token: string): Schema.Json | undefined {
+  const properties = schema['properties'];
+  return isJsonSchema(properties) ? properties[token] : undefined;
+}
+
+function itemSchema(schema: JsonSchema, token: string): Schema.Json | undefined {
+  if (!listIndex.test(token)) {
+    return undefined;
+  }
+  const prefix = listOf(schema, 'prefixItems');
+  const position = Number(token);
+  return position < prefix.length ? prefix[position] : schema['items'];
+}
+
+function childSchemas(schema: JsonSchema, token: string): readonly JsonSchema[] {
+  return [fieldSchema(schema, token), itemSchema(schema, token), schema['additionalProperties']].filter((child) =>
+    isJsonSchema(child),
+  );
+}
+
+export function placeAt(root: JsonSchema, tokens: readonly string[]): SchemaPlace {
+  const reading: SchemaReading = { root, depth: 0, expanded: false };
+  return tokens.reduce<SchemaPlace>(
+    ({ steps, schemas }, token) => ({
+      steps: [...steps, { token, within: schemas }],
+      schemas: schemas
+        .flatMap((schema) => childSchemas(schema, token))
+        .flatMap((child) => appliedSchemas(child, reading)),
+    }),
+    { steps: [], schemas: appliedSchemas(root, reading) },
+  );
+}
+
+export function isItemOf({ token, within }: PlaceStep): boolean {
+  return (
+    listIndex.test(token) &&
+    within.some((schema) => isJsonSchema(schema['items']) || listOf(schema, 'prefixItems').length > 0)
+  );
+}

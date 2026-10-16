@@ -76,6 +76,15 @@ function exclusiveWords(schema: JsonSchema): readonly string[] {
   ];
 }
 
+function multipleWords(schema: JsonSchema): readonly string[] {
+  const divisor = numberOf(schema, 'multipleOf');
+  return divisor === undefined ? [] : [`a multiple of ${counted.format(divisor)}`];
+}
+
+function uniqueWords(schema: JsonSchema): readonly string[] {
+  return schema['uniqueItems'] === true ? ['no item twice'] : [];
+}
+
 function defaultWords(schema: JsonSchema): readonly string[] {
   const value = schema['default'];
   return value === undefined ? [] : [`${inWords(value) ?? 'a default'} when left out`];
@@ -86,6 +95,8 @@ export function trailingWords(schema: JsonSchema, saidBefore: readonly Bound[]):
   return [
     ...trailing.flatMap((bound) => boundWords(schema, bound)),
     ...exclusiveWords(schema),
+    ...multipleWords(schema),
+    ...uniqueWords(schema),
     ...defaultWords(schema),
   ];
 }
