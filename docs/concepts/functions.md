@@ -56,7 +56,7 @@ Choose interaction when a person must decide or supply something, or when the pl
 
 ## Prediction
 
-A prediction function predicts a number over time from the playbook's history, or from rows you upload. For example, it can forecast each region's orders next week, or their total to the end of the quarter. Each prediction is a likely value with a low and a high.
+A prediction function predicts a number over time from the playbook's history, or from rows you upload. For example, it can forecast each region's orders next week, or their total to the end of the quarter. Each prediction is a series: the last periods observed, and each period ahead as a likely value with a low and a high.
 
 The model behind it is trained outside the playbook, by a person or an agent that can run code. The playbook tests each candidate model on periods the trainer never saw, and keeps it only when it does better than simple baselines. So keep three things apart: the prediction function you define, the predictive model it holds, and the prediction a run gives back.
 

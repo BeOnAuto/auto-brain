@@ -2,7 +2,7 @@
 
 # Prediction function format
 
-A prediction function returns numbers learned from the playbook's history or from an uploaded dataset. It predicts one quantity for one series at a time, one or more periods ahead. Each prediction is a likely value with a low and a high. The API stores the function as a definition of the type `prediction`.
+A prediction function returns numbers learned from the playbook's history or from an uploaded dataset. It predicts one quantity for one series at a time, one or more periods ahead. Each prediction is a [series](output-shapes.md#series): the last periods observed, and each period ahead as a likely value with a low and a high. The API stores the function as a definition of the type `prediction`.
 
 Its document says:
 
@@ -20,7 +20,7 @@ The function's model is a file in the ONNX format. Someone fits the model outsid
 3. The **trainer** is whoever fits the model: a person, or an agent with an environment that runs code. It reads the brief and the rows and fits models. It uploads each model as a **candidate**, a file in the ONNX format.
 4. The playbook scores each candidate on periods the trainer never saw, against simple baselines. The winner becomes the function's next version, with a **card** that records how it was built and how it scored.
 5. A later version first runs as a **shadow** beside the current one for some periods. It replaces the current one only when it predicts as well. A person may also have to approve it.
-6. The **active version** makes the predictions. A question is a run that asks for one series, some periods ahead.
+6. The **active version** makes the predictions. A question is a run that asks for one series, and answers its last observed periods and the periods ahead.
 
 ## A function document
 
@@ -88,7 +88,8 @@ Before you write one, settle these with the person:
 | `predicts.season`           | Optional; the length of a season in periods, 2 to 366, such as 52 for weeks over a year                                                    |
 | `predicts.horizons`         | Required unless `accumulates` is named; the periods ahead a question may ask, 1 to 8 whole numbers from 1 to 52, each once                 |
 | `predicts.accumulates`      | Optional, in place of `horizons`; `week`, `month`, `quarter` or `year`, longer than `period`; see [below](#a-total-to-the-end-of-a-period) |
-| `predicts.unit`             | Required; text of 1 to 64 characters for the card, such as `orders`                                                                        |
+| `predicts.unit`             | Required; text of 1 to 64 characters for the card and the answer, such as `orders`                                                         |
+| `predicts.history`          | Optional; how many observed periods a question's answer shows, 0 to 500 and at most the window; twice the longest horizon by default       |
 | `data`                      | Required; a projection of the playbook's history or an uploaded `dataset`, with `window` either way; see [The dataset](#the-dataset)       |
 | `data.window`               | Required; the periods of history a model is trained on, at most 1,000                                                                      |
 | `evaluation.holdout`        | Required; the last periods of the window, held back from the trainer and used to score candidates                                          |
@@ -115,16 +116,30 @@ Before you write one, settle these with the person:
 
 A run's input has one of two shapes:
 
-- A **question** is `{ series, horizon, given? }`: the series as text of 1 to 256 bytes, and one of the function's horizons. When the function names `given`, the question gives a value for each given feature, by name, and for no other. The playbook feeds that value to the model for every period ahead.
+- A **question** is `{ series, horizon?, given?, marks? }`:
+  - `series` is text of 1 to 256 bytes.
+  - `horizon` is one of the function's horizons, to predict that period ahead alone. Without it, the question predicts every horizon the function names.
+  - `given` holds a value for each given feature, by name, and for no other, when the function names `given`. The playbook feeds that value to the model for every period ahead.
+  - `marks` are at most 8 `{ label, value }`, each label text of 1 to 64 characters, which the answer carries for display and nothing reads. More are refused `invalid_input` at `/input/marks`.
 - A **build** is `{ build: {} }`, which asks for a new version.
 
-A question's output is the **prediction**, `{ series, origin, period, horizon, value, low, high, coverage, version }`:
+A question's output is the **prediction**, a [series](output-shapes.md#series) of the function's grain:
 
-- `origin` is the last observed period and `period` the predicted one. Each is in the ISO 8601 form of the grain: `YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn` or `YYYY`.
-- `value` is the 50th percentile, `low` the 10th and `high` the 90th, so `coverage` is 0.8.
-- `version` is the version of the model that predicted.
+| Field      | Value                                                                                                                                          |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `unit`     | `predicts.unit`                                                                                                                                |
+| `period`   | `predicts.period`                                                                                                                              |
+| `origin`   | The last observed period                                                                                                                       |
+| `lines[0]` | `observed`: the last `predicts.history` periods up to the origin, each value as the dataset's rows hold it; a period with no value is left out |
+| `lines[1]` | `predicted`: one point for each horizon asked, the nearest first, each with its `value`, `low` and `high`                                      |
+| `marks`    | The question's marks, when it gives them                                                                                                       |
 
-A build's output is `{ version, winner, candidates }`. `version` and `winner` are null when no candidate beat the baselines.
+- Each `at` and the `origin` are in the ISO 8601 form of the grain: `YYYY-MM-DD`, `YYYY-Www`, `YYYY-MM`, `YYYY-Qn` or `YYYY`.
+- `value` is the 50th percentile, `low` the 10th and `high` the 90th.
+- The observed periods are the last of the window the model reads, so the answer reads nothing more.
+- The run's record holds `version`, the version of the model that predicted, and `coverage`, 0.8, the share of truths `low` and `high` are meant to hold.
+
+`get_definition` shows the [series shape](output-shapes.md#what-a-saved-definition-shows) as the function's `output_schema`, and `series` as its `details.shape`, as for a reasoning function that declares `output.shape: series`. A build's output is `{ version, winner, candidates }`. `version` and `winner` are null when no candidate beat the baselines.
 
 ### A total to the end of a period
 
@@ -136,13 +151,12 @@ A day sums to a week, a month or a quarter; a week to a quarter or a year; and a
 - `horizons` beside `accumulates`, or neither of them;
 - a target aggregated as `last` or `mean`, since a sum of such values says nothing.
 
-For the holdout and the window, the longest horizon is then the most periods the enclosing period holds: 7, 31 or 92 days, 14 or 53 weeks, or 3 or 12 months.
+For the holdout, the window and the history, the longest horizon is then the most periods the enclosing period holds: 7, 31 or 92 days, 14 or 53 weeks, or 3 or 12 months.
 
-Such a question is `{ series, given? }`, with no horizon. Its `given` holds each given feature's value for the periods summed. In its prediction:
+Such a question is `{ series, given?, marks? }`, with no horizon. Its `given` holds each given feature's value for the periods summed. Its prediction's `predicted` line holds one point, the total:
 
-- `period` is the enclosing period in its own ISO 8601 form, such as `2026-Q4`;
-- `horizon` is the number of periods summed;
-- `value`, `low` and `high` are the total.
+- its `at` is the last period the enclosing period holds, in the grain's form, since every point of a series is of its grain: `2026-10-18` for the week 2026-W42 of a daily function;
+- its `value`, `low` and `high` are the total from the period after the origin to that one.
 
 The dataset and its files are the same as for horizons. The trainer fits a model of the total. [The signature](#the-signature-of-a-candidate) feeds the model the number of periods it sums, as `h`. The brief reads the enclosing period as `dataset.accumulates`.
 
@@ -488,28 +502,60 @@ A version that passes activates when `activate` is `automatic`. With `{ approved
 
 ## A question
 
-A question is `{ series, horizon, given? }`, or `{ series, given? }` with `accumulates`. The active version predicts from the series' last window:
+A question is `{ series, horizon?, given?, marks? }`, or `{ series, given?, marks? }` with `accumulates`. The active version predicts from the series' last window:
 
 - over a projection, the dataset's rows up to the last closed period at its checkpoint;
 - over an uploaded dataset, the rows up to its last period. A model process reads them from the upload, so the server parses none of it.
 
-The model process that holds the version's file returns the prediction within 10 seconds. The output is the prediction of [The input and the output](#the-input-and-the-output). The run's record holds the `version`, the `origin`, the `dataset_checkpoint` and the `duration_ms`. A question can also be refused, for example before a version is active; [How a run ends](#how-a-run-ends) lists each case.
+The model process that holds the version's file returns the prediction within 10 seconds. The output is the prediction of [The input and the output](#the-input-and-the-output). The run's record holds the `version`, the `coverage`, the `origin`, the `dataset_checkpoint` and the `duration_ms`. A question can also be refused, for example before a version is active; [How a run ends](#how-a-run-ends) lists each case.
+
+For example, `{ "series": "north", "given": { "promotion": 1 } }` asks `weekly-orders` for both its horizons, and its answer shows the 8 weeks observed before them:
+
+```json
+{
+  "unit": "orders",
+  "period": "week",
+  "origin": "2026-W41",
+  "lines": [
+    {
+      "name": "observed",
+      "points": [
+        { "at": "2026-W34", "value": 118 },
+        { "at": "2026-W35", "value": 124 },
+        { "at": "2026-W36", "value": 121 },
+        { "at": "2026-W37", "value": 130 },
+        { "at": "2026-W38", "value": 127 },
+        { "at": "2026-W39", "value": 133 },
+        { "at": "2026-W40", "value": 129 },
+        { "at": "2026-W41", "value": 136 }
+      ]
+    },
+    {
+      "name": "predicted",
+      "points": [
+        { "at": "2026-W42", "value": 138.5, "low": 126.25, "high": 151 },
+        { "at": "2026-W45", "value": 141, "low": 122.75, "high": 160.5 }
+      ]
+    }
+  ]
+}
+```
 
 ## How a run ends
 
 A question ends within its call and cannot be cancelled while it runs:
 
-| Ending                                                           | When                                                                                                                                     |
-| ---------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
-| `succeeded`                                                      | The prediction is its output                                                                                                             |
-| `invalid_input`                                                  | The input is neither a question the function takes nor `{ build: {} }`, or the series is not in the dataset's window, at `/input/series` |
-| `conflict`, kind `no_active_version`                             | No version is active yet                                                                                                                 |
-| `conflict`, kind `data_changed`                                  | The data part, `horizons`, the `given` features or `accumulates` changed after the active version's model was built for them             |
-| `unavailable`, kind `dataset_not_ready`                          | The dataset is waiting or rebuilding; with `because` `stalled`, it stalled                                                               |
-| `unavailable`, kind `model_process_busy`                         | Every model process is taken                                                                                                             |
-| `unavailable`, kind `model_process_failed`                       | The model process ended before it returned, such as when it ran out of time or memory                                                    |
-| `unavailable`, kind `model_process_failed`, because `not_finite` | The model returned a number that is not finite, or a shape its signature does not give; asking again does not change it                  |
-| `failed`                                                         | The runtime itself broke down                                                                                                            |
+| Ending                                                           | When                                                                                                                                                                     |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `succeeded`                                                      | The prediction is its output                                                                                                                                             |
+| `invalid_input`                                                  | The input is neither a question the function takes nor `{ build: {} }`, or the series is not in the dataset's window, at `/input/series`                                 |
+| `conflict`, kind `no_active_version`                             | No version is active yet                                                                                                                                                 |
+| `conflict`, kind `data_changed`                                  | The data part, `horizons`, the `given` features or `accumulates` changed after the active version's model was built for them                                             |
+| `unavailable`, kind `dataset_not_ready`                          | The dataset is waiting or rebuilding; with `because` `stalled`, it stalled                                                                                               |
+| `unavailable`, kind `model_process_busy`                         | Every model process is taken                                                                                                                                             |
+| `unavailable`, kind `model_process_failed`                       | The model process ended before it returned, such as when it ran out of time or memory                                                                                    |
+| `unavailable`, kind `model_process_failed`, because `not_finite` | The model returned a number that is not finite, a low above its likely value or a high below it, or a shape its signature does not give; asking again does not change it |
+| `failed`                                                         | The runtime itself broke down                                                                                                                                            |
 
 A build finishes later, so `run_definition` returns it `started` and `get_run` shows how it ended:
 
@@ -549,6 +595,7 @@ A save is refused past these bounds:
 | Bound                    | Value                                                                                                                                                                          |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Horizons                 | 1 to 8, each 1 to 52 periods                                                                                                                                                   |
+| History                  | 0 to 500 periods, at most the window                                                                                                                                           |
 | A total                  | A day to a week, a month or a quarter, at most 7, 31 or 92 days; a week to a quarter or a year, at most 14 or 53 weeks; a month to a quarter or a year, at most 3 or 12 months |
 | Holdout                  | At least twice the longest horizon and at least 8, at most half the window                                                                                                     |
 | Window                   | At least the holdout plus two seasons, or plus twice the longest horizon; at most 1,000                                                                                        |
@@ -583,7 +630,7 @@ A workflow calls a prediction function as it calls any function, with `call: run
 - A build's output is `{ version, winner, candidates }`, so the next task can branch on `version`. It is null when no candidate won.
 - A task whose input holds an expression, as the one below does, waits as long as a build. What it asks is known only when it runs.
 
-This workflow forecasts a region's orders for next week from `weekly-orders`, given whether a promotion is planned. While the function has no active version, the workflow returns no forecast:
+This workflow forecasts a region's orders for next week from `weekly-orders`, given whether a promotion is planned. The task's output is the series the function answers, and a workflow that needs one number reads the likely value of the first predicted point, `lines[1].points[0].value`. While the function has no active version, the workflow returns no forecast:
 
 ```yaml
 document:
@@ -613,7 +660,7 @@ do:
                 horizon: 1
                 given: { promotion: '${ $data.promotion }' }
             output:
-              as: '${ ({ forecast: $data }) }'
+              as: '${ ({ forecast: $data.lines[1].points[0].value }) }'
       catch:
         errors:
           with: { status: 409 }
@@ -622,7 +669,7 @@ do:
           - none: { set: { forecast: null } }
 ```
 
-`run_definition` of `next-week-orders` takes an input such as `{"region": "north", "promotion": 1}`. Before `weekly-orders` has an active version, its question is refused `conflict` with the kind `no_active_version`. The `catch` takes that, and the run succeeds with `{"forecast": null}`. Once a version is active, the run succeeds with `{"forecast": <the prediction>}`. The prediction holds its `series`, `origin`, `period`, `horizon`, `value`, `low`, `high`, `coverage` and `version`. Any other refusal ends the workflow's run, as below.
+`run_definition` of `next-week-orders` takes an input such as `{"region": "north", "promotion": 1}`. Before `weekly-orders` has an active version, its question is refused `conflict` with the kind `no_active_version`. The `catch` takes that, and the run succeeds with `{"forecast": null}`. Once a version is active, the run succeeds with `{"forecast": <the likely value>}`, such as `{"forecast": 138.5}`. To keep the range too, read the whole point, `lines[1].points[0]`, which holds its `at`, `value`, `low` and `high`. Any other refusal ends the workflow's run, as below.
 
 A run that does not succeed raises the error of its rejection:
 
@@ -638,7 +685,7 @@ A workflow on a [schedule](workflow-format.md#triggers) can ask for a build on t
 `get_definition` returns a saved function with its `overview`: the function in plain words, for a person who does not read its document. Auto Studio shows it before the document. The overview says, in order:
 
 1. The `description`, or that the function has none yet.
-2. What the function predicts: the target, its unit, its period and its horizons, or the period it sums to with `accumulates`. Then its season, and what a question names, with the given features among it.
+2. What the function predicts: the target, its unit, its period and its horizons, or the period it sums to with `accumulates`. Then its season, what a question names, with the given features among it, and its answer in the words of the series shape, such as "It answers the last 8 observed weeks and 1 and 4 weeks ahead, each with a likely value, a low and a high."
 3. What it learns from. For a projected dataset: each filter with the attributes and the `data` test it names, where the time and the series are read, and each column of a row with how it is aggregated. For an uploaded dataset: its digest and its columns. For either: the window a build reads.
 4. Who trains it: the party of `source.to` in the inbox, or the interaction function of `source.through`, in bold. Then how long a build waits for its candidates, how long each is scored, and the brief as a person reads it, read as [the overview of a reasoning function](reasoning-format.md#the-overview) reads its message.
 5. How a version goes live: the holdout, the metric, the coverage floor, the baselines and the confidence a candidate must pass. Then the shadow a later version runs over a projected dataset, and whether a version activates on its own or once it is approved through the interaction function that `evaluation.activate.approved` names.
