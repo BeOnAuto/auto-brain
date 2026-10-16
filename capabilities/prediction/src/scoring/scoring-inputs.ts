@@ -1,3 +1,4 @@
+import type { PlaybookAddress } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
 import type { BuildState } from '../builds/build-state.ts';
@@ -7,7 +8,7 @@ import type { Assembled } from '../facts/build-facts.ts';
 import { seriesRowsIn } from '../files/series-rows.ts';
 import { seedOf } from './bootstrap.ts';
 import type { Scoring } from './candidate-scoring.ts';
-import { scoringGridOf } from './scoring-grid.ts';
+import { scoringGridOf, type ScoringGrid } from './scoring-grid.ts';
 
 export interface ScoredBuild {
   readonly document: PredictionFunctionDefinitionDocument;
@@ -28,12 +29,19 @@ export function givenIndexesOf(document: PredictionFunctionDefinitionDocument): 
   return document.data.given.map((name) => names.indexOf(name));
 }
 
-function rowsFileOf(ports: PredictionPorts, build: BuildState, sha256: string): Effect.Effect<string> {
-  const { org, playbook } = build.address;
+export function rowsFileOf(ports: PredictionPorts, playbook: PlaybookAddress, sha256: string): Effect.Effect<string> {
   return Effect.map(
-    ports.caches.rows.pathOf(sha256, () => ports.ledger.content.get({ org, playbook }, sha256)),
+    ports.caches.rows.pathOf(sha256, () => ports.ledger.content.get(playbook, sha256)),
     (path) => Option.getOrThrow(Option.fromNullishOr(path)),
   );
+}
+
+export function gridOfTheBuild({ predicts }: PredictionFunctionDefinitionDocument, assembled: Assembled): ScoringGrid {
+  return scoringGridOf(predicts, {
+    window: assembled.window,
+    holdout: assembled.holdout,
+    firstPeriod: assembled.first_period,
+  });
 }
 
 export function scoringOf(
@@ -43,18 +51,14 @@ export function scoringOf(
   assembled: Assembled,
 ): Effect.Effect<ScoringRows> {
   return Effect.gen(function* () {
-    const path = yield* rowsFileOf(ports, build, assembled.scoring_sha256);
+    const { org, playbook } = build.address;
+    const path = yield* rowsFileOf(ports, { org, playbook }, assembled.scoring_sha256);
     const features = featureNamesOf(document).length;
     const rows = yield* ports.caches.parsed.rowsOf(assembled.scoring_sha256, () => seriesRowsIn(path, { features }));
-    const grid = scoringGridOf(document.predicts, {
-      window: assembled.window,
-      holdout: assembled.holdout,
-      firstPeriod: assembled.first_period,
-    });
     return {
       path,
       scoring: {
-        grid,
+        grid: gridOfTheBuild(document, assembled),
         rows,
         evaluation: document.evaluation,
         seed: seedOf(build.address.id),

@@ -44,7 +44,7 @@ export type Verdict =
 
 const figures = new Intl.NumberFormat('en', { maximumFractionDigits: 4 });
 
-export function baselineWalk({ grid, rows }: Scoring, baseline: Baseline): BaselineWalk {
+export function baselineWalk({ grid, rows }: Pick<Scoring, 'grid' | 'rows'>, baseline: Baseline): BaselineWalk {
   const forecasts = rows.map(({ values }) => ({
     values,
     forecast: baselineForecast(grid, values, baseline),

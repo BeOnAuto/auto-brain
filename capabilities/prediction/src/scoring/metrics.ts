@@ -76,6 +76,19 @@ export function scoredOf(grid: ScoringGrid, series: readonly SeriesForecast[]): 
   };
 }
 
+function lossesNothingAt(grid: ScoringGrid, series: SeriesForecast, metric: Metric): boolean {
+  return grid.slots.every((slot) =>
+    pairsOf(grid, series, slot).every((pair) => {
+      const loss = lossOf(metric, pair, series.scale);
+      return !Number.isFinite(loss) || loss === 0;
+    }),
+  );
+}
+
+export function losesNothing(grid: ScoringGrid, series: readonly SeriesForecast[], metric: Metric): boolean {
+  return series.every((one) => lossesNothingAt(grid, one, metric));
+}
+
 export function primaryOf(scores: readonly Score[], metric: Metric): number | undefined {
   return meanOf(
     scores.flatMap((score) => {
