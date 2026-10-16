@@ -224,6 +224,26 @@ describe('the check of the baselines of a build in a model process', () => {
         horizons: [],
         rows: scoringRows([...moving, 5, 5, 6, 6]),
       }),
-    ]).toEqual([{ perfect: 'persistence' }, { perfect: null }, { perfect: null }, { perfect: null }]);
+    ]).toEqual([
+      { perfect: 'persistence', unscorable: false },
+      { perfect: null, unscorable: false },
+      { perfect: null, unscorable: true },
+      { perfect: null, unscorable: false },
+    ]);
+  });
+
+  it('calls a build unscorable when mase judges no period held back that a baseline walks, since no series moved while trained', async () => {
+    const stillWhileTrained = scoringRows([5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 7, 8]);
+    const nothingHeldBack = scoringRows([5, 5, 5, 5, 5, 5, 5, 5, Number.NaN, Number.NaN, Number.NaN, Number.NaN]);
+
+    expect([
+      await asked('baselines', { ...perfectJob, rows: stillWhileTrained }),
+      await asked('baselines', { ...perfectJob, metric: 'winkler', rows: stillWhileTrained }),
+      await asked('baselines', { ...perfectJob, rows: nothingHeldBack }),
+    ]).toEqual([
+      { perfect: null, unscorable: true },
+      { perfect: null, unscorable: false },
+      { perfect: null, unscorable: false },
+    ]);
   });
 });

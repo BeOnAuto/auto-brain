@@ -13,6 +13,25 @@ function perfectAs(baseline: string, metric: string): Conflict {
   });
 }
 
+function unscorableAs(metric: string): Conflict {
+  return new Conflict({
+    detail: `No series moved during the periods a build trains on, so ${metric}, which scales each error by that movement, scores no period held back and no candidate could be judged against the baselines; ask for a build once a series moves, or judge candidates by winkler or quantile`,
+    kind: 'unscorable',
+  });
+}
+
+interface BaselinesFound {
+  readonly perfect: string | null;
+  readonly unscorable: boolean;
+}
+
+function refusalOf({ perfect, unscorable }: BaselinesFound, metric: string): Conflict | undefined {
+  if (perfect !== null) {
+    return perfectAs(perfect, metric);
+  }
+  return unscorable ? unscorableAs(metric) : undefined;
+}
+
 const busy = new Unavailable({
   detail:
     'Every model process a build may hold stayed busy checking or scoring while the build waited for one; ask for the build again shortly',
@@ -25,7 +44,7 @@ const ended = new Unavailable({
   because: 'baseline_check',
 });
 
-export function noBaselinePerfect(
+export function candidatesJudgeable(
   ports: PredictionPorts,
   playbook: PlaybookAddress,
   { predicts, evaluation }: PredictionFunctionDefinitionDocument,
@@ -53,7 +72,7 @@ export function noBaselinePerfect(
     if (outcome.ended !== 'answered') {
       return yield* Effect.fail(ended);
     }
-    const { perfect } = outcome.answer;
-    return perfect === null ? undefined : yield* Effect.fail(perfectAs(perfect, evaluation.metric));
+    const refusal = refusalOf(outcome.answer, evaluation.metric);
+    return refusal === undefined ? undefined : yield* Effect.fail(refusal);
   });
 }

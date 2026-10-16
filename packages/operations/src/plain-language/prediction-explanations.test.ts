@@ -14,6 +14,10 @@ const ofPrediction: ReadonlyArray<readonly [ExplainedRejection, string]> = [
     { reason: 'conflict', kind: 'baseline_perfect' },
     'a baseline its candidates must beat already predicts every period held back as well as a score can, so no candidate can beat it',
   ],
+  [
+    { reason: 'conflict', kind: 'unscorable' },
+    'no series of its dataset moved during the periods a build trains on, so no candidate could be judged against its baselines',
+  ],
   [{ reason: 'conflict', kind: 'not_a_build' }, 'the run named is not a build of a prediction function'],
   [
     { reason: 'conflict', kind: 'build_ended' },

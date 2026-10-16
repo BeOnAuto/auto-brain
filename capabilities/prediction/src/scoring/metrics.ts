@@ -39,6 +39,10 @@ function pairsOf(grid: ScoringGrid, series: SeriesForecast, slot: Slot): readonl
   );
 }
 
+function isScale(scale: number | undefined): scale is number {
+  return scale !== undefined && scale > 0;
+}
+
 function lossOf(metric: Metric, { truth, interval }: Pair, scale: number | undefined): number {
   if (metric === 'winkler') {
     return winklerScore(truth, interval);
@@ -46,7 +50,7 @@ function lossOf(metric: Metric, { truth, interval }: Pair, scale: number | undef
   if (metric === 'quantile') {
     return quantileLoss(truth, interval);
   }
-  return scale !== undefined && scale > 0 ? Math.abs(truth - interval.mid) / scale : Number.NaN;
+  return isScale(scale) ? Math.abs(truth - interval.mid) / scale : Number.NaN;
 }
 
 function averaged(perSeries: readonly (number | undefined)[]): number | null {
@@ -85,6 +89,22 @@ function finiteLossesOf(grid: ScoringGrid, series: SeriesForecast, metric: Metri
 export function losesNothing(grid: ScoringGrid, series: readonly SeriesForecast[], metric: Metric): boolean {
   const losses = series.flatMap((one) => finiteLossesOf(grid, one, metric));
   return losses.length > 0 && losses.every((loss) => loss === 0);
+}
+
+function holdsATruth(grid: ScoringGrid, values: Readonly<Float64Array>): boolean {
+  return grid.slots.some((slot) =>
+    Array.from({ length: grid.holdout }, (_, at) => truthAt(grid, values, originAt(grid, at), slot)).some((truth) =>
+      Number.isFinite(truth),
+    ),
+  );
+}
+
+export function judgesNoPeriodHeldBack(
+  grid: ScoringGrid,
+  series: readonly Pick<SeriesForecast, 'values' | 'scale'>[],
+  metric: Metric,
+): boolean {
+  return !series.some(({ values, scale }) => holdsATruth(grid, values) && (metric !== 'mase' || isScale(scale)));
 }
 
 export function primaryOf(scores: readonly Score[], metric: Metric): number | undefined {

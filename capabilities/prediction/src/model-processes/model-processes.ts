@@ -41,7 +41,7 @@ const WindowAnswerSchema = Schema.Union([
   Schema.Struct({ y: Floats, x: Schema.NullOr(Floats), origin: Schema.Number }),
 ]);
 
-const BaselinesAnswerSchema = Schema.Struct({ perfect: Schema.NullOr(BaselineSchema) });
+const BaselinesAnswerSchema = Schema.Struct({ perfect: Schema.NullOr(BaselineSchema), unscorable: Schema.Boolean });
 
 export type Signature = typeof SignatureSchema.Type;
 

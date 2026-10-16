@@ -6,7 +6,7 @@ import { isProjected, type PredictionFunctionDefinitionDocument } from '../docum
 import type { Assembled } from '../facts/build-facts.ts';
 import { writtenDatasetFiles } from '../files/dataset-files.ts';
 import type { DatasetFiles, DatasetFilesRefused } from '../files/files-refusals.ts';
-import { noBaselinePerfect } from './perfect-baselines.ts';
+import { candidatesJudgeable } from './perfect-baselines.ts';
 import { uploadedDatasetFiles } from './uploaded-files.ts';
 
 export function notReadyAs({ refusal, detail }: Pick<DatasetFilesRefused, 'refusal' | 'detail'>): Unavailable {
@@ -51,6 +51,6 @@ export function buildFilesOf(
     : uploadedDatasetFiles(ledger.content, playbook, document, data.dataset);
   return written.pipe(
     Effect.mapError(refusedAs),
-    Effect.tap((files) => noBaselinePerfect(ports, playbook, document, assembledOf(files))),
+    Effect.tap((files) => candidatesJudgeable(ports, playbook, document, assembledOf(files))),
   );
 }

@@ -130,12 +130,23 @@ describe('a build whose baseline does not score 0 where its metric scores it', (
       output: { interactions: [{ run_id: build }] },
     });
   });
+});
 
-  it('goes ahead when its metric scores no period held back, as mase scores none of series still while trained', async () => {
-    const playbook = buildPlaybook();
+describe('a build whose series did not move while trained', () => {
+  it('is refused as unscorable before its brief is kept, since mase, which scales by that movement, judges no candidate', async () => {
+    const kept = keptTypes();
+    const playbook = buildPlaybook({ content: kept.content });
     await savedFunction(playbook, { rows: stillWhileTrained });
+    const keptBefore = kept.types().length;
 
-    expect(await buildAsked(playbook)).toMatchObject({ status: 'succeeded', output: { status: 'started' } });
+    expect(await buildAsked(playbook)).toMatchObject({
+      status: 'rejected',
+      reason: 'conflict',
+      kind: 'unscorable',
+      detail:
+        'No series moved during the periods a build trains on, so mase, which scales each error by that movement, scores no period held back and no candidate could be judged against the baselines; ask for a build once a series moves, or judge candidates by winkler or quantile',
+    });
+    expect(kept.types().slice(keptBefore)).toEqual(['text/csv', 'text/csv']);
   });
 });
 

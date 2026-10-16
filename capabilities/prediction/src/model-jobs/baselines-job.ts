@@ -1,11 +1,12 @@
 import { seriesRowsIn } from '../files/series-rows.ts';
-import { baselineWalk } from '../scoring/baselines.ts';
-import { losesNothing } from '../scoring/metrics.ts';
+import { baselineWalk, scaleOf } from '../scoring/baselines.ts';
+import { judgesNoPeriodHeldBack, losesNothing } from '../scoring/metrics.ts';
 import { scoringGridOf } from '../scoring/scoring-grid.ts';
 import type { BaselinesJob } from './model-feeds.ts';
 
 export interface BaselinesAnswer {
   readonly perfect: BaselinesJob['baselines'][number] | null;
+  readonly unscorable: boolean;
 }
 
 export async function perfectBaselineIn(job: BaselinesJob): Promise<BaselinesAnswer> {
@@ -20,8 +21,11 @@ export async function perfectBaselineIn(job: BaselinesJob): Promise<BaselinesAns
     },
     { window, holdout, firstPeriod },
   );
-  const perfect = job.baselines.find((baseline) =>
-    losesNothing(grid, baselineWalk({ grid, rows }, baseline).forecasts, metric),
-  );
-  return { perfect: perfect ?? null };
+  const walks = job.baselines.map((baseline) => baselineWalk({ grid, rows }, baseline));
+  const perfect = walks.find(({ forecasts }) => losesNothing(grid, forecasts, metric));
+  const scaled = rows.map(({ values }) => ({ values, scale: scaleOf(grid, values) }));
+  return {
+    perfect: perfect?.baseline ?? null,
+    unscorable: judgesNoPeriodHeldBack(grid, scaled, metric) && walks.some(({ scored }) => scored.seriesWalked > 0),
+  };
 }
