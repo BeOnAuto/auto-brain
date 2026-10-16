@@ -396,6 +396,9 @@ importers:
         specifier: 1.30.0
         version: 1.30.0
     devDependencies:
+      '@on.auto/api':
+        specifier: workspace:*
+        version: link:../../packages/api
       '@on.auto/interaction':
         specifier: workspace:*
         version: link:../interaction

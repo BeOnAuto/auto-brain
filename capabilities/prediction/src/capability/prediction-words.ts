@@ -50,8 +50,8 @@ function rangeWords({ low, high }: PredictedPoint, unit: string): string {
   return `(${figure(low)} to ${figure(high)} ${unit})`;
 }
 
-function pointWords({ at, value, low, high }: PredictedPoint): string {
-  return `${figure(value)} in ${at} (${figure(low)} to ${figure(high)})`;
+function pointWords(point: PredictedPoint, unit: string): string {
+  return `${figure(point.value)} ${unit} in ${point.at} ${rangeWords(point, unit)}`;
 }
 
 function totalWords(point: PredictedPoint, unit: string, { total_to: to }: Recorded): string {
@@ -66,7 +66,7 @@ function predictionWords({ unit, origin, lines }: typeof PredictionSchema.Type, 
   const [, { name, points }] = lines;
   const recorded = Option.getOrElse(decodeRecord(record), () => ({}));
   const said =
-    name === 'total' ? totalWords(points[0], unit, recorded) : listed(points.map((point) => pointWords(point)));
+    name === 'total' ? totalWords(points[0], unit, recorded) : listed(points.map((point) => pointWords(point, unit)));
   const each = points.length === 1 ? 'its range holding' : 'each range holding';
   return `From ${origin}, it predicts ${said}, ${each} the truth eight times in ten${versionWords(recorded)}.`;
 }
