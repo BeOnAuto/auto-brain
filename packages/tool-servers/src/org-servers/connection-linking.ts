@@ -1,5 +1,5 @@
 import type { FetchLike } from '@modelcontextprotocol/client';
-import { Result } from 'effect';
+import { Predicate, Result } from 'effect';
 
 import type { LinkOptions } from '../connections/link-openers.ts';
 import { serverLink } from '../connections/server-links.ts';
@@ -32,10 +32,10 @@ async function describedConnection(
   const { describedApi } = await import('../openapi/api-description.ts');
   const described = await describedApi(settings, { fetch, reportLeftOut: linking.reportLeftOut });
   if (Result.isFailure(described)) {
-    const { problems, readAgain } = described.failure;
-    const message = problems.map(({ detail }) => detail).join('; ');
+    const { failure } = described;
+    const message = failure.problems.map(({ detail }) => detail).join('; ');
     const unusable = serverFailed({ settings }, { kind: 'refused', message }, linking.options.secrets);
-    return readAgain ? { unread: unusable } : { refused: unusable };
+    return Predicate.isTagged(failure, 'document_unread') ? { unread: unusable } : { refused: unusable };
   }
   const refusal = server.reaches(described.success.api.baseUrl);
   return refusal === undefined

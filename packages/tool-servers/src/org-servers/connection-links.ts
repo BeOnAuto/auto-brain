@@ -78,8 +78,11 @@ function failedWith(settings: Served, secrets: Keeping): (error: unknown) => Unu
   };
 }
 
-function isUsable(prepared: Prepared): boolean {
-  return !('failed' in prepared);
+function isKeptForTheProcess(prepared: Prepared): boolean {
+  if ('unready' in prepared) {
+    return prepared.unready.because !== 'connection_broken';
+  }
+  return 'server' in prepared;
 }
 
 function isLinkedOrRefused(linking: Linking): boolean {
@@ -102,7 +105,7 @@ function preparedIn(holding: Holding, { id, settings, state }: Connected): Promi
       onFailure: (unready): Prepared => ({ unready }),
     }),
   ).catch((error: unknown): Prepared => ({ failed: failed(error) }));
-  return keptWhile(held.servers, id, prepared, isUsable);
+  return keptWhile(held.servers, id, prepared, isKeptForTheProcess);
 }
 
 async function linkedOnce(
@@ -111,14 +114,12 @@ async function linkedOnce(
   prepared: Promise<Prepared>,
 ): Promise<Linking> {
   const ready = await prepared;
-  if ('unready' in ready) {
-    return { refused: ready.unready };
+  if ('server' in ready) {
+    const failed = failedWith(settings, holding.secrets);
+    return holding.link(id, ready.server).catch((error: unknown) => ({ unread: failed(error) }));
   }
-  if ('failed' in ready) {
-    return { unread: ready.failed };
-  }
-  const failed = failedWith(settings, holding.secrets);
-  return holding.link(id, ready.server).catch((error: unknown) => ({ unread: failed(error) }));
+  const refusal = 'unready' in ready ? ready.unready : ready.failed;
+  return isKeptForTheProcess(ready) ? { refused: refusal } : { unread: refusal };
 }
 
 function linkedOf(linking: Linking): Linked {
@@ -154,7 +155,11 @@ function serverOf(holding: Holding, { id, serving, state }: OrgConnection): OrgS
     return unreadyServer(settings, state.unready);
   }
   const connected: Connected = { id, settings, state };
-  const prepared = (): Promise<Prepared> => preparedIn(holding, connected);
+  let preparing: Promise<Prepared> | undefined;
+  const prepared = (): Promise<Prepared> => {
+    preparing ??= preparedIn(holding, connected);
+    return preparing;
+  };
   return {
     settings,
     checked: async () => unreadinessOf(await prepared()),

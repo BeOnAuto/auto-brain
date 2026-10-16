@@ -31,17 +31,27 @@ const serverNoun: Noun = { one: 'tool server', other: 'tool servers' };
 
 const toolNoun: Noun = { one: 'tool', other: 'tools' };
 
-function untilOneIsSetUp(takesConnections: boolean): string {
-  const added = takesConnections ? ', or a person adds one as a connection with add_connection' : '';
+interface Adding {
+  readonly takesConnections: boolean;
+  readonly where: 'playbook' | 'org';
+}
+
+const addedWhere: Readonly<Record<Adding['where'], string>> = {
+  playbook: ', or a person adds one to the org as a connection',
+  org: ', or a person adds one as a connection, with add_connection where your tools include it',
+};
+
+function untilOneIsSetUp({ takesConnections, where }: Adding): string {
+  const added = takesConnections ? addedWhere[where] : '';
   return `until whoever runs this server sets one up${added}; the give-tools guide says how.`;
 }
 
-function noServer(takesConnections: boolean): string {
-  return `No tool server serves this playbook, so its functions can call no tools ${untilOneIsSetUp(takesConnections)}`;
+function noServer(adding: Adding): string {
+  return `No tool server serves this playbook, so its functions can call no tools ${untilOneIsSetUp(adding)}`;
 }
 
-function noServerInOrg(takesConnections: boolean): string {
-  return `No tool server serves this org, so the functions of its playbooks can call no tools ${untilOneIsSetUp(takesConnections)}`;
+function noServerInOrg(adding: Adding): string {
+  return `No tool server serves this org, so the functions of its playbooks can call no tools ${untilOneIsSetUp(adding)}`;
 }
 
 function unavailableInWords(server: Extract<SearchedServer, { readonly unavailable: string }>, named: string): string {
@@ -117,9 +127,9 @@ function spokenInThePlaybook(server: SearchedServer): Spoken {
   return { server, named: quoted(server.name), user: 'this playbook' };
 }
 
-export function searched({ servers, tools }: Found, { terms }: SearchAsked, takesConnections: boolean): string {
+export function searched({ servers, tools }: Found, { terms }: SearchAsked, adding: Adding): string {
   if (servers.length === 0) {
-    return noServer(takesConnections);
+    return noServer(adding);
   }
   return answerInWords(
     servers.map((server) => spokenInThePlaybook(server)),
@@ -150,13 +160,13 @@ export function orgSearchAttempted({ terms, server, playbook }: OrgSearchAsked):
   return attempted(terms, serverOr(server, playbook === undefined ? ofTheOrg : ofThePlaybook));
 }
 
-export function orgSearched(answer: OrgFound, asked: OrgSearchAsked, takesConnections: boolean): string {
+export function orgSearched(answer: OrgFound, asked: OrgSearchAsked, adding: Adding): string {
   if (asked.playbook !== undefined) {
-    return searched(answer, asked, takesConnections);
+    return searched(answer, asked, adding);
   }
   const { servers, tools } = answer;
   if (servers.length === 0) {
-    return noServerInOrg(takesConnections);
+    return noServerInOrg(adding);
   }
   return answerInWords(
     servers.map((server) => spokenInTheOrg(server)),

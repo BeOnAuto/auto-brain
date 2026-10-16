@@ -70,7 +70,7 @@ describe('reading an openapi server', () => {
       request_id: 'x-request-id',
     });
     expect(sentOf(server)).toEqual([{ 'X-Api-Key': apiKey, 'X-Region': 'eu' }, { api_key: apiKey }]);
-    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey, apiKey]);
+    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey]);
   });
 
   it('reads an auth block whose issuer is pinned, as an mcp server does', () => {
@@ -169,13 +169,13 @@ describe('an openapi server refused for what it sends', () => {
 });
 
 describe('the security of an openapi server', () => {
-  it('reads each credential by the name of its scheme, the whole value a secret as well as its reference', () => {
+  it('reads each credential by the name of its scheme, the whole value a secret as well as its reference, each once', () => {
     const [server] = serversOf({
       billing: { ...billing, security: { basicAuth: 'ada:${BILLING_API_KEY}', bearerAuth: '${BILLING_API_KEY}' } },
     });
 
     expect(securityOf(server)).toEqual({ basicAuth: `ada:${apiKey}`, bearerAuth: apiKey });
-    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey, apiKey, `ada:${apiKey}`, apiKey]);
+    expect(server?.secrets.map((secret) => Redacted.value(secret))).toEqual([apiKey, `ada:${apiKey}`]);
   });
 
   it('refuses a credential written out instead of referenced, once, whether or not it looks like one', () => {

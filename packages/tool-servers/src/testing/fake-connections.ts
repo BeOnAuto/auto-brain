@@ -23,6 +23,7 @@ type Standing =
   | { readonly status: 'pending' }
   | { readonly status: 'broken'; readonly reason: string }
   | { readonly status: 'unreadable'; readonly reason: string }
+  | { readonly status: 'unrecorded'; readonly reason: string }
   | { readonly status: 'not_allowed'; readonly rule: string }
   | { readonly status: 'dying'; readonly reason: string };
 
@@ -37,6 +38,7 @@ export interface FakeConnections extends ConnectionSource {
   readonly pend: (org: string, connection: FakeConnection) => void;
   readonly breakOff: (id: string, reason: string) => void;
   readonly loseTheCredentialOf: (id: string, reason: string) => void;
+  readonly loseTheCredentialUnrecordedOf: (id: string, reason: string) => void;
   readonly disallow: (id: string, rule: string) => void;
   readonly dieOnceWhilePreparing: (id: string, reason: string) => void;
   readonly remove: (id: string) => void;
@@ -89,6 +91,8 @@ function preparedOf(held: Held, { connection, settings }: Kept): Effect.Effect<C
     }
     if (standing.status === 'unreadable') {
       held.standings.set(connection.id, { status: 'broken', reason: standing.reason });
+    }
+    if (standing.status === 'unreadable' || standing.status === 'unrecorded') {
       return Effect.fail({ because: 'connection_broken', detail: standing.reason });
     }
     return standing.status === 'not_allowed'
@@ -139,6 +143,9 @@ export function fakeConnections(): FakeConnections {
     },
     loseTheCredentialOf: (id, reason) => {
       held.standings.set(id, { status: 'unreadable', reason });
+    },
+    loseTheCredentialUnrecordedOf: (id, reason) => {
+      held.standings.set(id, { status: 'unrecorded', reason });
     },
     disallow: (id, rule) => {
       held.standings.set(id, { status: 'not_allowed', rule });

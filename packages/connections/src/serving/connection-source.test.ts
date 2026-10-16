@@ -197,7 +197,7 @@ describe('a connected connection to an HTTP API as a tool server', () => {
         headers: {},
         query: {},
         security: { apiKeyAuth: 'Basic billing-key-77a1c2' },
-        secrets: ['Basic billing-key-77a1c2', 'Basic billing-key-77a1c2'],
+        secrets: ['Basic billing-key-77a1c2'],
       },
     ]);
   });

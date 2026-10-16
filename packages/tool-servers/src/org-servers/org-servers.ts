@@ -46,8 +46,12 @@ export function takenByTheConfiguration(name: string): string {
   return `The runtime's configuration sets up a tool server named ${name}, so a connection cannot take that name`;
 }
 
+function takenAtUse(name: string): string {
+  return `${takenByTheConfiguration(name)}; remove it and add it again under another name`;
+}
+
 function takenByTheFile(name: string): ConnectionUnready {
-  return { because: 'connection_not_allowed', detail: takenByTheConfiguration(name) };
+  return { because: 'connection_not_allowed', detail: takenAtUse(name) };
 }
 
 export function withTheFileFirst(files: readonly OrgServer[], connections: readonly OrgServer[]): readonly OrgServer[] {

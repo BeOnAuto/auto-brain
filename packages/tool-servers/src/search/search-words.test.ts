@@ -66,11 +66,11 @@ describe('the plain words of search', () => {
     );
   });
 
-  it('say a person may add one as a connection only on a runtime that takes connections', () => {
+  it('say a person may add one as a connection only on a runtime that takes connections, naming no tool the endpoint of a playbook lacks', () => {
     const taking = defineSearch(takingConnections).registration.plainLanguage;
 
     expect(taking?.outcome({ servers: [], tools: [], scopes: [] }, {})).toBe(
-      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up, or a person adds one as a connection with add_connection; the give-tools guide says how.',
+      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up, or a person adds one to the org as a connection; the give-tools guide says how.',
     );
   });
 
@@ -139,7 +139,7 @@ describe('the plain words of search for the org', () => {
       taking?.outcome({ servers: [], tools: [], scopes: [] }, {}),
     ]).toEqual([
       'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up; the give-tools guide says how.',
-      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up, or a person adds one as a connection with add_connection; the give-tools guide says how.',
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up, or a person adds one as a connection, with add_connection where your tools include it; the give-tools guide says how.',
     ]);
   });
 });

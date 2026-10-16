@@ -142,7 +142,7 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
 
     expect(outcome.compiled).toEqual([]);
     expect(outcome.results.map((result) => plainTextIn(result))).toEqual([
-      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up, or a person adds one as a connection with add_connection; the give-tools guide says how.',
+      'No tool server serves this org, so the functions of its playbooks can call no tools until whoever runs this server sets one up, or a person adds one as a connection, with add_connection where your tools include it; the give-tools guide says how.',
       'There is 1 playbook: “Alpha”.',
       'Ran the reasoning function “summary”. Its answer: “Profits rose.”',
     ]);
@@ -154,6 +154,20 @@ describe.each(mcpClientKinds)('the %s client on /mcp', (kind) => {
     ]);
     expect(outcome.results.map((result) => [result.content.length, outputIn(result)])).toEqual(
       outcome.results.map(({ structuredContent }) => [2, structuredContent]),
+    );
+  });
+});
+
+describe('search on the endpoint of a playbook, which lists no add_connection', () => {
+  it('says that a person adds a server to the org as a connection, naming no tool the endpoint does not list', async () => {
+    const url = `${server.origin}/orgs/local/playbooks/alpha/mcp`;
+
+    const searched = await withMcpSession('current revision', { url, headers: {} }, (session) =>
+      session.callTool('search', {}),
+    );
+
+    expect(plainTextIn(searched)).toBe(
+      'No tool server serves this playbook, so its functions can call no tools until whoever runs this server sets one up, or a person adds one to the org as a connection; the give-tools guide says how.',
     );
   });
 });

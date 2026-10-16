@@ -12,6 +12,7 @@ import { answerTo, type ApiAnswering, type ProgrammedAnswer, type SeenApiRequest
 
 export interface FakeApiOptions {
   readonly key?: string;
+  readonly declaresKey?: boolean;
   readonly client?: ClientRegistration;
   readonly version?: FakeApiVersion;
   readonly requestIdHeader?: string;
@@ -90,7 +91,7 @@ function apiHandler(options: FakeApiOptions, answering: ApiAnswering, issuing: I
     const { pathname } = new URL(request.url);
     if (pathname === documentPath) {
       answering.documentRead();
-      return Response.json(fakeApiDocument(options.version ?? '3.1', basePath));
+      return Response.json(fakeApiDocument(options.version ?? '3.1', basePath, options.declaresKey));
     }
     answering.see(await seenOf(request));
     if (!authorized(request, options.key, issuing)) {

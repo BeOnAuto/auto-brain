@@ -63,7 +63,8 @@ export function defineSearchInOrg(
     plainLanguage: {
       task: searchTask,
       attempt: (asked) => orgSearchAttempted(asked),
-      outcome: (answer, asked) => orgSearched(answer, asked, tools.takesConnections),
+      outcome: (answer, asked) =>
+        orgSearched(answer, asked, { takesConnections: tools.takesConnections, where: 'org' }),
     },
   });
 }

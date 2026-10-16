@@ -1,4 +1,6 @@
 import type { FetchLike } from '@modelcontextprotocol/client';
+import type { SettingProblem } from '@on.auto/config';
+import { Data } from 'effect';
 
 import type { McpServerSettings, OpenApiServerSettings, StdioServerSettings } from '../settings/server-settings.ts';
 import type { ApiOperation, LeftOutOperation } from './api-tools.ts';
@@ -23,3 +25,7 @@ export interface Describing {
   readonly readMs?: number;
   readonly reportLeftOut: (server: string, leftOut: LeftOutOperation) => void;
 }
+
+export class DocumentRefused extends Data.TaggedError('document_refused')<{
+  readonly problems: readonly SettingProblem[];
+}> {}

@@ -6,21 +6,16 @@ import { toolServersSetting } from '../settings/server-entries.ts';
 import type { OpenApiServerSettings } from '../settings/server-settings.ts';
 import { decodedDocument, type ApiDocument, type DocumentProblem } from './api-document.ts';
 import { derivedTools } from './api-tools.ts';
-import type { DescribedApiSettings, Describing } from './described-api.ts';
-import { documentBounds, documentOf } from './document-reading.ts';
+import { DocumentRefused, type DescribedApiSettings, type Describing } from './described-api.ts';
+import { documentBounds, documentOf, type DocumentUnread } from './document-reading.ts';
 import { securityProblemsOf } from './security-schemes.ts';
 
 type Problems = readonly SettingProblem[];
 
 type Refused<A> = Result.Result<A, Problems>;
 
-export interface DescriptionRefused {
-  readonly problems: Problems;
-  readonly readAgain: boolean;
-}
-
-function refusedFor(problems: Problems): DescriptionRefused {
-  return { problems, readAgain: false };
+function refusedFor(problems: Problems): DocumentRefused {
+  return new DocumentRefused({ problems });
 }
 
 function documentProblems(name: string, problems: readonly DocumentProblem[]): readonly SettingProblem[] {
@@ -67,14 +62,14 @@ function baseUrlOf(settings: OpenApiServerSettings, document: ApiDocument): Refu
 export async function describedApi(
   settings: OpenApiServerSettings,
   describing: Describing,
-): Promise<Result.Result<DescribedApiSettings, DescriptionRefused>> {
+): Promise<Result.Result<DescribedApiSettings, DocumentUnread | DocumentRefused>> {
   const read = await documentOf(settings.document, {
+    entry: settings.name,
     fetch: describing.fetch ?? globalThis.fetch,
     readMs: describing.readMs ?? documentBounds.readMs,
   });
   if (Result.isFailure(read)) {
-    const { detail, readAgain } = read.failure;
-    return Result.fail({ problems: [problem(toolServersSetting, at(settings.name, 'document'), detail)], readAgain });
+    return Result.fail(read.failure);
   }
   const presented = { security: settings.security, auth: settings.auth !== null };
   const derived = Result.flatMap(decodedDocument(read.success), (decoded) =>

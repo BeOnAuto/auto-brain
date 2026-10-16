@@ -4,7 +4,6 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { fakeConnections } from '../testing/fake-connections.ts';
 import { fakeApiKey, patientTiming, serveFakeApi, serveFakeMcp, type FakeMcpServer } from '../testing/index.ts';
 import { describedAccess, reportingAccess } from '../testing/reporting-access.ts';
-import { takenByTheConfiguration } from './org-servers.ts';
 
 const alpha = { org: 'acme', playbook: 'alpha' };
 
@@ -181,10 +180,27 @@ describe('a connection named as a server the configuration sets up for another o
         name: 'graph',
         connection: 'graph-id',
         because: 'connection_not_allowed',
-        unavailable: takenByTheConfiguration('graph'),
+        unavailable:
+          "The runtime's configuration sets up a tool server named graph, so a connection cannot take that name; remove it and add it again under another name",
       },
     ]);
     expect(called).toMatchObject({ kind: 'unopened', refused: 'tool_not_offered', because: 'connection_not_allowed' });
     expect([fake.seen(), connections.credentialReads()]).toEqual([[], 0]);
+  });
+});
+
+describe('a connection whose credential cannot be read, and whose break could not be recorded', () => {
+  it('is refused broken, and read again at the next use, once within each use', async () => {
+    const fake = await fakeServer();
+    const { access, connections } = connectedTo(fake);
+    connections.loseTheCredentialUnrecordedOf('graph-id', unforeseen);
+
+    const first = await Effect.runPromise(access.listServers(alpha));
+    const prepared = await Effect.runPromise(access.preparedCall(searchOf('graph')));
+    const called = await Effect.runPromise(prepared.called);
+
+    expect(first).toMatchObject([{ name: 'graph', because: 'connection_broken', unavailable: unforeseen }]);
+    expect(called).toMatchObject({ kind: 'unopened', refused: 'tool_not_offered', because: 'connection_broken' });
+    expect([connections.credentialReads(), fake.seen()]).toEqual([2, []]);
   });
 });

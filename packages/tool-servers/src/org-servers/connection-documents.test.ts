@@ -27,6 +27,10 @@ const notReadable: unknown = expect.stringContaining(
   'The tool server graph could not be used: The document is neither JSON nor YAML',
 );
 
+const unsecured = JSON.stringify({ openapi: '3.1.0', info: { title: 'Graph', version: '1.0.0' }, paths: {} });
+
+const declaresNoScheme: unknown = expect.stringContaining('The document declares no security scheme of this name');
+
 function unavailable(): Response {
   return new Response('Down for maintenance', { status: 503 });
 }
@@ -101,7 +105,7 @@ describe('a connection to an HTTP API whose document is refused for what it says
     const reads = { made: 0 };
     const documentUrl = await servedDocumentAt(() => {
       reads.made += 1;
-      return Promise.resolve(new Response('[unclosed'));
+      return Promise.resolve(new Response(unsecured));
     });
     const access = await accessThrough({
       entry: { document: documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' } },
@@ -110,9 +114,29 @@ describe('a connection to an HTTP API whose document is refused for what it says
     const first = await Effect.runPromise(access.listServers(alpha));
     const second = await Effect.runPromise(access.listServers(alpha));
 
-    expect(first).toMatchObject([{ name: 'graph', because: 'failing', unavailable: notReadable }]);
+    expect(first).toMatchObject([{ name: 'graph', because: 'failing', unavailable: declaresNoScheme }]);
     expect(second).toEqual(first);
     expect(reads.made).toBe(1);
+  });
+});
+
+describe('a connection to an HTTP API whose document address answers a page that is not a document', () => {
+  it('is unavailable as failing in the words of the reading, and is read again when next it is used', async () => {
+    const documentUrl = await servedDocumentAt(
+      inTurn([
+        new Response('<html><body>Bad gateway</body></html>', { status: 200 }),
+        new Response(documentWithServer('https://api.example.com/v1')),
+      ]),
+    );
+    const access = await accessThrough({
+      entry: { document: documentUrl, security: { apiKeyAuth: '${GRAPH_API_KEY}' } },
+    });
+
+    const first = await Effect.runPromise(access.listServers(alpha));
+    const second = await Effect.runPromise(access.listServers(alpha));
+
+    expect(first).toMatchObject([{ name: 'graph', because: 'failing', unavailable: notReadable }]);
+    expect(second).toMatchObject([{ name: 'graph', connection: 'graph-id', tools: listedTools }]);
   });
 });
 

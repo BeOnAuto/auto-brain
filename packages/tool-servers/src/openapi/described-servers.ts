@@ -11,6 +11,10 @@ export class ToolServerDocumentRefused extends Data.TaggedError('tool_server_doc
 
 type Problems = readonly SettingProblem[];
 
+function problemsOf({ problems }: { readonly problems: Problems }): Problems {
+  return problems;
+}
+
 function linkedOf(server: ServerSettings, describing: Describing): Effect.Effect<LinkedServerSettings, Problems> {
   return server.type === 'openapi'
     ? Effect.mapError(
@@ -18,7 +22,7 @@ function linkedOf(server: ServerSettings, describing: Describing): Effect.Effect
           Effect.promise(async () => (await import('./api-description.ts')).describedApi(server, describing)),
           Effect.fromResult,
         ),
-        ({ problems }) => problems,
+        problemsOf,
       )
     : Effect.succeed(server);
 }

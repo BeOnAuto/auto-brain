@@ -279,7 +279,7 @@ A secret is one of these, and nothing else:
 - a credential of an `auth` block;
 - a token minted from one.
 
-A value of `security`, which always holds a reference, is a secret as a whole, and so is the value of its reference. A header written out, such as `X-Region: production-eu`, is not a secret, so it is never scrubbed.
+A value of `security`, which always holds a reference, is a secret as a whole, and so is the value of its reference. A header whose reference takes a scheme and a credential, such as `Authorization: ${GRAPH_HEADER}` with `GRAPH_HEADER` set to `Bearer <key>`, is a secret whole, and so is the credential after its scheme, `<key>`, so it is scrubbed where a server echoes the key alone. Each secret counts once, however many places hold it. A header written out, such as `X-Region: production-eu`, is not a secret, so it is never scrubbed.
 
 The server scrubs every secret from every message, event and result:
 

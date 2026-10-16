@@ -51,5 +51,8 @@ export function secretsOfEntry(
   const headers = `/${JsonPointer.escapeToken(entry)}/headers/`;
   const afterTheirScheme = references.flatMap((reference) => credentialAfterItsScheme(headers, reference));
   const wholeValues = Object.values(fields.security ?? {}).map((value) => Redacted.make(value));
-  return [...secretsIn(placementOf(entry), references), ...afterTheirScheme, ...wholeValues];
+  const values = [...secretsIn(placementOf(entry), references), ...afterTheirScheme, ...wholeValues].map((secret) =>
+    Redacted.value(secret),
+  );
+  return [...new Set(values)].map((value) => Redacted.make(value));
 }

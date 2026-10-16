@@ -9,7 +9,7 @@ export const behaviourKey = 'graph-api-key"4f1d/9a7c~2b+';
 type Entry = Readonly<Record<string, unknown>>;
 
 export type CredentialUnderTest =
-  | { readonly in: 'header' | 'security'; readonly name: string; readonly value: string }
+  | { readonly in: 'header' | 'query' | 'security'; readonly name: string; readonly value: string }
   | { readonly in: 'auth'; readonly issuer: string; readonly clientId: string; readonly value: string };
 
 export interface ServedUnderTest {
@@ -120,6 +120,17 @@ export const apiQueryKeyUnderTest: ServerUnderTest = {
   },
 };
 
+export const apiQueryParameterUnderTest: ServerUnderTest = {
+  kind: 'an HTTP API whose document declares no key, sent in a query parameter',
+  serve: async (requestIdHeader) => {
+    const fake = await serveFakeApi({ key: behaviourKey, declaresKey: false, ...requestIdOf(requestIdHeader) });
+    return apiServed(fake, {
+      entry: { document: fake.documentUrl, query_params: { api_key: keyReference }, org: 'acme' },
+      credential: { in: 'query', name: 'api_key', value: behaviourKey },
+    });
+  },
+};
+
 export const apiClientUnderTest: ServerUnderTest = {
   kind: 'an HTTP API of client credentials',
   serve: async (requestIdHeader) => {
@@ -138,5 +149,6 @@ export const serversUnderTest: readonly ServerUnderTest[] = [
   mcpClientUnderTest,
   apiUnderTest,
   apiQueryKeyUnderTest,
+  apiQueryParameterUnderTest,
   apiClientUnderTest,
 ];

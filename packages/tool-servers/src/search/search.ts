@@ -38,7 +38,8 @@ export function defineSearch(access: Pick<ToolAccess, 'listServers' | 'takesConn
     plainLanguage: {
       task: searchTask,
       attempt: (asked) => searchAttempted(asked),
-      outcome: (answer, asked) => searched(answer, asked, access.takesConnections),
+      outcome: (answer, asked) =>
+        searched(answer, asked, { takesConnections: access.takesConnections, where: 'playbook' }),
     },
   });
 }

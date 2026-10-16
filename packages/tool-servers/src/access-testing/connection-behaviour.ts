@@ -2,7 +2,6 @@ import { Effect } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
 import type { ToolAccess } from '../access/tool-access.ts';
-import { takenByTheConfiguration } from '../org-servers/org-servers.ts';
 import { fakeConnections, pendingWords, type FakeConnections } from '../testing/fake-connections.ts';
 import { describedAccess, type ReportingAccess } from '../testing/reporting-access.ts';
 import { controlledSignals, recordingCallJournal, toolRun } from '../testing/tool-runs.ts';
@@ -25,7 +24,8 @@ const brokenWords =
 
 const ruleWords = 'A connection may not take a secret credential on this runtime, which allows none';
 
-const takenWords = takenByTheConfiguration('graph');
+const takenWords =
+  "The runtime's configuration sets up a tool server named graph, so a connection cannot take that name; remove it and add it again under another name";
 
 interface Connected extends ReportingAccess {
   readonly fake: ServedUnderTest;
