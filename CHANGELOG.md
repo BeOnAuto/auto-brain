@@ -1,5 +1,30 @@
 # Changelog
 
+## [0.11.0](https://github.com/BeOnAuto/runtime/compare/v0.10.0...v0.11.0) (2026-10-16)
+
+
+### Features
+
+* **api:** what a person wants kept goes in a recall function, not the agent's own notes ([#219](https://github.com/BeOnAuto/runtime/issues/219)) ([27e84ba](https://github.com/BeOnAuto/runtime/commit/27e84bad3c807bc15f46683f6f04223071d31667))
+* **connections:** an org keeps the connections its people add, through an agent ([#218](https://github.com/BeOnAuto/runtime/issues/218)) ([47a6ae3](https://github.com/BeOnAuto/runtime/commit/47a6ae37bbfa56c630133947d02a95cafa906a4b))
+* **definitions:** a refusal of input speaks in the field's own words, from the schema alone ([#226](https://github.com/BeOnAuto/runtime/issues/226)) ([2b221fa](https://github.com/BeOnAuto/runtime/commit/2b221fa2cbe233f74ef2184b8f4a8b3beee02d21))
+* **global:** a definition declares the shape of its output, and the runtime owns the shapes ([#212](https://github.com/BeOnAuto/runtime/issues/212)) ([53f93fc](https://github.com/BeOnAuto/runtime/commit/53f93fc8c94a5010b8b1ebe0dfda18662c26ba73))
+* **ledger:** secrets kept sealed in the ledger's database under a key that rotates ([#210](https://github.com/BeOnAuto/runtime/issues/210)) ([4dfcd43](https://github.com/BeOnAuto/runtime/commit/4dfcd4388aff3f40f45e12b89823e7dcabdbf0d8))
+* **prediction:** a prediction function answers the path, as a series ([#222](https://github.com/BeOnAuto/runtime/issues/222)) ([2251d75](https://github.com/BeOnAuto/runtime/commit/2251d75c98559f51304632edc97aae3b9bc82af9))
+* **reasoning:** the model listing marks every alias, including one that resolves to a Bedrock ARN ([#224](https://github.com/BeOnAuto/runtime/issues/224)) ([a5a24f5](https://github.com/BeOnAuto/runtime/commit/a5a24f585c3820f8917ca6a2c7b858eb30f2bfa4))
+* **reasoning:** the model listing says whether the operator's allow list narrows it ([#221](https://github.com/BeOnAuto/runtime/issues/221)) ([3b9d71b](https://github.com/BeOnAuto/runtime/commit/3b9d71b88fcb18b2c4fc2aaa8cd0106fb9050c1a))
+* **reasoning:** the overview of a function that names tools draws its model and its tools ([#213](https://github.com/BeOnAuto/runtime/issues/213)) ([650cd27](https://github.com/BeOnAuto/runtime/commit/650cd2799abd429a72fe8f3c83ed276e342a73df))
+* **server:** an agent adds Auto with one MCP entry, which starts and controls the local runtime ([#208](https://github.com/BeOnAuto/runtime/issues/208)) ([14d0806](https://github.com/BeOnAuto/runtime/commit/14d08060ca7c2a1aec23713159c9a3e67c467a9d))
+
+
+### Bug Fixes
+
+* **interaction:** the playbook's own message is no reply, so a quiet thread reads as nothing found ([#217](https://github.com/BeOnAuto/runtime/issues/217)) ([23f21b9](https://github.com/BeOnAuto/runtime/commit/23f21b90096b5058df44a54f06e911e7e7f04e52))
+* **prediction:** a build nobody could win is refused before it asks a trainer ([#223](https://github.com/BeOnAuto/runtime/issues/223)) ([87fabd0](https://github.com/BeOnAuto/runtime/commit/87fabd0309965e90dc12c9b9ce6c849dca0a124d))
+* **prediction:** the modules the tests generate find their files beside themselves ([#229](https://github.com/BeOnAuto/runtime/issues/229)) ([af5780f](https://github.com/BeOnAuto/runtime/commit/af5780fb50ef3da46c8a95ed44eaf642df4d806d))
+* **prediction:** the suites run at a moment they own, and a rest holds only while its cause does ([#216](https://github.com/BeOnAuto/runtime/issues/216)) ([e47d45f](https://github.com/BeOnAuto/runtime/commit/e47d45f92fd8e921e1ce7869e783c48bc7fbd590))
+* **tool-servers:** one set of secrets per tool access, where a minted token replaces the last ([#207](https://github.com/BeOnAuto/runtime/issues/207)) ([16d6ff7](https://github.com/BeOnAuto/runtime/commit/16d6ff74b5fb1af5c79190f1369c04ca2ee61693))
+
 ## [0.10.0](https://github.com/BeOnAuto/runtime/compare/v0.9.1...v0.10.0) (2026-10-15)
 
 
