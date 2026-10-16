@@ -528,8 +528,8 @@ jobs:
           test "$(jq --raw-output .standing.models.active.version function.json)" = 1
           test "$(call question.json "${json[@]}" --data '{"input":{"series":"north","horizon":1}}' \
             "$playbook/definitions/prediction/daily-visits/run")" = 200
-          test "$(jq --compact-output '[.status, .output.value, .output.low, .output.high, .output.version]' question.json)" = \
-            '["succeeded",11,9,13,1]'
+          test "$(jq --compact-output '[.status, (.output.lines[] | select(.name == "predicted") | .points[0] | .value, .low, .high), .record.version, .output_shape]' question.json)" = \
+            '["succeeded",11,9,13,1,"series"]'
           docker stop prediction
           test "$(docker inspect prediction --format '{{.State.ExitCode}}')" = 0
       - name: Run workflows across a restart, and read the steps of a run and their causes
