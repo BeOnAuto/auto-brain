@@ -79,7 +79,7 @@ function typesIn(outcome: unknown): readonly string[] {
 }
 
 describe('get_run_history', () => {
-  it('is a playbook query at GET /runs/{run_id}/history that may meet not_found', async () => {
+  it('is a playbook query at GET /runs/{run_id}/history, served over HTTP alone, that may meet not_found', async () => {
     const { getRunHistory } = await playbookWithRun();
 
     expect(getRunHistory.registration).toMatchObject({
@@ -89,6 +89,7 @@ describe('get_run_history', () => {
       route: { method: 'GET', path: '/runs/{run_id}/history' },
       pathParameters: ['run_id'],
       reasons: ['not_found', 'invalid_input'],
+      servedOverHttpAlone: { kind: 'none' },
     });
   });
 });

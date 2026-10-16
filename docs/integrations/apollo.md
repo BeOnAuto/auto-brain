@@ -70,7 +70,7 @@ The function receives the values you confirmed, and nothing else from the agent'
 
 ### 5. Verify the recorded run
 
-Have the agent read the run from Auto and show its run id (the id Auto gave this run), the version of the function it used, its recorded prompt and its output. `get_run` returns the prompt with the inputs filled in, as the function's template rendered it, within the run record's size limits. The run's history, from `get_run_history`, shows the input it was given on its `run_started` event, and `get_event` reads that event whole.
+Have the agent read the run from Auto and show its run id (the id Auto gave this run), the version of the function it used, its recorded prompt and its output. `get_run` returns the prompt with the inputs filled in, as the function's template rendered it, within the run record's size limits. The run's history, from `list_playbook_events` given its `run_id`, shows the input it was given on its `run_started` event, and `get_event` reads that event whole.
 
 Check that the prompt contains the evidence you approved, and that the result covers what you asked for.
 

@@ -1,3 +1,4 @@
+import { settingProblemText } from '@on.auto/config';
 import { Config, Data, Effect } from 'effect';
 
 import { aliasReading } from './alias-settings.ts';
@@ -51,6 +52,13 @@ export class ModelSettingsInvalid extends Data.TaggedError('model_settings_inval
   readonly problems: readonly SettingProblem[];
 }> {}
 
+export const modelListVariables = {
+  gateways: 'MODEL_GATEWAYS',
+  aliases: 'MODEL_ALIASES',
+  declared: 'DECLARED_MODELS',
+  allowed: 'ALLOWED_MODELS',
+} as const;
+
 const sources = Config.all({
   anthropic: anthropicSource,
   openai: openAiSource,
@@ -58,14 +66,14 @@ const sources = Config.all({
   bedrock: bedrockSource,
   azure: azureSource,
   vertex: vertexSource,
-  gateways: optionalText('MODEL_GATEWAYS'),
-  aliases: optionalText('MODEL_ALIASES'),
-  declared: optionalText('DECLARED_MODELS'),
-  allowed: optionalText('ALLOWED_MODELS'),
+  gateways: optionalText(modelListVariables.gateways),
+  aliases: optionalText(modelListVariables.aliases),
+  declared: optionalText(modelListVariables.declared),
+  allowed: optionalText(modelListVariables.allowed),
 });
 
 function invalid(problems: readonly SettingProblem[]): ModelSettingsInvalid {
-  const listed = problems.map(({ setting, detail }) => `${setting}: ${detail}`).join('; ');
+  const listed = problems.map((problem) => settingProblemText(problem)).join('; ');
   return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listed}`, problems });
 }
 

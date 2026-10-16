@@ -1,4 +1,4 @@
-import type { Presenter, Registration } from '@on.auto/operations';
+import type { Presenter, Registration, RouteRegistration } from '@on.auto/operations';
 
 import type { Capability } from '../capability/capability.ts';
 import { runOperations } from '../reading/run-operations.ts';
@@ -14,11 +14,15 @@ export interface PlaybookOperation {
   readonly registration: Registration<'playbook'>;
 }
 
+interface ServedOperation {
+  readonly registration: RouteRegistration<'playbook'>;
+}
+
 export function makeDefinitionOperations(
   capabilities: readonly Capability[],
   facts?: CapabilityFacts,
   presenters?: readonly Presenter[],
-): readonly PlaybookOperation[] {
+): readonly ServedOperation[] {
   return [
     defineCreateDefinition(capabilities),
     defineListDefinitions(capabilities),

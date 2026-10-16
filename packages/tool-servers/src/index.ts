@@ -61,7 +61,15 @@ export { conversationCallPresenter } from './own-calls/conversation-call-present
 export { defaultTiming, runBoundMs, toolBounds, type Timing } from './bounds/call-bounds.ts';
 export { secretsOf, type Secrets } from './bounds/secrets.ts';
 export { toolReferenceOf, toolReferenceShape, writtenOf, type ToolReference } from './names/tool-reference.ts';
-export { ToolServersSchema } from './settings/server-entries.ts';
+export {
+  ServerEntrySchema,
+  ToolServersSchema,
+  toolServersSetting,
+  type ServerEntryFields,
+} from './settings/server-entries.ts';
+export { checkedEntry, serverNameProblems, type EntryContext } from './settings/entry-checks.ts';
+export { isPinnableUrl } from './settings/checked.ts';
+export { headersTheRuntimeSets } from './settings/reserved-headers.ts';
 export type { ServerSettings, ToolServerSettings } from './settings/server-settings.ts';
 export type { Describing, ToolServers } from './openapi/described-api.ts';
 export type { LeftOutOperation } from './openapi/api-tools.ts';

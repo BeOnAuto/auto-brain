@@ -1,3 +1,4 @@
+import type { RetryStateKeys } from '@on.auto/api';
 import type { SecretKeys, SecretStore } from '@on.auto/ledger';
 import { postgresqlSecretStore } from '@on.auto/ledger/postgresql';
 import { sqliteSecretStore } from '@on.auto/ledger/sqlite3';
@@ -7,10 +8,11 @@ import { Effect, type Context } from 'effect';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { logContentStore, logLedger, logSecretStore } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
-import { secretsKeysOf } from './secrets-keys.ts';
+import { retryStateKeysOf, secretsKeysOf } from './secrets-keys.ts';
 
 export interface LedgerStores {
   readonly secrets: SecretStore;
+  readonly retryStateKeys: RetryStateKeys;
   readonly withSecretsClosed: (served: Served) => Served;
 }
 
@@ -36,9 +38,11 @@ export async function ledgerStoresOpenedBy(
 ): Promise<LedgerStores> {
   const run = Effect.runPromiseWith(context);
   await run(Effect.andThen(logLedger(ledger), logContentStore(content)));
-  const store = await run(openedAndRotated(database, secretsKeysOf(secrets)));
+  const keys = secretsKeysOf(secrets);
+  const store = await run(openedAndRotated(database, keys));
   return {
     secrets: store,
+    retryStateKeys: retryStateKeysOf(keys),
     withSecretsClosed: ({ routes, stopWork }) => ({
       routes,
       stopWork: async () => {

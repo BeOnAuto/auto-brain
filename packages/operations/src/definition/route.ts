@@ -1,14 +1,26 @@
 import type { OperationKind } from '../caller/operation-scope.ts';
 
-export type Method = 'GET' | 'POST' | 'PUT';
+export type Method = 'GET' | 'POST' | 'PUT' | 'DELETE';
 
 interface MethodsByKind {
   readonly query: 'GET' | 'POST';
-  readonly command: 'POST' | 'PUT';
+  readonly command: 'POST' | 'PUT' | 'DELETE';
 }
 
-export interface Route<K extends OperationKind = OperationKind, P extends string = string> {
-  readonly method: MethodsByKind[K];
+export type MethodOf<K extends OperationKind> = MethodsByKind[K];
+
+const methodsWithoutABody: ReadonlySet<Method> = new Set(['GET', 'DELETE']);
+
+export function takesNoBody({ method }: Pick<Route, 'method'>): boolean {
+  return methodsWithoutABody.has(method);
+}
+
+export interface Route<
+  K extends OperationKind = OperationKind,
+  P extends string = string,
+  M extends MethodOf<K> = MethodOf<K>,
+> {
+  readonly method: M;
   readonly path: P;
 }
 

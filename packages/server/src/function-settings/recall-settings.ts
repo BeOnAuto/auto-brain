@@ -16,6 +16,10 @@ const bounds = {
   playbooksAtOnce: { setting: 'RECALL_PLAYBOOKS_AT_ONCE', least: 1, most: 64, example: 4 },
 };
 
+export const recallVariables: readonly string[] = Object.values(bounds).map(
+  ({ setting }: { readonly setting: string }) => setting,
+);
+
 export function readRecallSettings(environment: Environment): Effect.Effect<RecallSettings, InvalidSettingsError> {
   return countsIn(environment, { settings: 'recall function settings', bounds });
 }

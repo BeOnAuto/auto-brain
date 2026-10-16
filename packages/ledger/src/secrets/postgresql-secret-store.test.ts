@@ -81,7 +81,7 @@ describe('the secret store on PostgreSQL, without a database', () => {
       'SELECT sealed FROM sealed_secrets WHERE id = $1',
       'DELETE FROM sealed_secrets WHERE id = $1',
     ]);
-    expect(fake.asked[0]?.values).toEqual([id, store.kid, expect.any(String), expect.any(String)]);
+    expect(fake.asked[0]?.values).toEqual([id, store.kid, expect.any(String), expect.any(String), null]);
     expect(decodeProtectedHeader(String(fake.asked[0]?.values[2]))).toMatchObject({ kid: store.kid });
     expect(JSON.stringify(fake.asked)).not.toContain('pasted-key');
     expect(fake.ended()).toBe(1);

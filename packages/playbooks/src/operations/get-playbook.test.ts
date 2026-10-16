@@ -9,7 +9,7 @@ const toAcme = toOrg('acme');
 const later = '2026-10-02T14:15:00.000Z';
 
 describe('get_playbook', () => {
-  it('is an org query at GET /playbooks/{playbook} that may meet not_found', () => {
+  it('is an org query at GET /playbooks/{playbook}, served over HTTP alone, that may meet not_found', () => {
     expect(getPlaybook.registration).toMatchObject({
       scope: 'org',
       kind: 'query',
@@ -18,6 +18,7 @@ describe('get_playbook', () => {
       pathParameters: ['playbook'],
       successStatus: 200,
       reasons: ['not_found'],
+      servedOverHttpAlone: { kind: 'none' },
     });
   });
 

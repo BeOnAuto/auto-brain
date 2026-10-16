@@ -1,4 +1,4 @@
-import type { Registration } from '@on.auto/operations';
+import type { RouteRegistration } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
 import { makeDefinitionOperations } from '../index.ts';
@@ -10,7 +10,7 @@ const relaying = relay().capability;
 
 const operations = makeDefinitionOperations([echo, probe().capability, relaying]);
 
-function registrationOf(name: string): Registration {
+function registrationOf(name: string): RouteRegistration {
   const found = operations.find(({ registration }) => registration.name === name);
   if (found === undefined) {
     throw new Error(`There is no operation ${name}`);

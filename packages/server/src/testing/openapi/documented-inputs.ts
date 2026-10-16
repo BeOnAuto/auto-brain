@@ -63,6 +63,8 @@ function withoutFields(schema: JsonObject, names: readonly string[]): JsonObject
   };
 }
 
+const methodsWithoutABody: ReadonlySet<string> = new Set(['get', 'delete']);
+
 function fieldsIn(schema: JsonObject): readonly InputField[] {
   const { properties = {}, required = [] } = objectOf(schema);
   return Object.entries(properties).map(([name, field]: readonly [string, unknown]) => ({
@@ -73,7 +75,7 @@ function fieldsIn(schema: JsonObject): readonly InputField[] {
 }
 
 export function documentedInputOf(described: DocumentedOperation): unknown {
-  if (described.method === 'get') {
+  if (methodsWithoutABody.has(described.method)) {
     return namedParametersOf(described)
       .filter((parameter) => parameter.in === 'query')
       .map(({ name, required, schema }) => ({ name, required, schema }));
@@ -84,5 +86,5 @@ export function documentedInputOf(described: DocumentedOperation): unknown {
 
 export function inputOfToolsOf(described: DocumentedOperation, tools: readonly ListedTool[]): readonly unknown[] {
   const inputs = tools.map(({ inputSchema }) => withoutFields(inputSchema, pathFieldsOf(described)));
-  return described.method === 'get' ? inputs.map((input) => fieldsIn(input)) : inputs;
+  return methodsWithoutABody.has(described.method) ? inputs.map((input) => fieldsIn(input)) : inputs;
 }

@@ -126,7 +126,7 @@ Every server offers workflows and `send_run_event`, with nothing to configure.
 
 **Fix.**
 
-- Read the run's history with `get_run_history`. It shows the run's steps, and the last one shows what the run waits for.
+- Read the run's history with `list_playbook_events`, given its `run_id`. It shows the run's steps, and the last one shows what the run waits for.
 - Check the log. The server warns once when such a run backs off to an attempt a minute, and once when it is settled.
 
 [Workflow storage and failover](workflows.md#how-a-run-ends) explains how a run ends.

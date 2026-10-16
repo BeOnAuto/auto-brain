@@ -6,6 +6,7 @@ import { authInfoFor, tracedBy, type PlaybookCall, type OrgCall } from '../hand-
 import { droppedArgumentsOf } from '../hand-off/dropped-arguments.ts';
 import { requestBodyLimit } from '../operations/request-body.ts';
 import type { RegisterRoutes, RouteHandler, Routes } from '../routes.ts';
+import { linkedAnswers, type RetryStateKeys } from '../tools/linked-answers.ts';
 import type { McpServing } from './mcp-connection.ts';
 import {
   playbookServerFactory,
@@ -16,6 +17,7 @@ import {
 
 export interface McpRoutesOptions extends McpServing {
   readonly reportError: (error: Readonly<Error>) => void;
+  readonly retryStateKeys: RetryStateKeys;
 }
 
 type FetchMcp = McpHttpHandler['fetch'];
@@ -64,7 +66,11 @@ function handlerFor(factory: McpServerFactory, { reportError }: McpRoutesOptions
 
 export function mcpRoutes(options: McpRoutesOptions): RegisterRoutes {
   return (routes) => {
-    const serving = { ...options, reportThrown: routes.reportThrown };
+    const serving = {
+      ...options,
+      reportThrown: routes.reportThrown,
+      linkedAnswers: linkedAnswers(options.retryStateKeys),
+    };
     const catalog = handlerFor(catalogServerFactory(serving), options);
     const org = handlerFor(orgServerFactory(serving), options);
     const playbook = handlerFor(playbookServerFactory(serving), options);

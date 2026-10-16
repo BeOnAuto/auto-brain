@@ -71,7 +71,7 @@ describe('the history of a reasoning run rejected after its model was called', (
     const overMcp = await withMcpSession(
       'current revision',
       { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} },
-      (session) => session.callTool('get_run_history', { run_id: rejected }),
+      (session) => session.callTool('list_playbook_events', { run_id: rejected, order: 'asc' }),
     );
 
     expect(rejecting).toMatchObject({ status: 503, body: { reason: 'unavailable' } });

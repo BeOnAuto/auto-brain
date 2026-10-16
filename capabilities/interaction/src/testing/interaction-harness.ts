@@ -17,6 +17,8 @@ import {
   type DispatcherServices,
   type Ledger,
   type Outcome,
+  type Runnable,
+  type Succeeded,
 } from '@on.auto/operations';
 import { memoryPlaybookRegistry, memoryLedger, recordingReporter } from '@on.auto/operations/testing';
 import { Effect, Layer } from 'effect';
@@ -47,13 +49,22 @@ export interface HarnessOptions {
   readonly others?: readonly Capability[];
 }
 
+interface PlaybookRoute {
+  readonly registration: Runnable<'playbook'>;
+}
+
+interface Calling {
+  (operation: PlaybookOperation, input: unknown, caller?: CallerIdentity): Promise<Outcome>;
+  (operation: PlaybookRoute, input: unknown, caller?: CallerIdentity): Promise<Outcome<Succeeded>>;
+}
+
 export interface InteractionHarness {
   readonly ledger: HarnessLedger;
   readonly capability: Capability;
   readonly capabilities: readonly Capability[];
   readonly record: RecordWork;
   readonly due: RequestsDue;
-  readonly call: (operation: PlaybookOperation, input: unknown, caller?: CallerIdentity) => Promise<Outcome>;
+  readonly call: Calling;
   readonly define: (name: string, source: string) => Promise<Outcome>;
   readonly ask: (name: string, input: unknown, runId: string) => Promise<Outcome>;
   readonly defineAs: (type: string, name: string, source: string) => Promise<Outcome>;
@@ -68,6 +79,20 @@ export interface InteractionHarness {
   readonly performEach: (times: readonly number[]) => Promise<void>;
 }
 
+function callingIn(services: Layer.Layer<DispatcherServices>): Calling {
+  const dispatcher = makeDispatcher([]);
+  function call(operation: PlaybookOperation, input: unknown, caller?: CallerIdentity): Promise<Outcome>;
+  function call(operation: PlaybookRoute, input: unknown, caller?: CallerIdentity): Promise<Outcome<Succeeded>>;
+  function call(operation: PlaybookRoute, input: unknown, caller = acmeAdmin): Promise<Outcome<Succeeded>> {
+    return Effect.runPromise(
+      dispatcher
+        .dispatchToPlaybook(operation.registration, { caller, ...alpha, input, encoding: 'json' })
+        .pipe(Effect.provide(services)),
+    );
+  }
+  return call;
+}
+
 export function interactionHarness(options: HarnessOptions = {}): InteractionHarness {
   const ledger: HarnessLedger = options.ledger ?? memoryLedger(undefined, [openRequests]);
   const tools = options.tools ?? noTools;
@@ -78,11 +103,7 @@ export function interactionHarness(options: HarnessOptions = {}): InteractionHar
     mostOpenRequests: options.mostOpenRequests ?? 10_000,
   });
   const services = Layer.mergeAll(ledger.layer, memoryPlaybookRegistry([alpha]), recordingReporter().layer);
-  const dispatcher = makeDispatcher([]);
-  const run = <A>(calls: Effect.Effect<A, never, DispatcherServices>) =>
-    Effect.runPromise(calls.pipe(Effect.provide(services)));
-  const call: InteractionHarness['call'] = (operation, input, caller = acmeAdmin) =>
-    run(dispatcher.dispatchToPlaybook(operation.registration, { caller, ...alpha, input, encoding: 'json' }));
+  const call = callingIn(services);
   const capabilities = [capability, ...(options.others ?? [])];
   const facts = runFactsOf(declaredFactsOf(capabilities));
   const dueOver = (over: RequestLedger): RequestsDue =>

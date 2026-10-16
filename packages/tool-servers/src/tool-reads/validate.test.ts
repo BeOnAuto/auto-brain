@@ -51,7 +51,7 @@ function filling(bytes: number) {
 }
 
 describe('validate', () => {
-  it('is a query of the playbook routed by POST, since its arguments are an object a query string cannot carry', async () => {
+  it('is a query of the playbook routed by POST, since its arguments are an object a query string cannot carry, and served over HTTP alone', async () => {
     const { registrations } = await validatingOn();
 
     expect(registrations.validate).toMatchObject({
@@ -60,8 +60,7 @@ describe('validate', () => {
       name: 'validate',
       route: { method: 'POST', path: '/tool-servers/{server}/tools/{tool}/validate' },
       permissions: ['playbook:read'],
-      reachesOutside: true,
-      mayChangeOutside: false,
+      servedOverHttpAlone: { kind: 'json' },
     });
   });
 

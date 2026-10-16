@@ -1,3 +1,4 @@
+import { settingProblemText } from '@on.auto/config';
 import { Effect, Redacted } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -28,7 +29,7 @@ function refusalOf(environment: Environment) {
 }
 
 function problemsOf(servers: unknown): readonly string[] {
-  return refusalOf(environmentOf(servers)).problems.map(({ setting, detail }) => `${setting} ${detail}`);
+  return refusalOf(environmentOf(servers)).problems.map((problem) => settingProblemText(problem));
 }
 
 function plain(values: ReadonlyMap<string, Redacted.Redacted>): Readonly<Record<string, string>> {
@@ -112,17 +113,17 @@ describe('reading a stdio server', () => {
 describe('the shape of the servers', () => {
   it('refuses a setting that is not JSON, or not the shape of the servers', () => {
     expect(refusalOf({ TOOL_SERVERS: '{graph' }).problems).toEqual([
-      { setting: 'TOOL_SERVERS', detail: '/: Expected JSON' },
+      { setting: 'TOOL_SERVERS', pointer: '', detail: 'Expected JSON' },
     ]);
     expect(problemsOf({ graph: { ...graph, port: 8 } })).toEqual([
-      'TOOL_SERVERS /graph/port: Expected no excess property',
+      'TOOL_SERVERS: /graph/port: Expected no excess property',
     ]);
-    expect(problemsOf([])).toEqual([expect.stringMatching(/^TOOL_SERVERS \/: Expected object/u)]);
+    expect(problemsOf([])).toEqual([expect.stringMatching(/^TOOL_SERVERS: \/: Expected object/u)]);
   });
 
   it('refuses an entry with none of url, command and document, or with two of them', () => {
     const oneOfThree =
-      'TOOL_SERVERS /graph: Expected url for an mcp server, command for a stdio server or document for an openapi server, one of the three';
+      'TOOL_SERVERS: /graph: Expected url for an mcp server, command for a stdio server or document for an openapi server, one of the three';
 
     expect(problemsOf({ graph: { org: 'acme' } })).toEqual([oneOfThree]);
     expect(problemsOf({ graph: { ...graph, command: 'graph' } })).toEqual([oneOfThree]);
@@ -133,11 +134,11 @@ describe('the shape of the servers', () => {
 
   it('refuses a typed entry without the field its type needs', () => {
     expect(problemsOf({ graph: { org: 'acme', type: 'mcp' } })).toEqual([
-      'TOOL_SERVERS /graph: Expected url for an mcp server',
+      'TOOL_SERVERS: /graph: Expected url for an mcp server',
     ]);
     expect(problemsOf({ limitless: { org: 'acme', type: 'stdio', url: graph.url } })).toEqual([
-      'TOOL_SERVERS /limitless/url: Not a field of a stdio server',
-      'TOOL_SERVERS /limitless: Expected command for a stdio server',
+      'TOOL_SERVERS: /limitless/url: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless: Expected command for a stdio server',
     ]);
   });
 });
@@ -145,9 +146,9 @@ describe('the shape of the servers', () => {
 describe('the fields of the other type', () => {
   it('refuses the fields of a stdio server on an mcp server', () => {
     expect(problemsOf({ graph: { ...graph, type: 'mcp', command: 'graph', args: [], env: {} } })).toEqual([
-      'TOOL_SERVERS /graph/command: Not a field of an mcp server',
-      'TOOL_SERVERS /graph/args: Not a field of an mcp server',
-      'TOOL_SERVERS /graph/env: Not a field of an mcp server',
+      'TOOL_SERVERS: /graph/command: Not a field of an mcp server',
+      'TOOL_SERVERS: /graph/args: Not a field of an mcp server',
+      'TOOL_SERVERS: /graph/env: Not a field of an mcp server',
     ]);
   });
 
@@ -159,12 +160,12 @@ describe('the fields of the other type', () => {
     expect(
       problemsOf({ limitless: { ...limitless, type: 'stdio', url: graph.url, headers: {}, auth, ...api } }),
     ).toEqual([
-      'TOOL_SERVERS /limitless/url: Not a field of a stdio server',
-      'TOOL_SERVERS /limitless/headers: Not a field of a stdio server',
-      'TOOL_SERVERS /limitless/auth: Not a field of a stdio server',
-      'TOOL_SERVERS /limitless/document: Not a field of a stdio server',
-      'TOOL_SERVERS /limitless/base_url: Not a field of a stdio server',
-      'TOOL_SERVERS /limitless/query_params: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless/url: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless/headers: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless/auth: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless/document: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless/base_url: Not a field of a stdio server',
+      'TOOL_SERVERS: /limitless/query_params: Not a field of a stdio server',
     ]);
   });
 });
@@ -172,46 +173,47 @@ describe('the fields of the other type', () => {
 describe('the name, org and playbooks of a server', () => {
   it('refuses a name a reasoning function could not write, or could mistake for a model provider or gateway', () => {
     expect(problemsOf({ Graph: graph })).toEqual([
-      'TOOL_SERVERS /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+      'TOOL_SERVERS: /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
     ]);
     expect(problemsOf({ 'crm--eu': graph, 'crm-': graph })).toEqual([
-      "TOOL_SERVERS /crm--eu: Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
-      "TOOL_SERVERS /crm-: Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
+      "TOOL_SERVERS: /crm--eu: Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
+      "TOOL_SERVERS: /crm-: Expected no two hyphens together and none at the end: a model sees each tool of the server as server__tool, a hyphen as an underscore, and the server's name ends at the first __",
     ]);
     expect(problemsOf({ openai: graph, gateway: graph })).toEqual([
-      'TOOL_SERVERS /openai: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
-      'TOOL_SERVERS /gateway: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      'TOOL_SERVERS: /openai: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
+      'TOOL_SERVERS: /gateway: The name of a model provider or gateway, which a reasoning function could not tell apart from it',
     ]);
   });
 
   it('refuses an entry without its org, or with an org or playbook that is not an id, with every other problem', () => {
     expect(problemsOf({ Graph: { url: graph.url } })).toEqual([
-      'TOOL_SERVERS /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
-      'TOOL_SERVERS /Graph: Expected the org this server serves',
+      'TOOL_SERVERS: /Graph: Expected a name of 1 to 32 lowercase letters, digits and hyphens, starting with a letter',
+      'TOOL_SERVERS: /Graph: Expected the org this server serves',
     ]);
     expect(problemsOf({ graph: { ...graph, org: 'acme corp', playbooks: ['sales', 'Support Desk'] } })).toEqual([
-      'TOOL_SERVERS /graph/org: Expected an org id, a list of them, or *',
-      'TOOL_SERVERS /graph/playbooks/1: Expected a playbook id',
+      'TOOL_SERVERS: /graph/org: Expected an org id, a list of them, or *',
+      'TOOL_SERVERS: /graph/playbooks/1: Expected a playbook id',
     ]);
   });
 });
 
 describe('the transport of a server', () => {
   it('refuses a url that is not http, a header name that is not one, and a header the client sets itself', () => {
-    const headers = { 'X Graph': 'one', 'Mcp-Session-Id': 'two' };
+    const headers = { 'X Graph': 'one', 'Mcp-Session-Id': 'two', Host: 'graph.example.com' };
 
     expect(problemsOf({ graph: { url: 'ftp://graph.example.com/mcp', org: 'acme', headers } })).toEqual([
-      'TOOL_SERVERS /graph/url: Expected an http or https URL',
-      'TOOL_SERVERS /graph/headers/X Graph: Expected a header name',
-      'TOOL_SERVERS /graph/headers/Mcp-Session-Id: A header the MCP client sets itself',
+      'TOOL_SERVERS: /graph/url: Expected an http or https URL',
+      'TOOL_SERVERS: /graph/headers/X Graph: Expected a header name',
+      'TOOL_SERVERS: /graph/headers/Mcp-Session-Id: A header the MCP client sets itself',
+      'TOOL_SERVERS: /graph/headers/Host: A header the MCP client sets itself',
     ]);
   });
 
   it('refuses a blank command and an environment variable that is not a name', () => {
     expect(problemsOf({ limitless: { ...limitless, command: ' ', env: { '1KEY': 'one', 'A-B': 'two' } } })).toEqual([
-      'TOOL_SERVERS /limitless/command: Expected a command',
-      'TOOL_SERVERS /limitless/env/1KEY: Expected an environment variable name',
-      'TOOL_SERVERS /limitless/env/A-B: Expected an environment variable name',
+      'TOOL_SERVERS: /limitless/command: Expected a command',
+      'TOOL_SERVERS: /limitless/env/1KEY: Expected an environment variable name',
+      'TOOL_SERVERS: /limitless/env/A-B: Expected an environment variable name',
     ]);
   });
 });
@@ -224,12 +226,14 @@ describe('the secrets of a server', () => {
     expect(refusal.problems).toEqual([
       {
         setting: 'TOOL_SERVERS',
+        pointer: '/graph/headers/Authorization',
         detail:
-          '/graph/headers/Authorization: Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as ${GRAPH_API_KEY}',
+          'Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as ${GRAPH_API_KEY}',
       },
       {
         setting: 'TOOL_SERVERS',
-        detail: '/graph/headers/X-Tenant: Refers to the environment variable GRAPH_TENANT, which is not set',
+        pointer: '/graph/headers/X-Tenant',
+        detail: 'Refers to the environment variable GRAPH_TENANT, which is not set',
       },
     ]);
     expect(refusal.message).toMatch(
@@ -251,7 +255,7 @@ describe('a credential written into the url or the args of a server', () => {
       }),
     );
 
-    expect(refusal.problems.map(({ detail }) => detail)).toEqual([
+    expect(refusal.problems.map(({ pointer = '', detail }) => `${pointer}: ${detail}`)).toEqual([
       `/graph/url: ${credential}`,
       `/crm/url: ${credential}`,
       `/limitless/args/0: ${credential}`,
@@ -259,13 +263,13 @@ describe('a credential written into the url or the args of a server', () => {
     expect(JSON.stringify(refusal)).not.toContain('sk-');
   });
 
-  it('is judged by the value, never by the name it is given', () => {
-    const [notes, graphOfTokens] = serversOf({
-      notes: { ...limitless, args: ['--token-file=/run/secrets/notes', '--api-key-env=NOTES_API_KEY'] },
-      graph: { ...graph, url: 'https://graph.example.com/mcp?token_type=bearer' },
-    });
+  it('is judged in an argument by the value, never by the name it is given, and in a query by its name too', () => {
+    const notes = { ...limitless, args: ['--token-file=/run/secrets/notes', '--api-key-env=NOTES_API_KEY'] };
 
-    expect([notes?.name, graphOfTokens?.name]).toEqual(['notes', 'graph']);
+    expect(serversOf({ notes }).map(({ name }) => name)).toEqual(['notes']);
+    expect(problemsOf({ graph: { ...graph, url: 'https://graph.example.com/mcp?api_key=graph-4f1d9a7c' } })).toEqual([
+      'TOOL_SERVERS: /graph/url: Looks like a credential, which this setting never holds; write a reference to the environment variable that holds it instead, such as ${GRAPH_API_KEY}',
+    ]);
   });
 });
 
@@ -280,9 +284,9 @@ describe('the references of a server', () => {
         limitless: { ...limitless, args: ['--key', '${GRAPH_API_KEY}'], command: '${HOME:-/usr/local}/bin/limitless' },
       }),
     ).toEqual([
-      `TOOL_SERVERS /graph/url: ${misplaced}`,
-      `TOOL_SERVERS /limitless/command: ${misplaced}`,
-      `TOOL_SERVERS /limitless/args/1: ${misplaced}`,
+      `TOOL_SERVERS: /graph/url: ${misplaced}`,
+      `TOOL_SERVERS: /limitless/command: ${misplaced}`,
+      `TOOL_SERVERS: /limitless/args/1: ${misplaced}`,
     ]);
   });
 

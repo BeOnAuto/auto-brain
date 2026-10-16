@@ -17,6 +17,8 @@ export class InvalidPortError extends Error {
   }
 }
 
+export const serverConfigVariables: readonly string[] = ['HOST', 'PORT'];
+
 export function readServerConfig(environment: Environment): ServerConfig {
   return {
     host: environment['HOST'] ?? defaultHost,

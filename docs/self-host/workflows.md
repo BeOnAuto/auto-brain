@@ -15,7 +15,7 @@ Every server, whether started with npx or Docker, runs workflows and serves `sen
 
 ## Where a run is kept
 
-Workflow state lives in the ledger's database, beside the playbook's records: the SQLite file of `LEDGER_FILE`, or the PostgreSQL database of `DATABASE_URL`. Back it up together with the rest of the ledger. The server creates the tables it needs there when it starts. A run's log is part of the ledger, and `get_run_history` and the playbook's events read it.
+Workflow state lives in the ledger's database, beside the playbook's records: the SQLite file of `LEDGER_FILE`, or the PostgreSQL database of `DATABASE_URL`. Back it up together with the rest of the ledger. The server creates the tables it needs there when it starts. A run's log is part of the ledger, and a run's history and the playbook's events read it.
 
 For internals, the [workflow host's README](https://github.com/BeOnAuto/runtime/blob/main/packages/workflow-host/README.md#where-a-run-is-kept) lists the tables, and the [engine's README](https://github.com/BeOnAuto/runtime/blob/main/packages/workflow-engine/README.md#due-runs-and-the-sweep) describes the sweep.
 

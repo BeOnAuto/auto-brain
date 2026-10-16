@@ -1,6 +1,5 @@
 import { randomUUID } from 'node:crypto';
 
-import { withMcpSession } from '@on.auto/api/testing';
 import { OutputInvalid } from '@on.auto/reasoning';
 import { answers, textResult } from '@on.auto/reasoning/testing';
 import { Effect, Schema } from 'effect';
@@ -130,7 +129,7 @@ function durationOf(body: unknown): { readonly p50: number; readonly p95: number
   return decodeDuration(body).duration_ms;
 }
 
-describe.each(stores)('the analytics of a playbook over HTTP and MCP, on $store', ({ skipped, environment }) => {
+describe.each(stores)('the analytics of a playbook over HTTP, on $store', ({ skipped, environment }) => {
   it.skipIf(skipped)(
     'count the runs that ended today, by how they ended, and the tokens their models used',
     async () => {
@@ -141,10 +140,6 @@ describe.each(stores)('the analytics of a playbook over HTTP and MCP, on $store'
       const readBy = Date.now();
       const started = await server.call('GET', `${alpha}/runs?type=reasoning&name=summary`);
       const filtered = await server.call('GET', `${alpha}/analytics?days=14&type=reasoning&name=summary`);
-      const onAlpha = { url: `${server.origin}/orgs/acme/playbooks/alpha/mcp`, headers: {} };
-      const overMcp = await withMcpSession('current revision', onAlpha, (session) =>
-        session.callTool('get_playbook_analytics', {}),
-      );
 
       expect(read).toMatchObject({
         status: 200,
@@ -159,7 +154,6 @@ describe.each(stores)('the analytics of a playbook over HTTP and MCP, on $store'
       expect(runsByDay(read.body)).toEqual(runsByTheDayTheyStarted(started.body));
       expect(durationOf(read.body).p50).toBeLessThanOrEqual(durationOf(read.body).p95);
       expect(filtered).toMatchObject({ status: 200, body: { days: 14, runs: { total: 3 } } });
-      expect(overMcp.structuredContent).toEqual(read.body);
     },
   );
 
