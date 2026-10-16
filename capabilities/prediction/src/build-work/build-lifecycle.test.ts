@@ -7,6 +7,7 @@ import {
   asked,
   askedBuild,
   modelFactsOf,
+  runOf,
   savedFunction,
   standingOf,
   uploaded,
@@ -15,6 +16,7 @@ import {
 import { candidateSha256, performedOnce, performedUntilQuiet } from '../build-testing/due-driving.ts';
 import { predictionBuildsName } from '../builds/build-rows.ts';
 import { buildsDue } from '../builds/builds-due.ts';
+import type { PredictionPorts } from '../capability/prediction-ports.ts';
 import { activateVersion } from '../models/activate-version.ts';
 
 const alpha = { org: 'acme', playbook: 'alpha' };
@@ -95,5 +97,34 @@ describe('a build of a prediction function performed by the due work of the host
     await answered(playbook, build, { candidates: [] });
 
     expect([waiting, await Effect.runPromise(due.nextDueAt(0))]).toEqual([null, expect.any(Number)]);
+  });
+});
+
+describe('a build whose trainer answers while the due work of the host performs it', () => {
+  it('stays due when its trainer answers after a step read it waiting and before the step writes its rest', async () => {
+    const playbook = buildPlaybook();
+    await savedFunction(playbook);
+    const build = await askedBuild(playbook);
+    const { ports } = playbook.test;
+    await Effect.runPromise(
+      ports.ledger.advanceRow(predictionBuildsName, alpha, build, { set: { next_due_at: 0 }, when: [] }),
+    );
+    const answeredMeanwhile: PredictionPorts = {
+      ...ports,
+      ledger: {
+        ...ports.ledger,
+        advanceRow: (projection, playbookAddress, key, advance) =>
+          Effect.andThen(
+            Effect.promise(() => answered(playbook, build, { candidates: [] })),
+            ports.ledger.advanceRow(projection, playbookAddress, key, advance),
+          ),
+      },
+    };
+    await performedOnce([buildsDue({ ports: answeredMeanwhile, runs: playbook.startChild })], playbook.now());
+    await performedUntilQuiet(playbook);
+
+    expect(await runOf(playbook, build)).toMatchObject({
+      output: { status: 'succeeded', output: { version: null, candidates: [] } },
+    });
   });
 });
