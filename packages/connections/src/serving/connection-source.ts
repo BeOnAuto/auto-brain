@@ -1,20 +1,19 @@
+import type { Issue } from '@on.auto/operations';
 import {
   isConnectionSettings,
   type ConnectionServer,
   type ConnectionServing,
-  type ConnectionSettings,
   type ConnectionSource,
   type ConnectionUnready,
   type OrgConnection,
 } from '@on.auto/tool-servers';
 import { Effect, Option, Result } from 'effect';
 
-import { additionIssuesOf } from '../entries/entry-checks.ts';
+import { entryIssuesOf, readAddition } from '../entries/entry-checks.ts';
 import { hostRefusalOf, useRefusalOf } from '../policy/policy-rules.ts';
 import { connectionsFold, connectionsStreamOfOrg } from '../registry/registry-decider.ts';
 import { newestFirst, type KeptConnection } from '../registry/registry.ts';
 import { givenOf, notAllowed, type Serving, type ServingServices } from './given-credentials.ts';
-import { placedCredential, readPlaced, type GivenValue } from './placed-credentials.ts';
 import { servingWords } from './serving-words.ts';
 
 function servingOf(org: string, { name, kind, entry }: KeptConnection['connection']): ConnectionServing {
@@ -29,27 +28,33 @@ function servingOf(org: string, { name, kind, entry }: KeptConnection['connectio
   };
 }
 
-function settingsOf({ org, kept, services }: Serving, given: GivenValue | undefined): ConnectionSettings {
-  const { connection } = kept;
-  const placed = placedCredential(connection.entry, connection.credential, given);
-  const read = readPlaced(connection, placed, { org, providers: services.providers });
-  return Option.getOrThrow(Option.liftPredicate(Option.getOrThrow(Result.getSuccess(read)), isConnectionSettings));
+function unchecked(name: string, issues: readonly Issue[]): ConnectionUnready {
+  return notAllowed(
+    servingWords.unchecked(
+      name,
+      issues.map(({ detail }) => detail),
+    ),
+  );
 }
 
 function preparedServer(serving: Serving): Effect.Effect<ConnectionServer, ConnectionUnready> {
   const { policy, providers } = serving.services;
   const { connection } = serving.kept;
+  const checking = { org: serving.org, providers };
   return Effect.gen(function* () {
     const refusal = useRefusalOf(policy, connection);
     if (refusal !== undefined) {
       return yield* Effect.fail(notAllowed(refusal.detail));
     }
-    const issues = additionIssuesOf(connection, { org: serving.org, providers });
+    const issues = entryIssuesOf(connection, checking);
     if (issues.length > 0) {
-      const details = issues.map(({ detail }) => detail);
-      return yield* Effect.fail(notAllowed(servingWords.unchecked(connection.name, details)));
+      return yield* Effect.fail(unchecked(connection.name, issues));
     }
-    const settings = settingsOf(serving, yield* givenOf(serving));
+    const read = readAddition(connection, checking, yield* givenOf(serving));
+    if (Result.isFailure(read)) {
+      return yield* Effect.fail(unchecked(connection.name, read.failure));
+    }
+    const settings = Option.getOrThrow(Option.liftPredicate(read.success, isConnectionSettings));
     const reaches = (url: string): string | undefined =>
       hostRefusalOf(policy.allowedHosts, new URL(url).hostname)?.detail;
     return { settings, reaches };

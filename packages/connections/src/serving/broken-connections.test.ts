@@ -69,6 +69,19 @@ function unreadableIn(h: Harness) {
   return { ...h.secrets, read: () => Effect.fail({ detail: sealedElsewhere }) };
 }
 
+function unreadableCounted(h: Harness) {
+  const reads = { made: 0 };
+  const secrets = {
+    ...h.secrets,
+    read: () =>
+      Effect.suspend(() => {
+        reads.made += 1;
+        return Effect.fail({ detail: sealedElsewhere });
+      }),
+  };
+  return { reads, secrets };
+}
+
 const brokenReason = `The credential of the connection crm cannot be read, so the person who added it removes it and adds it again: ${sealedElsewhere}`;
 
 describe('a connection whose credential the secret store cannot read', () => {
@@ -157,15 +170,31 @@ describe('a connection the runtime cannot record broken', () => {
     expect(lines).toEqual([expect.stringContaining('could not record it broken')]);
     expect((await connectionOf(sourceOf(h), id)).state.status).toBe('connected');
   });
+});
 
-  it('logs nothing when another change of the registry came first', async () => {
+describe('a break the registry does not take', () => {
+  it('logs a change of the registry that came first, and reads the credential again at the next use', async () => {
     const h = harness();
     const id = await connectedCrm(h);
     const concurrent = new Conflict({ detail: 'The registry changed meanwhile', kind: 'concurrent_change' });
     const changed = { ...h.ledger.service, execute: () => Effect.fail(concurrent) };
+    const { reads, secrets } = unreadableCounted(h);
+    const { lines, logging } = loggedLines();
+    const source = sourceOf(h, { secrets, registry: changed });
+
+    const refused = [await refusalOf(source, id, logging), await refusalOf(source, id, logging)];
+
+    expect(refused.map(({ because }) => because)).toEqual(['connection_broken', 'connection_broken']);
+    expect([reads.made, lines.length]).toEqual([2, 2]);
+  });
+
+  it('logs nothing when the stream it records the break on holds no such connection', async () => {
+    const h = harness();
+    const id = await connectedCrm(h);
+    const forgotten = { ...h.ledger.service, execute: harness().ledger.service.execute };
     const { lines, logging } = loggedLines();
 
-    const refused = await refusalOf(sourceOf(h, { secrets: unreadableIn(h), registry: changed }), id, logging);
+    const refused = await refusalOf(sourceOf(h, { secrets: unreadableIn(h), registry: forgotten }), id, logging);
 
     expect([refused.because, lines]).toEqual(['connection_broken', []]);
   });

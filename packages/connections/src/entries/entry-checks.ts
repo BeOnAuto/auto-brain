@@ -1,6 +1,12 @@
 import { credentialProblems, substituted, type SettingProblem } from '@on.auto/config';
 import { Conflict, InvalidInput, type Issue } from '@on.auto/operations';
-import { isPinnableUrl, pinnedUrlShape, serverNameProblems, takenByTheConfiguration } from '@on.auto/tool-servers';
+import {
+  isPinnableUrl,
+  pinnedUrlShape,
+  serverNameProblems,
+  takenByTheConfiguration,
+  type ServerSettings,
+} from '@on.auto/tool-servers';
 import { JsonPointer, Redacted, Result, Schema } from 'effect';
 
 import type { ConnectionEntry, ConnectionKind } from '../registry/connection-entry.ts';
@@ -66,26 +72,36 @@ function addressIssues({ kind, entry }: AdditionInput): readonly Issue[] {
     : [];
 }
 
-function servedIssues(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
-  const { name, credential } = input;
-  const given = credential.kind === 'none' ? undefined : anyValue;
-  const read = readPlaced(input, placedCredential(input.entry, credential, given), checking);
-  return Result.isFailure(read) ? issuesOf(read.failure, `/${JsonPointer.escapeToken(name)}`, '/entry') : [];
-}
-
-export function additionIssuesOf(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
+export function entryIssuesOf(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
   const named = issuesOf(
     serverNameProblems(input.name, checking.providers),
     `/${JsonPointer.escapeToken(input.name)}`,
     '/name',
   );
-  const unread = [
+  return [
     ...named,
     ...addressIssues(input),
     ...writtenIssues(input.name, input.entry),
     ...credentialIssuesOf(input.credential, input.kind, input.entry),
   ];
-  return unread.length === 0 ? servedIssues(input, checking) : unread;
+}
+
+export function readAddition(
+  input: AdditionInput,
+  checking: EntryChecking,
+  given: GivenValue | undefined,
+): Result.Result<ServerSettings, readonly Issue[]> {
+  const read = readPlaced(input, placedCredential(input.entry, input.credential, given), checking);
+  return Result.mapError(read, (problems) => issuesOf(problems, `/${JsonPointer.escapeToken(input.name)}`, '/entry'));
+}
+
+export function additionIssuesOf(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
+  const issues = entryIssuesOf(input, checking);
+  if (issues.length > 0) {
+    return issues;
+  }
+  const given = input.credential.kind === 'none' ? undefined : anyValue;
+  return Result.match(readAddition(input, checking, given), { onSuccess: () => [], onFailure: (read) => read });
 }
 
 export function invalidAddition(issues: readonly Issue[]): InvalidInput {

@@ -252,6 +252,20 @@ describe('a connected connection of a reference as a tool server', () => {
         'The variable NOTES_API_KEY that the connection notes sends is not set on this runtime; whoever runs it sets the variable and starts it again',
     });
   });
+
+  it('is refused in the words of the reading of its entry when the value it reads is one the entry cannot take', async () => {
+    const listing = policyOf({ variables: ['NOTES_API_KEY'] });
+    const h = harness(listing);
+    const reference = { kind: 'reference', variable: 'NOTES_API_KEY', name: 'X-Api-Key', in: 'header' };
+    const id = await connected(h, { ...notes, credential: reference });
+    const variables = new Map([['NOTES_API_KEY', Redacted.make('')]]);
+
+    expect(await serverOf(sourceOf(h, { ...listing, variables }), id)).toEqual({
+      because: 'connection_not_allowed',
+      detail:
+        'The entry of the connection notes is not one this runtime takes any more: Refers to the environment variable NOTES_API_KEY, which is not set',
+    });
+  });
 });
 
 describe('the hosts a connected connection reaches', () => {

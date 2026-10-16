@@ -12,7 +12,7 @@ export const servingWords = {
   unset: (name: string, variable: string) =>
     `The variable ${variable} that the connection ${name} sends is not set on this runtime; whoever runs it sets the variable and starts it again`,
   unrecorded: (name: string) =>
-    `The runtime found the credential of the connection ${name} unreadable but could not record it broken; it reads it again at its next use`,
+    `The runtime found the credential of the connection ${name} unreadable but could not record it broken; it reads the credential again, and records the break again, at the next use`,
   unchecked: (name: string, details: readonly string[]) =>
     `The entry of the connection ${name} is not one this runtime takes any more: ${listed(details)}`,
 } as const;
