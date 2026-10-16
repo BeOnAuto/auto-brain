@@ -15,7 +15,6 @@ export interface OpenLink {
 export interface KeptConnection {
   readonly connection: Connection;
   readonly link: OpenLink | undefined;
-  readonly approved: boolean;
   readonly secretId: string | undefined;
 }
 
@@ -39,7 +38,6 @@ function addedConnection({ data, context }: ConnectionAdded): KeptConnection {
       broken: null,
     },
     link: undefined,
-    approved: false,
     secretId: undefined,
   };
 }
@@ -52,7 +50,6 @@ function connected(kept: KeptConnection, { data, context }: ConnectionConnected)
   return {
     connection: { ...kept.connection, status: 'connected', connected_at: context.at, broken: null },
     link: undefined,
-    approved: true,
     secretId: data.secret_id,
   };
 }
@@ -73,7 +70,7 @@ function evolvedConnection(
     return withLink(kept, event);
   }
   if (event.type === 'connection_approved') {
-    return { ...kept, approved: true };
+    return kept;
   }
   if (event.type === 'connection_connected') {
     return connected(kept, event);

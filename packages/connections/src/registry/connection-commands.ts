@@ -33,18 +33,7 @@ export interface ConnectionRemoval {
   readonly connection: string;
 }
 
-export interface ConnectionBreaking {
-  readonly type: 'break';
-  readonly connection: string;
-  readonly reason: string;
-}
-
-export type ConnectionCommandData =
-  | ConnectionAddition
-  | ConnectionApproval
-  | CredentialGiving
-  | ConnectionRemoval
-  | ConnectionBreaking;
+export type ConnectionCommandData = ConnectionAddition | ConnectionApproval | CredentialGiving | ConnectionRemoval;
 
 export interface CommandMetadata {
   readonly by: string;

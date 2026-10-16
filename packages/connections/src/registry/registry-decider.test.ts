@@ -1,4 +1,4 @@
-import { NotFound, recordingOf } from '@on.auto/operations';
+import { recordingOf } from '@on.auto/operations';
 import { Result } from 'effect';
 import { describe, expect, it } from 'vitest';
 
@@ -28,32 +28,6 @@ function decided(command: ConnectionCommand, ...history: readonly ConnectionEven
   );
   return registryDecider.decide(command, registry);
 }
-
-function breaking(reason: string): ConnectionCommand {
-  return { type: 'break', connection: 'crm-id', reason, ...acted };
-}
-
-const lostKey = 'Its credential was sealed under a secret key the runtime no longer has';
-
-describe('breaking a connection', () => {
-  it('records the sentence of why, with who and when as its context', () => {
-    expect(decided(breaking(lostKey), crmAdded)).toStrictEqual(
-      Result.succeed([{ type: 'connection_broken', data: { connection: 'crm-id', reason: lostKey } }]),
-    );
-    expect(registryDecider.context(breaking(lostKey), registryDecider.initialState)).toStrictEqual(acted);
-  });
-
-  it('records nothing when it is broken for that reason already, or removed, and refuses an unknown connection', () => {
-    const broken: ConnectionEvent = { type: 'connection_broken', data: { connection: 'crm-id', reason: lostKey } };
-    const removed: ConnectionEvent = { type: 'connection_removed', data: { connection: 'crm-id' } };
-
-    expect(decided(breaking(lostKey), crmAdded, broken)).toStrictEqual(Result.succeed([]));
-    expect(decided(breaking(lostKey), crmAdded, removed)).toStrictEqual(Result.succeed([]));
-    expect(decided(breaking(lostKey))).toStrictEqual(
-      Result.fail(new NotFound({ detail: 'There is no connection crm-id in this org' })),
-    );
-  });
-});
 
 describe('giving a credential to a connection that takes none', () => {
   it('is refused, though the link is open', () => {

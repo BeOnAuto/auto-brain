@@ -5,7 +5,6 @@ import type {
   CommandMetadata,
   ConnectionAddition,
   ConnectionApproval,
-  ConnectionBreaking,
   ConnectionCommand,
   ConnectionRemoval,
   CredentialGiving,
@@ -81,14 +80,6 @@ function decideRemoval({ connection }: ConnectionRemoval, registry: Registry): D
   );
 }
 
-function decideBreaking({ connection, reason }: ConnectionBreaking, registry: Registry): Decision {
-  return Result.flatMap(keptConnectionOf(registry, connection), (kept) =>
-    kept.connection.status === 'removed' || kept.connection.broken === reason
-      ? nothingToRecord
-      : Result.succeed([{ type: 'connection_broken', data: { connection, reason } }]),
-  );
-}
-
 export function registryContextOf({ by, at }: CommandMetadata): Context {
   return { at, by };
 }
@@ -103,5 +94,5 @@ export function decideOnRegistry(command: ConnectionCommand, registry: Registry)
   if (command.type === 'give') {
     return decideGiving(command, registry);
   }
-  return command.type === 'remove' ? decideRemoval(command, registry) : decideBreaking(command, registry);
+  return decideRemoval(command, registry);
 }

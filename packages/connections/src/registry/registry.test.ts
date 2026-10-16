@@ -61,13 +61,12 @@ describe('an added connection, as the stream folds it', () => {
         broken: null,
       },
       link: { token_sha256: 'a1b2', expires_at: '2026-10-15T14:10:00.000Z' },
-      approved: false,
       secretId: undefined,
     });
   });
 
   it('takes an approval, then a connection with its secret, which closes the link', () => {
-    expect(crmAfter(approval)).toMatchObject({ approved: true, connection: { status: 'pending' } });
+    expect(crmAfter(approval)).toMatchObject({ connection: { status: 'pending' }, link: { token_sha256: 'a1b2' } });
     expect(crmAfter(approval, connection)).toMatchObject({
       connection: { status: 'connected', connected_at: '2026-10-15T14:05:00.000Z', broken: null },
       link: undefined,

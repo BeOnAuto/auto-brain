@@ -1,4 +1,4 @@
-import { connectionsFold, connectionsStreamOfOrg } from '@on.auto/connections';
+import { connectionsFold, connectionsStreamOfOrg } from '@on.auto/connections/testing';
 import { ledgerLayer, sqliteSecretStore } from '@on.auto/ledger/sqlite3';
 import { Ledger } from '@on.auto/operations';
 import { Effect, ManagedRuntime, Redacted } from 'effect';
