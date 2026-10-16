@@ -1,6 +1,9 @@
+import type { Issue } from '@on.auto/operations';
 import { describe, expect, it } from 'vitest';
 
-import { callErrorOf, describeError, errorType } from './raised-error.ts';
+import { callErrorOf, describeError, errorAsJson, errorFromJson, errorType, settlementOf } from './raised-error.ts';
+
+const site = { function: 'notify', label: 'the function notify', reference: '/do/0/ask' };
 
 const runtime = errorType('runtime');
 
@@ -48,5 +51,40 @@ describe('the words of an error', () => {
       describeError({ type: runtime, status: 500, title: 'It ran too long.', instance: '/' }),
       describeError({ type: runtime, status: 500, instance: '' }),
     ]).toEqual(['No b, at /schedule/on/any/0. An expression failed.', 'It ran too long.', `${runtime}.`]);
+  });
+});
+
+describe('the issues of a refused input a step met', () => {
+  it('carries the issues of a refused input, each at its pointer and in its sentence, into the rejection of the run', () => {
+    const issues: readonly Issue[] = [
+      { pointer: '/input/seats', detail: 'seats, how many seats: expected at least 1.' },
+      { pointer: '/input/day', detail: 'day: expected text in the form the schema calls date.' },
+    ];
+    const refused = callErrorOf(
+      { status: 'rejected', reason: 'invalid_input', detail: issues.map(({ detail }) => detail).join(' '), issues },
+      site,
+    );
+
+    expect(errorAsJson(refused)).toMatchObject({ status: 400, issues });
+    expect(settlementOf({ kind: 'raised', error: refused })).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail:
+        'seats, how many seats: expected at least 1. day: expected text in the form the schema calls date, at the step ask. The function notify rejected the run with invalid_input.',
+      issues,
+    });
+    expect(settlementOf({ kind: 'raised', error: { ...refused, status: 503 } })).not.toHaveProperty('issues');
+  });
+
+  it('raises the issues an error names again, and none that are not a list of issues', () => {
+    const issues = [{ pointer: '/input/seats', detail: 'seats: expected at least 1.' }];
+
+    expect([
+      errorFromJson({ type: 'refused', status: 400, issues }, '/do/0/report'),
+      errorFromJson({ type: 'refused', status: 400, issues: 'seats' }, '/do/0/report'),
+    ]).toEqual([
+      { type: 'refused', status: 400, instance: '/do/0/report', issues },
+      { type: 'refused', status: 400, instance: '/do/0/report' },
+    ]);
   });
 });

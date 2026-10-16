@@ -33,6 +33,7 @@ export const RunLogEventSchema = Schema.Union([
     eventNamesOfFormatsOneToSix,
   ),
   writtenInAnOlderFormat(EventOfFormatSevenSchema, eventInFormat(Schema.Literal(7)), eventNamesOfFormatSeven),
+  eventInFormat(Schema.Literal(8)),
 ]);
 
 export type RunLogEvent = typeof RunLogEventSchema.Type;

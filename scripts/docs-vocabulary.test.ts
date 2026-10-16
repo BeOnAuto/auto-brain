@@ -54,6 +54,7 @@ const allowances: readonly Allowance[] = [
       'docs/reference/workflow-format.md',
       'packages/server/src/computation/computation-workflows.test.ts',
       'packages/workflow-engine/corpus/format-8.json',
+      'packages/workflow-engine/corpus/format-9.json',
       'packages/workflow-engine/src/decider/open-calls.test.ts',
       'packages/workflow-engine/src/dsl/raised-error.test.ts',
       'packages/workflow-engine/src/dsl/raised-error.ts',

@@ -34,6 +34,47 @@ do:
                   because: '\${ $failure.because }'
 `;
 
+const raisingTheRefusal = `do:
+  - book:
+      try:
+        - hold:
+            call: run_definition
+            with: { type: computation, name: hold-seats, input: { seats: 0 } }
+      catch:
+        as: refusal
+        do:
+          - report:
+              raise:
+                error:
+                  type: https://example.com/errors/seats-refused
+                  status: 400
+                  detail: '\${ $refusal.detail }'
+                  issues: '\${ $refusal.issues }'
+`;
+
+const refusedSeats = [{ pointer: '/input/seats', detail: 'seats, how many seats to hold: expected at least 1.' }];
+
+describe('a refused input raised again from the error a workflow caught', () => {
+  it('keeps the issues of the refusal, which the run is rejected with', async () => {
+    const { settlement } = await interpret(workflow(raisingTheRefusal), {
+      respond: () => ({
+        status: 'rejected',
+        reason: 'invalid_input',
+        detail: 'seats, how many seats to hold: expected at least 1.',
+        issues: refusedSeats,
+      }),
+    });
+
+    expect(settlement).toEqual({
+      status: 'rejected',
+      reason: 'invalid_input',
+      detail:
+        'seats, how many seats to hold: expected at least 1, at the step report. https://example.com/errors/seats-refused.',
+      issues: refusedSeats,
+    });
+  });
+});
+
 describe('an error raised again from the one a workflow caught', () => {
   it('may name its kind and because, in a raise or under use.errors, which the DSL takes', async () => {
     const parsed = await Effect.runPromise(
