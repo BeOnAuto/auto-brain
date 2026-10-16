@@ -197,7 +197,7 @@ describe('the recipes that give a playbook tools', () => {
     expect([
       Buffer.byteLength(String(texts['give-tools'])),
       Buffer.byteLength(String(texts['first-playbook'])),
-    ]).toEqual([2321, 1898]);
+    ]).toEqual([2612, 1898]);
   });
 });
 
@@ -215,8 +215,8 @@ describe('the recipes of a server that serves interaction functions', () => {
       bytesOf(texts, 'first-playbook', 'remember', 'give-tools', 'schedule'),
       bytesOf(recipeTextsOf(everyType), 'first-playbook', 'remember', 'give-tools', 'schedule'),
     ]).toEqual([
-      [1988, 2327, 2882, 1294],
-      [1898, 2327, 2321, 1294],
+      [1988, 2327, 3173, 1294],
+      [1898, 2327, 2612, 1294],
     ]);
   });
 
@@ -229,7 +229,7 @@ describe('the recipes of a server that serves interaction functions', () => {
   });
 });
 
-const calledWhereListed: ReadonlySet<string> = new Set(['get_guide', 'list_models']);
+const calledWhereListed: ReadonlySet<string> = new Set(['get_guide', 'list_models', 'add_connection']);
 
 const fieldsNamed: ReadonlySet<string> = new Set(['input_schema']);
 
@@ -242,13 +242,16 @@ function toolsNamedIn(text: string): readonly string[] {
 }
 
 describe('the tools a recipe calls', () => {
-  it('are every tool its steps name, but the guide tool, listed on every connection, list_models, called only where it is listed, and the fields of a tool they name', () => {
+  it('are every tool its steps name, but the guide tool, listed on every connection, list_models and add_connection, called only where they are listed, and the fields of a tool they name', () => {
     const { recipes } = servedGuidesOf(everyType);
 
     expect(recipes.map(({ name, text }) => [name, toolsNamedIn(text).toSorted()])).toEqual(
       recipes.map(({ name, calls }) => [name, calls.toSorted()]),
     );
     expect(recipes[0]?.text).toContain('list_models where this connection has it');
+    expect(recipes.find(({ name }) => name === 'give-tools')?.text).toContain(
+      'call add_connection where this connection has it',
+    );
   });
 });
 
