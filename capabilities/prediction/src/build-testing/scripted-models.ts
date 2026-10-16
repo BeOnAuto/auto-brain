@@ -38,11 +38,17 @@ const processLoop = import.meta.resolve('@on.auto/workflow-engine/process-loop')
 
 const realJobs = new URL('../model-jobs/model-jobs.ts', import.meta.url).href;
 
-function sourceOf(files: ScriptFiles): string {
+const scriptFile = 'script';
+
+const sleepingFile = 'sleeping';
+
+function sourceOf(): string {
   return [
     "import { appendFileSync, readFileSync } from 'node:fs';",
     `import { serveProcessJobs } from '${processLoop}';`,
     `import { modelJobs } from '${realJobs}';`,
+    `const scriptFile = new URL('./${scriptFile}', import.meta.url);`,
+    `const sleepingFile = new URL('./${sleepingFile}', import.meta.url);`,
     'const real = modelJobs();',
     'const scripts = {',
     '  real: (kind, payload) => real[kind](payload),',
@@ -55,7 +61,7 @@ function sourceOf(files: ScriptFiles): string {
     '    return real[kind](payload);',
     '  },',
     '  sleeps: (kind) => {',
-    `    appendFileSync(${JSON.stringify(files.sleeping)}, kind + '\\n');`,
+    "    appendFileSync(sleepingFile, kind + '\\n');",
     '    return new Promise(() => {});',
     '  },',
     '  exits: () => process.exit(3),',
@@ -75,7 +81,7 @@ function sourceOf(files: ScriptFiles): string {
     "  'low-above': () => ({ q: Float32Array.of(12, 11, 13, 9, 11, 13), dims: [1, 2, 3] }),",
     "  'high-below': () => ({ q: Float32Array.of(9, 11, 13, 9, 11, 10), dims: [1, 2, 3] }),",
     '};',
-    `const scriptOf = () => readFileSync(${JSON.stringify(files.script)}, 'utf8');`,
+    "const scriptOf = () => readFileSync(scriptFile, 'utf8');",
     'const scripted = (kind) => (payload) => scripts[scriptOf()](kind, payload);',
     "const window = (payload) => (scriptOf() === 'unreadable' ? scripts.unreadable() : real.window(payload));",
     "serveProcessJobs({ check: scripted('check'), run: scripted('run'), walk: scripted('walk'), window, baselines: scripted('baselines') }, process);",
@@ -88,11 +94,11 @@ function sleepingIn(files: ScriptFiles): readonly string[] {
 
 export function scriptedModels(): ScriptedModels {
   const directory = scratchDirectory();
-  const files = { script: join(directory, 'script'), sleeping: join(directory, 'sleeping') };
+  const files = { script: join(directory, scriptFile), sleeping: join(directory, sleepingFile) };
   const module = pathToFileURL(join(directory, 'scripted-model-process.mjs'));
   writeFileSync(files.script, 'real');
   writeFileSync(files.sleeping, '');
-  writeFileSync(module, sourceOf(files));
+  writeFileSync(module, sourceOf());
   return {
     module,
     next: (script) => {
