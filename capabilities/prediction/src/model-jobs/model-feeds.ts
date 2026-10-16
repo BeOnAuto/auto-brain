@@ -1,5 +1,8 @@
 import { Schema } from 'effect';
 
+import { BaselineSchema, MetricSchema } from '../document/front-matter.ts';
+import { enclosings } from '../periods/enclosing.ts';
+import { grains } from '../periods/grains.ts';
 import type { ModelFeeds } from './model-sessions.ts';
 
 const Floats = Schema.declare((value: unknown): value is Float32Array => value instanceof Float32Array);
@@ -45,15 +48,15 @@ export type WindowJob = typeof WindowJobSchema.Type;
 
 export const BaselinesJobSchema = Schema.Struct({
   rows: Schema.String,
-  period: Schema.Literals(['day', 'week', 'month', 'quarter', 'year']),
+  period: Schema.Literals(grains),
   horizons: Schema.Array(Whole),
-  accumulates: Schema.NullOr(Schema.Literals(['week', 'month', 'quarter', 'year'])),
+  accumulates: Schema.NullOr(Schema.Literals(enclosings)),
   season: Schema.NullOr(Whole),
   window: Whole,
   holdout: Whole,
   firstPeriod: Schema.String,
-  baselines: Schema.Array(Schema.Literals(['persistence', 'seasonal-naive'])),
-  metric: Schema.Literals(['mase', 'winkler', 'quantile']),
+  baselines: Schema.Array(BaselineSchema),
+  metric: MetricSchema,
 });
 
 export type BaselinesJob = typeof BaselinesJobSchema.Type;

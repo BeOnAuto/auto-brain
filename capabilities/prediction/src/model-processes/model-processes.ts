@@ -3,6 +3,7 @@ import { availableParallelism } from 'node:os';
 import { pooledJob, type ProcessOutcome, type ProcessPool, type ProcessValue } from '@on.auto/workflow-engine/dsl';
 import { Effect, Option, Schema } from 'effect';
 
+import { BaselineSchema } from '../document/front-matter.ts';
 import { TensorSchema } from '../facts/build-facts.ts';
 import type { BaselinesJob, Fed, WalkJob, WindowJob } from '../model-jobs/model-feeds.ts';
 
@@ -40,9 +41,7 @@ const WindowAnswerSchema = Schema.Union([
   Schema.Struct({ y: Floats, x: Schema.NullOr(Floats), origin: Schema.Number }),
 ]);
 
-const BaselinesAnswerSchema = Schema.Struct({
-  perfect: Schema.NullOr(Schema.Literals(['persistence', 'seasonal-naive'])),
-});
+const BaselinesAnswerSchema = Schema.Struct({ perfect: Schema.NullOr(BaselineSchema) });
 
 export type Signature = typeof SignatureSchema.Type;
 
