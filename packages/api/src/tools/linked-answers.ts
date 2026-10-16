@@ -1,5 +1,3 @@
-import { randomBytes } from 'node:crypto';
-
 import {
   CLIENT_CAPABILITIES_META_KEY,
   createRequestStateCodec,
@@ -9,13 +7,18 @@ import {
   type RequestStateCodec,
 } from '@modelcontextprotocol/server';
 import type { LinkToOpen } from '@on.auto/operations';
-import { Option, Schema } from 'effect';
+import { Option, Redacted, Schema } from 'effect';
 
-import type { OrgCall } from '../hand-off/caller-hand-off.ts';
+import { orgCallOf, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { callbackFor, type CalledTool, type CallServing, type ToolContext } from './tool-callback.ts';
+
+interface StateMinting {
+  mint(payload: Readonly<Record<string, unknown>>, context?: ToolContext): Promise<string>;
+}
 
 export interface LinkedAnswers {
   readonly states: RequestStateCodec;
+  readonly minting: StateMinting;
 }
 
 export interface AnsweringServing extends CallServing {
@@ -38,8 +41,6 @@ type AskingToOpen = (input: unknown, context: ToolContext) => Promise<CallToolRe
 
 const theLink = 'link';
 
-const keyBytes = 32;
-
 const OpensLinksSchema = Schema.Struct({
   [CLIENT_CAPABILITIES_META_KEY]: Schema.Struct({
     elicitation: Schema.Struct({ url: Schema.Record(Schema.String, Schema.Unknown) }),
@@ -56,12 +57,26 @@ const KeptAnswerSchema = Schema.Struct({
   }),
 });
 
+const BoundContextSchema = Schema.Struct({
+  http: Schema.Struct({ authInfo: Schema.Struct({ extra: Schema.Record(Schema.String, Schema.Unknown) }) }),
+});
+
 const opensLinks = Schema.is(OpensLinksSchema);
+
+const boundContextOf = Schema.decodeUnknownSync(BoundContextSchema);
 
 const keptAnswerOf = Schema.decodeUnknownOption(KeptAnswerSchema);
 
-export function linkedAnswers(): LinkedAnswers {
-  return { states: createRequestStateCodec({ key: randomBytes(keyBytes) }) };
+function callerAndOrgOf(context: unknown): string {
+  const { caller, org } = orgCallOf(boundContextOf(context).http);
+  return JSON.stringify([caller.id, org]);
+}
+
+export type RetryStateKey = Redacted.Redacted<Uint8Array>;
+
+export function linkedAnswers(stateKey: RetryStateKey): LinkedAnswers {
+  const codec = createRequestStateCodec({ key: Redacted.value(stateKey), bind: callerAndOrgOf });
+  return { states: codec, minting: codec };
 }
 
 function keptAnswerFor({ tool, caller, org }: AnswerOwner, state: unknown): CallToolResult | undefined {
@@ -78,7 +93,7 @@ function keptAnswerFor({ tool, caller, org }: AnswerOwner, state: unknown): Call
 }
 
 function askingToOpen(
-  { states }: LinkedAnswers,
+  { minting }: LinkedAnswers,
   owner: AnswerOwner,
   linkOf: (output: unknown) => LinkToOpen,
   answering: Answering,
@@ -96,7 +111,7 @@ function askingToOpen(
     const { message, url } = linkOf(output);
     return inputRequired({
       inputRequests: { [theLink]: inputRequired.elicitUrl({ message, url }) },
-      requestState: await states.mint({ ...owner, answer }),
+      requestState: await minting.mint({ ...owner, answer }, context),
     });
   };
 }

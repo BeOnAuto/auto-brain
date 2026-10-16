@@ -4,6 +4,8 @@ export {
   mcpClientKinds,
   plainTextIn,
   problemIn,
+  retriedWith,
+  stateAskedBy,
   technicalTextIn,
   textOf,
   withMcpSession,

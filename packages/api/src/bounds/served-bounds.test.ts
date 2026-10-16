@@ -6,7 +6,7 @@ import { guideShelfOf, instructionsFor, mcpRoutes, type DefinitionType, type Gui
 import { createTestHandler } from '../testing/api-calls.ts';
 import { asking, sentencesOf } from '../testing/asking-operation.ts';
 import { notebookGuide, noteRecipe, wordsGuide } from '../testing/guides.ts';
-import { testServerInfo } from '../testing/operation-server.ts';
+import { testRetryStateKey, testServerInfo } from '../testing/operation-server.ts';
 
 const reportedErrors: string[] = [];
 
@@ -28,6 +28,7 @@ function starting({ operations = [], guides = [], recipes = [], definitionTypes 
           dispatcher: makeDispatcher([]),
           runCall: () => Promise.reject(new Error('not called')),
           serverInfo: testServerInfo,
+          retryStateKey: testRetryStateKey,
           shelf: guideShelfOf(guides, recipes, definitionTypes),
           reportError: (error) => {
             reportedErrors.push(error.message);

@@ -6,7 +6,7 @@ import {
   recordingReporter,
   type ReportedIncident,
 } from '@on.auto/operations/testing';
-import { Layer, Tracer } from 'effect';
+import { Layer, Redacted, Tracer } from 'effect';
 import type { MiddlewareHandler } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
@@ -35,6 +35,8 @@ export interface OperationServer {
 export const testServerInfo = { name: '@on.auto/runtime', version: '0.0.0-test' };
 
 export const testIdentityIssuer = 'https://identity.example';
+
+export const testRetryStateKey = Redacted.make(new Uint8Array(32).fill(7));
 
 const knownPlaybooks = [
   { org: 'acme', playbook: 'alpha' },
@@ -65,6 +67,8 @@ export const globexAdmin = createApiKey({
   playbooks: '*',
 });
 
+const documented = { serverInfo: testServerInfo, shelf: testShelf, identityIssuer: testIdentityIssuer };
+
 const keyHolders = authenticatorFor({
   host: '0.0.0.0',
   apiKeys: [acmeAdmin.entry, acmeReader.entry, acmeAlphaWriter.entry, globexAdmin.entry],
@@ -76,6 +80,7 @@ export interface OperationServerOptions {
   readonly operations?: Parameters<typeof makeCatalog>[0];
   readonly requests?: MiddlewareHandler<ApiEnv>;
   readonly tracer?: Tracer.Tracer;
+  readonly retryStateKey?: Redacted.Redacted<Uint8Array>;
 }
 
 function tracingWith(tracer: Tracer.Tracer | undefined): Layer.Layer<never> {
@@ -88,6 +93,7 @@ export async function operationServer({
   operations = notebookOperations,
   requests,
   tracer,
+  retryStateKey = testRetryStateKey,
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
   const recording = recordingReporter();
@@ -99,12 +105,7 @@ export async function operationServer({
   const mcpErrors: string[] = [];
   const routes = [
     operationRoutes({ catalog, dispatcher, runCall: runtime.run }),
-    openApiDocumentRoutes({
-      catalog,
-      serverInfo: testServerInfo,
-      shelf: testShelf,
-      identityIssuer: testIdentityIssuer,
-    }),
+    openApiDocumentRoutes({ catalog, ...documented }),
     guideRoutes(testShelf),
     apiCatalogRoutes(testShelf),
     mcpRoutes({
@@ -113,6 +114,7 @@ export async function operationServer({
       runCall: runtime.run,
       serverInfo: testServerInfo,
       shelf: testShelf,
+      retryStateKey,
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

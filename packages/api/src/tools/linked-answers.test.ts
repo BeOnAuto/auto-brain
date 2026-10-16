@@ -1,10 +1,18 @@
+import { authenticatorFor } from '@on.auto/identity';
 import { defineCommand } from '@on.auto/operations';
-import { Effect, Schema } from 'effect';
+import { Effect, Redacted, Schema } from 'effect';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { listenOnLoopback, type Listening } from '../testing/listening.ts';
-import { calledOpeningLinks, type LinkOpening } from '../testing/mcp-clients.ts';
-import { acmeAdmin, operationServer, type OperationServer } from '../testing/operation-server.ts';
+import { calledOpeningLinks, retriedWith, stateAskedBy, type LinkOpening } from '../testing/mcp-clients.ts';
+import {
+  acmeAdmin,
+  acmeAlphaWriter,
+  operationServer,
+  testRetryStateKey,
+  type OperationServer,
+  type OperationServerOptions,
+} from '../testing/operation-server.ts';
 import { linkedAnswers, toolCallbackOf, type AnsweringServing } from './linked-answers.ts';
 
 const page = 'https://studio.example/open?page=1';
@@ -86,7 +94,7 @@ const words = {
 const serving: AnsweringServing = {
   runCall: () => Promise.reject(new Error('The call was run')),
   reportThrown: () => ({ status: 'failed', incident: 'kept-answers' }),
-  linkedAnswers: linkedAnswers(),
+  linkedAnswers: linkedAnswers(testRetryStateKey),
 };
 
 const answer = { content: [{ type: 'text', text: 'Made it.' }], structuredContent: { page } } as const;
@@ -107,5 +115,59 @@ describe('an answer kept for a retry', () => {
     expect(await replaying({ tool: 'other_page' })).toMatchObject({ isError: true });
     expect(await replaying({ caller: 'acme-reader' })).toMatchObject({ isError: true });
     expect(await replaying({ org: 'globex' })).toMatchObject({ isError: true });
+  });
+});
+
+const openingThePage = { name: 'open_page', arguments: {} };
+
+const servers: Listening[] = [];
+
+afterAll(async () => {
+  await Promise.all(servers.map((other) => other.close()));
+});
+
+async function anotherServer(options: OperationServerOptions = {}): Promise<string> {
+  const other = await listenOnLoopback((await operationServer({ operations: [openPage], ...options })).handler);
+  servers.push(other);
+  return other.origin;
+}
+
+function keyed(origin: string, key: string = acmeAdmin.key) {
+  return { url: `${origin}/mcp`, headers: { authorization: `Bearer ${key}` } };
+}
+
+const refusedState = 'Invalid or expired requestState';
+
+describe('the retry of a tool that asked to open a link', () => {
+  it('is answered by another server of the same key with what the first kept, and runs the operation once', async () => {
+    const other = await anotherServer();
+    const before = opened.times;
+
+    const state = await stateAskedBy(keyed(listening.origin), openingThePage);
+    const retried = await retriedWith(keyed(other), openingThePage, state);
+
+    expect(retried.structuredContent).toEqual({ page, made: before + 1 });
+    expect(opened.times).toBe(before + 1);
+  });
+
+  it('is refused by a server of another key, and to another caller, whose binding differs', async () => {
+    const otherKey = await anotherServer({ retryStateKey: Redacted.make(new Uint8Array(32).fill(9)) });
+    const state = await stateAskedBy(keyed(listening.origin), openingThePage);
+
+    await expect(retriedWith(keyed(otherKey), openingThePage, state)).rejects.toThrow(refusedState);
+    await expect(retriedWith(keyed(listening.origin, acmeAlphaWriter.key), openingThePage, state)).rejects.toThrow(
+      refusedState,
+    );
+  });
+
+  it('is refused in another org to the same caller', async () => {
+    const local = await anotherServer({ authenticator: authenticatorFor({ host: '127.0.0.1', apiKeys: undefined }) });
+    const inAcme = { url: `${local}/orgs/acme/mcp`, headers: {} };
+    const state = await stateAskedBy(inAcme, openingThePage);
+
+    await expect(retriedWith({ ...inAcme, url: `${local}/orgs/globex/mcp` }, openingThePage, state)).rejects.toThrow(
+      refusedState,
+    );
+    expect(await retriedWith(inAcme, openingThePage, state)).toMatchObject({ structuredContent: { page } });
   });
 });

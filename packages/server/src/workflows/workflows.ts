@@ -6,7 +6,7 @@ import type { WorkflowHost } from '@on.auto/workflow-host';
 import { Effect } from 'effect';
 
 import { playbookOperationsServing } from '../composition/playbook-operations.ts';
-import { routesFor } from '../composition/served-routes.ts';
+import { routesFor, type ServedCatalog } from '../composition/served-routes.ts';
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { openedHost, type HostParts } from './host-dependencies.ts';
 
@@ -25,6 +25,7 @@ export interface WorkflowParts extends HostParts {
   readonly facts: CapabilityFacts;
   readonly names: PlaybookOwnNames;
   readonly identityIssuer: string;
+  readonly retryStateKey: ServedCatalog['retryStateKey'];
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -66,6 +67,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.playbookOperations,
     defineSendRunEvent(host, names),
   ]);
-  const served = { catalog, dispatcher, capabilities, identityIssuer: parts.identityIssuer };
+  const { identityIssuer, retryStateKey } = parts;
+  const served = { catalog, dispatcher, capabilities, identityIssuer, retryStateKey };
   return { routes: routesFor(runtime, served), stopWork: host.stop };
 }

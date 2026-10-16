@@ -16,6 +16,7 @@ import {
   type Dispatcher,
   type DispatcherServices,
 } from '@on.auto/operations';
+import type { Redacted } from 'effect';
 
 import { servedGuidesOf } from '../guides/served-guides.ts';
 import { logMcpError } from '../logging/logging.ts';
@@ -28,11 +29,12 @@ export interface ServedCatalog {
   readonly dispatcher: Dispatcher;
   readonly capabilities: readonly Capability[];
   readonly identityIssuer: string;
+  readonly retryStateKey: Redacted.Redacted<Uint8Array>;
 }
 
 export function routesFor(
   runtime: AppRuntime<DispatcherServices>,
-  { catalog, dispatcher, capabilities, identityIssuer }: ServedCatalog,
+  { catalog, dispatcher, capabilities, identityIssuer, retryStateKey }: ServedCatalog,
 ): readonly RegisterRoutes[] {
   const { guides, recipes, definitionTypes } = servedGuidesOf(capabilities);
   const shelf = guideShelfOf(guides, recipes, definitionTypes);
@@ -47,6 +49,7 @@ export function routesFor(
       runCall: runtime.run,
       serverInfo: release,
       shelf,
+      retryStateKey,
       reportError: (error) => {
         void runtime.run(logMcpError(error));
       },
@@ -56,8 +59,9 @@ export function routesFor(
 
 export function routesServing(
   operations: Operations,
-  identityIssuer: string,
+  { identityIssuer, retryStateKey }: Pick<ServedCatalog, 'identityIssuer' | 'retryStateKey'>,
 ): (runtime: AppRuntime<DispatcherServices>) => readonly RegisterRoutes[] {
-  const served = { catalog: makeCatalog(operations), dispatcher: makeDispatcher([]), capabilities: [], identityIssuer };
+  const catalog = makeCatalog(operations);
+  const served = { catalog, dispatcher: makeDispatcher([]), capabilities: [], identityIssuer, retryStateKey };
   return (runtime) => routesFor(runtime, served);
 }

@@ -1,7 +1,15 @@
-import { calledOpeningLinks, toolNamesIn, withMcpSession, type LinkOpening } from '@on.auto/api/testing';
+import {
+  calledOpeningLinks,
+  retriedWith,
+  stateAskedBy,
+  toolNamesIn,
+  withMcpSession,
+  type LinkOpening,
+} from '@on.auto/api/testing';
 import { Schema } from 'effect';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it, onTestFinished } from 'vitest';
 
+import { secretsKey } from '../testing/records/kept-credentials.ts';
 import { servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 
 let server: ReasoningServer;
@@ -70,5 +78,41 @@ describe('add_connection over MCP', () => {
     );
     expect([formsAlone.elicited, legacy.elicited]).toEqual([[], []]);
     expect(urls.filter((url) => url.startsWith('https://studio.on.auto/connect?server='))).toHaveLength(2);
+  });
+});
+
+async function servedFor(environment: Readonly<Record<string, string>> = {}): Promise<ReasoningServer> {
+  const served = await servingReasoning([], environment);
+  onTestFinished(() => served.stop());
+  return served;
+}
+
+function onMcpOf({ origin }: ReasoningServer) {
+  return { url: `${origin}/mcp`, headers: {} };
+}
+
+describe('the retry of add_connection', () => {
+  it('is answered by another server of the same SECRETS_KEY with the connection the first added', async () => {
+    const sharing = { SECRETS_KEY: secretsKey.toString('base64') };
+    const [first, second] = [await servedFor(sharing), await servedFor(sharing)];
+    const call = { name: 'add_connection', arguments: { ...notes, name: 'notes-across' } };
+
+    const state = await stateAskedBy(onMcpOf(first), call);
+    const retried = await retriedWith(onMcpOf(second), call, state);
+
+    expect(retried.structuredContent).toMatchObject({ name: 'notes-across', status: 'pending', added_by: 'local' });
+    expect((await second.call('GET', '/v1/orgs/local/connections')).body).toEqual({ connections: [] });
+    expect((await first.call('GET', '/v1/orgs/local/connections')).body).toMatchObject({
+      connections: [{ name: 'notes-across' }],
+    });
+  });
+
+  it('is refused by a server of another secrets key', async () => {
+    const [first, other] = [await servedFor(), await servedFor()];
+    const call = { name: 'add_connection', arguments: { ...notes, name: 'notes-elsewhere' } };
+
+    const state = await stateAskedBy(onMcpOf(first), call);
+
+    await expect(retriedWith(onMcpOf(other), call, state)).rejects.toThrow('Invalid or expired requestState');
   });
 });
