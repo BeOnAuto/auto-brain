@@ -442,7 +442,7 @@ The server checks every entry at start. It stops at any of these, naming the set
 
 An unknown key in an entry is refused, like any other unknown key.
 
-The server does not connect to an MCP server or start a process until a run or one of the five tools needs one. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.
+The server does not connect to an MCP server or start a process until a run needs one, or until `search`, `introspect`, `validate`, `dry_run` or `execute` asks it for its tools. The servers' messages, a process's output on stderr and every failed call go to the server's log, scrubbed of the entry's secrets.
 
 ## Connections
 
