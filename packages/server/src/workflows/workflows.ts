@@ -25,7 +25,7 @@ export interface WorkflowParts extends HostParts {
   readonly facts: CapabilityFacts;
   readonly names: PlaybookOwnNames;
   readonly identityIssuer: string;
-  readonly retryStateKey: ServedCatalog['retryStateKey'];
+  readonly retryStateKeys: ServedCatalog['retryStateKeys'];
 }
 
 export function longestCallOf(capabilities: readonly Pick<Capability, 'longestAnyRunMs'>[]): number {
@@ -67,7 +67,7 @@ export async function serveWorkflows(runtime: AppRuntime<DispatcherServices>, pa
     ...parts.playbookOperations,
     defineSendRunEvent(host, names),
   ]);
-  const { identityIssuer, retryStateKey } = parts;
-  const served = { catalog, dispatcher, capabilities, identityIssuer, retryStateKey };
+  const { identityIssuer, retryStateKeys } = parts;
+  const served = { catalog, dispatcher, capabilities, identityIssuer, retryStateKeys };
   return { routes: routesFor(runtime, served), stopWork: host.stop };
 }

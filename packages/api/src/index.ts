@@ -15,6 +15,7 @@ export type { TraceParent } from './tracing/trace-parent.ts';
 export { operationRoutes } from './operations/operation-routes.ts';
 export type { OperationRoutesOptions, RunCall } from './operations/operation-handler.ts';
 export { mcpRoutes, type McpRoutesOptions } from './mcp/mcp-routes.ts';
+export type { RetryStateKeys } from './tools/linked-answers.ts';
 export { openApiDocumentRoutes, openApiPath, type OpenApiServing } from './openapi/openapi-routes.ts';
 export { guideRoutes } from './guides/guide-routes.ts';
 export { apiCatalogRoutes } from './discovery/api-catalog.ts';

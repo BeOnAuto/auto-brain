@@ -1,17 +1,18 @@
+import type { RetryStateKeys } from '@on.auto/api';
 import type { SecretKeys, SecretStore } from '@on.auto/ledger';
 import { postgresqlSecretStore } from '@on.auto/ledger/postgresql';
 import { sqliteSecretStore } from '@on.auto/ledger/sqlite3';
 import type { DatabaseSettings } from '@on.auto/workflow-host';
-import { Effect, type Context, type Redacted } from 'effect';
+import { Effect, type Context } from 'effect';
 
 import type { Served } from '../lifecycle/lifecycle.ts';
 import { logContentStore, logLedger, logSecretStore } from '../logging/logging.ts';
 import type { Settings } from '../settings/settings.ts';
-import { retryStateKeyOf, secretsKeysOf } from './secrets-keys.ts';
+import { retryStateKeysOf, secretsKeysOf } from './secrets-keys.ts';
 
 export interface LedgerStores {
   readonly secrets: SecretStore;
-  readonly retryStateKey: Redacted.Redacted<Uint8Array>;
+  readonly retryStateKeys: RetryStateKeys;
   readonly withSecretsClosed: (served: Served) => Served;
 }
 
@@ -41,7 +42,7 @@ export async function ledgerStoresOpenedBy(
   const store = await run(openedAndRotated(database, keys));
   return {
     secrets: store,
-    retryStateKey: retryStateKeyOf(keys),
+    retryStateKeys: retryStateKeysOf(keys),
     withSecretsClosed: ({ routes, stopWork }) => ({
       routes,
       stopWork: async () => {

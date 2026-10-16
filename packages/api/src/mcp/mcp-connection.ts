@@ -1,4 +1,4 @@
-import { McpServer, type RequestStateCodec } from '@modelcontextprotocol/server';
+import { McpServer } from '@modelcontextprotocol/server';
 import type { Catalog, Dispatcher } from '@on.auto/operations';
 
 import {
@@ -12,6 +12,7 @@ import { serveGuides, type GuideRegistry } from '../guides/guide-serving.ts';
 import type { GuideShelf } from '../guides/guide-shelf.ts';
 import { guideToolDefinitionOf, guideToolName } from '../guides/guide-tool.ts';
 import type { RunCall } from '../operations/operation-handler.ts';
+import type { LinkedAnswers } from '../tools/linked-answers.ts';
 import { listingBytesOf, type ListedTool } from '../tools/tool-listing.ts';
 import { instructionsFor, recipesFollowedWith, type McpEndpoint, type ServedTools } from './instructions.ts';
 
@@ -72,7 +73,7 @@ export function connectionOf(endpoint: McpEndpoint, serving: McpServing, { serve
 export function serverOf(
   connection: Connection,
   served: ServedTools,
-  states: RequestStateCodec,
+  states: LinkedAnswers['states'],
   registerTools: (server: GuideRegistry) => void,
 ): McpServer {
   const server = new McpServer(

@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { Redacted } from 'effect';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
-import { retryStateKeyOf, secretsKeysOf } from './secrets-keys.ts';
+import { retryStateKeysOf, secretsKeysOf } from './secrets-keys.ts';
 
 function aFolder(): string {
   const folder = mkdtempSync(join(tmpdir(), 'auto-runtime-secrets-'));
@@ -92,8 +92,12 @@ describe('the secrets keys of the other settings', () => {
   });
 });
 
+function bytesOf(key: Redacted.Redacted<Uint8Array> | undefined): readonly number[] {
+  return key === undefined ? [] : Array.from(Redacted.value(key));
+}
+
 function derivedOf(bytes: Readonly<Uint8Array>): readonly number[] {
-  return Array.from(Redacted.value(retryStateKeyOf({ current: Redacted.make(Uint8Array.from(bytes)) })));
+  return bytesOf(retryStateKeysOf({ current: Redacted.make(Uint8Array.from(bytes)) }).current);
 }
 
 describe('the key that signs the state of a retry', () => {
@@ -106,5 +110,14 @@ describe('the key that signs the state of a retry', () => {
     expect(again).toEqual(first);
     expect(ofAnother).not.toEqual(first);
     expect(first).not.toEqual(Array.from(key));
+  });
+
+  it('is derived from the previous secrets key too, as a server that still has it as its current derives it', () => {
+    const [previous, current] = [new Uint8Array(32).fill(7), new Uint8Array(32).fill(9)];
+
+    const rotating = retryStateKeysOf({ current: Redacted.make(current), previous: Redacted.make(previous) });
+
+    expect([bytesOf(rotating.current), bytesOf(rotating.previous)]).toEqual([derivedOf(current), derivedOf(previous)]);
+    expect(bytesOf(retryStateKeysOf({ current: Redacted.make(current) }).previous)).toEqual([]);
   });
 });

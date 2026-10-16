@@ -8,7 +8,7 @@ import { guideShelfOf, mcpRoutes, mostArgumentDescriptionCharacters, mostDescrip
 import { createTestHandler } from '../testing/api-calls.ts';
 import { asking, sentencesOf } from '../testing/asking-operation.ts';
 import { postMcp, requestOf } from '../testing/mcp-requests.ts';
-import { testRetryStateKey, testServerInfo } from '../testing/operation-server.ts';
+import { testRetryStateKeys, testServerInfo } from '../testing/operation-server.ts';
 
 const reportedErrors: string[] = [];
 
@@ -26,7 +26,7 @@ function handlerOf({ operations }: Serving) {
         dispatcher: makeDispatcher([]),
         runCall: () => Promise.reject(new Error('not called')),
         serverInfo: testServerInfo,
-        retryStateKey: testRetryStateKey,
+        retryStateKeys: testRetryStateKeys,
         shelf: emptyShelf,
         reportError: (error) => {
           reportedErrors.push(error.message);

@@ -107,6 +107,19 @@ describe('the retry of add_connection', () => {
     });
   });
 
+  it('is answered across a rotation, by a server whose SECRETS_KEY_PREVIOUS is the key the first had', async () => {
+    const rotatedKey = Buffer.alloc(32, 9).toString('base64');
+    const first = await servedFor({ SECRETS_KEY: secretsKey.toString('base64') });
+    const rotated = await servedFor({ SECRETS_KEY: rotatedKey, SECRETS_KEY_PREVIOUS: secretsKey.toString('base64') });
+    const call = { name: 'add_connection', arguments: { ...notes, name: 'notes-rotated' } };
+
+    const state = await stateAskedBy(onMcpOf(first), call);
+
+    expect((await retriedWith(onMcpOf(rotated), call, state)).structuredContent).toMatchObject({
+      name: 'notes-rotated',
+    });
+  });
+
   it('is refused by a server of another secrets key', async () => {
     const [first, other] = [await servedFor(), await servedFor()];
     const call = { name: 'add_connection', arguments: { ...notes, name: 'notes-elsewhere' } };

@@ -31,7 +31,7 @@ export function compositionRootWith(
             ledger,
             workflows,
             identityIssuer,
-            retryStateKey: stores.retryStateKey,
+            retryStateKeys: stores.retryStateKeys,
             ...functions.parts,
             orgOperations: [...functions.parts.orgOperations, ...connections],
             ...(clock === undefined ? {} : { clock }),

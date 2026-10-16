@@ -9,7 +9,7 @@ import {
   acmeAdmin,
   acmeAlphaWriter,
   operationServer,
-  testRetryStateKey,
+  testRetryStateKeys,
   type OperationServer,
   type OperationServerOptions,
 } from '../testing/operation-server.ts';
@@ -94,7 +94,7 @@ const words = {
 const serving: AnsweringServing = {
   runCall: () => Promise.reject(new Error('The call was run')),
   reportThrown: () => ({ status: 'failed', incident: 'kept-answers' }),
-  linkedAnswers: linkedAnswers(testRetryStateKey),
+  linkedAnswers: linkedAnswers(testRetryStateKeys),
 };
 
 const answer = { content: [{ type: 'text', text: 'Made it.' }], structuredContent: { page } } as const;
@@ -138,6 +138,8 @@ function keyed(origin: string, key: string = acmeAdmin.key) {
 
 const refusedState = 'Invalid or expired requestState';
 
+const anotherKey = Redacted.make(new Uint8Array(32).fill(9));
+
 describe('the retry of a tool that asked to open a link', () => {
   it('is answered by another server of the same key with what the first kept, and runs the operation once', async () => {
     const other = await anotherServer();
@@ -151,7 +153,7 @@ describe('the retry of a tool that asked to open a link', () => {
   });
 
   it('is refused by a server of another key, and to another caller, whose binding differs', async () => {
-    const otherKey = await anotherServer({ retryStateKey: Redacted.make(new Uint8Array(32).fill(9)) });
+    const otherKey = await anotherServer({ retryStateKeys: { current: anotherKey } });
     const state = await stateAskedBy(keyed(listening.origin), openingThePage);
 
     await expect(retriedWith(keyed(otherKey), openingThePage, state)).rejects.toThrow(refusedState);
@@ -169,5 +171,20 @@ describe('the retry of a tool that asked to open a link', () => {
       refusedState,
     );
     expect(await retriedWith(inAcme, openingThePage, state)).toMatchObject({ structuredContent: { page } });
+  });
+});
+
+describe('the retry of a tool across a rotation of the key', () => {
+  it('is answered by a server of the new key that keeps the old one as its previous, and a state of its own too', async () => {
+    const rotated = await anotherServer({
+      retryStateKeys: { current: anotherKey, previous: testRetryStateKeys.current },
+    });
+
+    const before = await stateAskedBy(keyed(listening.origin), openingThePage);
+    const after = await stateAskedBy(keyed(rotated), openingThePage);
+
+    expect(await retriedWith(keyed(rotated), openingThePage, before)).toMatchObject({ structuredContent: { page } });
+    expect(await retriedWith(keyed(rotated), openingThePage, after)).toMatchObject({ structuredContent: { page } });
+    await expect(retriedWith(keyed(listening.origin), openingThePage, after)).rejects.toThrow(refusedState);
   });
 });

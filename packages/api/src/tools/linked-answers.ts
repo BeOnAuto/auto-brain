@@ -4,7 +4,6 @@ import {
   inputRequired,
   type CallToolResult,
   type InputRequiredResult,
-  type RequestStateCodec,
 } from '@modelcontextprotocol/server';
 import type { LinkToOpen } from '@on.auto/operations';
 import { Option, Redacted, Schema } from 'effect';
@@ -12,13 +11,13 @@ import { Option, Redacted, Schema } from 'effect';
 import { orgCallOf, type OrgCall } from '../hand-off/caller-hand-off.ts';
 import { callbackFor, type CalledTool, type CallServing, type ToolContext } from './tool-callback.ts';
 
-interface StateMinting {
+interface StateCodec {
   mint(payload: Readonly<Record<string, unknown>>, context?: ToolContext): Promise<string>;
+  verify(state: string, context: ToolContext): Promise<unknown>;
 }
 
 export interface LinkedAnswers {
-  readonly states: RequestStateCodec;
-  readonly minting: StateMinting;
+  readonly states: StateCodec;
 }
 
 export interface AnsweringServing extends CallServing {
@@ -72,11 +71,27 @@ function callerAndOrgOf(context: unknown): string {
   return JSON.stringify([caller.id, org]);
 }
 
-export type RetryStateKey = Redacted.Redacted<Uint8Array>;
+type RetryStateKey = Redacted.Redacted<Uint8Array>;
 
-export function linkedAnswers(stateKey: RetryStateKey): LinkedAnswers {
-  const codec = createRequestStateCodec({ key: Redacted.value(stateKey), bind: callerAndOrgOf });
-  return { states: codec, minting: codec };
+export interface RetryStateKeys {
+  readonly current: RetryStateKey;
+  readonly previous?: RetryStateKey | undefined;
+}
+
+function codecOf(key: RetryStateKey): StateCodec {
+  return createRequestStateCodec({ key: Redacted.value(key), bind: callerAndOrgOf });
+}
+
+function eitherOf(current: StateCodec, previous: StateCodec): StateCodec {
+  return {
+    mint: (payload, context) => current.mint(payload, context),
+    verify: (state, context) => current.verify(state, context).catch(() => previous.verify(state, context)),
+  };
+}
+
+export function linkedAnswers({ current, previous }: RetryStateKeys): LinkedAnswers {
+  const signing = codecOf(current);
+  return { states: previous === undefined ? signing : eitherOf(signing, codecOf(previous)) };
 }
 
 function keptAnswerFor({ tool, caller, org }: AnswerOwner, state: unknown): CallToolResult | undefined {
@@ -93,7 +108,7 @@ function keptAnswerFor({ tool, caller, org }: AnswerOwner, state: unknown): Call
 }
 
 function askingToOpen(
-  { minting }: LinkedAnswers,
+  { states }: LinkedAnswers,
   owner: AnswerOwner,
   linkOf: (output: unknown) => LinkToOpen,
   answering: Answering,
@@ -111,7 +126,7 @@ function askingToOpen(
     const { message, url } = linkOf(output);
     return inputRequired({
       inputRequests: { [theLink]: inputRequired.elicitUrl({ message, url }) },
-      requestState: await minting.mint({ ...owner, answer }, context),
+      requestState: await states.mint({ ...owner, answer }, context),
     });
   };
 }

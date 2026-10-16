@@ -19,6 +19,7 @@ import {
   operationRoutes,
   type ApiHandler,
   type AppRuntime,
+  type RetryStateKeys,
 } from '../index.ts';
 import { createTestHandler, type ReportedThrown } from './api-calls.ts';
 import { testShelf } from './guides.ts';
@@ -36,7 +37,7 @@ export const testServerInfo = { name: '@on.auto/runtime', version: '0.0.0-test' 
 
 export const testIdentityIssuer = 'https://identity.example';
 
-export const testRetryStateKey = Redacted.make(new Uint8Array(32).fill(7));
+export const testRetryStateKeys: RetryStateKeys = { current: Redacted.make(new Uint8Array(32).fill(7)) };
 
 const knownPlaybooks = [
   { org: 'acme', playbook: 'alpha' },
@@ -80,7 +81,7 @@ export interface OperationServerOptions {
   readonly operations?: Parameters<typeof makeCatalog>[0];
   readonly requests?: MiddlewareHandler<ApiEnv>;
   readonly tracer?: Tracer.Tracer;
-  readonly retryStateKey?: Redacted.Redacted<Uint8Array>;
+  readonly retryStateKeys?: RetryStateKeys;
 }
 
 function tracingWith(tracer: Tracer.Tracer | undefined): Layer.Layer<never> {
@@ -93,7 +94,7 @@ export async function operationServer({
   operations = notebookOperations,
   requests,
   tracer,
-  retryStateKey = testRetryStateKey,
+  retryStateKeys = testRetryStateKeys,
 }: OperationServerOptions = {}): Promise<OperationServer> {
   const ledger = memoryLedger();
   const recording = recordingReporter();
@@ -114,7 +115,7 @@ export async function operationServer({
       runCall: runtime.run,
       serverInfo: testServerInfo,
       shelf: testShelf,
-      retryStateKey,
+      retryStateKeys,
       reportError: (error) => {
         mcpErrors.push(error.message);
       },

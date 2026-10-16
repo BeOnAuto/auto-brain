@@ -7,7 +7,7 @@ import { createTestHandler } from '../testing/api-calls.ts';
 import { listenOnLoopback } from '../testing/listening.ts';
 import { plainTextIn, problemIn, withMcpSession } from '../testing/mcp-clients.ts';
 import { notebookOperations } from '../testing/notebook.ts';
-import { testRetryStateKey, testServerInfo } from '../testing/operation-server.ts';
+import { testRetryStateKeys, testServerInfo } from '../testing/operation-server.ts';
 
 const sdkErrors: string[] = [];
 
@@ -18,7 +18,7 @@ const brokenRuntime = mcpRoutes({
   dispatcher: makeDispatcher([]),
   runCall: () => Promise.reject(new Error('the runtime broke while holding database password hunter2')),
   serverInfo: testServerInfo,
-  retryStateKey: testRetryStateKey,
+  retryStateKeys: testRetryStateKeys,
   shelf: emptyShelf,
   reportError: (error) => {
     sdkErrors.push(error.message);
@@ -94,7 +94,7 @@ describe('an operation without plain language', () => {
       dispatcher: makeDispatcher([]),
       runCall: () => Promise.reject(new Error('not called')),
       serverInfo: testServerInfo,
-      retryStateKey: testRetryStateKey,
+      retryStateKeys: testRetryStateKeys,
       shelf: emptyShelf,
       reportError: () => {
         sdkErrors.push('unexpected');
