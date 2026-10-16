@@ -64,7 +64,7 @@ allowed_models:
 `;
 
 describe('a server whose configuration file declares and allows models', () => {
-  it('lists the declared models, and refuses a definition that names a model it does not allow', async () => {
+  it('lists the declared models as a list it narrows, and refuses a definition that names a model it does not allow', async () => {
     const { child, configFile } = configuredServer(modelsText, { AWS_REGION: 'eu-central-1' });
     const port = await child.port;
 
@@ -83,6 +83,7 @@ describe('a server whose configuration file declares and allows models', () => {
         },
       ],
       catalog_status: 'complete',
+      narrowed: true,
     });
     expect(rejected).toMatchObject({
       status: 503,

@@ -1,9 +1,8 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Effect, Option, Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const summary = ['---', 'model: anthropic/claude-sonnet-4-5', '---', 'Summarize: {{ input.text }}'].join('\n');
 
@@ -17,21 +16,9 @@ afterEach(async () => {
   await server.stop();
 });
 
-async function statusAfter(path: string, attempts: number): Promise<string | undefined> {
+async function statusOfRun(path: string): Promise<string | undefined> {
   const { body } = await server.call('GET', path);
-  const status = Option.getOrUndefined(statusOf(body))?.status;
-  if (status !== 'started' || attempts <= 1) {
-    return status;
-  }
-  await setTimeout(50);
-  return statusAfter(path, attempts - 1);
-}
-
-async function untilTheModelIsCalled(attempts: number): Promise<void> {
-  if (server.modelCalls() === 0 && attempts > 1) {
-    await setTimeout(50);
-    await untilTheModelIsCalled(attempts - 1);
-  }
+  return Option.getOrUndefined(statusOf(body))?.status;
 }
 
 describe('a run whose client goes away while the model answers', () => {
@@ -47,11 +34,19 @@ describe('a run whose client goes away while the model answers', () => {
       body: JSON.stringify({ input: { text: 'the quarter' }, run_id: runId }),
       signal: givingUp.signal,
     }).catch((error: unknown) => error);
-    await untilTheModelIsCalled(100);
+    await until(
+      () => server.modelCalls(),
+      (calls) => calls > 0,
+    );
     givingUp.abort();
 
     expect(await gaveUp).toMatchObject({ name: 'AbortError' });
     expect(server.modelCalls()).toBe(1);
-    expect(await statusAfter(`${alpha}/runs/${runId}`, 100)).toBe('failed');
+    expect(
+      await until(
+        () => statusOfRun(`${alpha}/runs/${runId}`),
+        (status) => status !== 'started',
+      ),
+    ).toBe('failed');
   });
 });

@@ -3,14 +3,19 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { plainPoolsOn } from '@on.auto/ledger/postgresql';
-import { Function } from 'effect';
-import { onTestFinished } from 'vitest';
+import { Effect, Function, Schema } from 'effect';
+import { expect, onTestFinished } from 'vitest';
 
-import type { HostDatabase } from '../database/host-database.ts';
+import { oneRowOf, WholeNumber, type HostDatabase } from '../database/host-database.ts';
 import { openHostDatabase, type DatabaseSettings } from '../database/host-databases.ts';
-import type { Statement } from '../database/statement.ts';
+import { statement, type Statement } from '../database/statement.ts';
+import { until } from './until.ts';
 
 export type SettingsOf = () => Promise<DatabaseSettings>;
+
+const LeaseRow = Schema.Struct({ holder: Schema.String, expires_at: WholeNumber });
+
+export type Lease = typeof LeaseRow.Type;
 
 export function aSQLiteFile(): string {
   const directory = mkdtempSync(join(tmpdir(), 'auto-runtime-workflow-host-'));
@@ -32,4 +37,23 @@ export async function openedOn(settings: DatabaseSettings, tables: readonly Stat
   const database = await openHostDatabase(settings, Function.constVoid, tables);
   onTestFinished(() => database.close());
   return database;
+}
+
+export function leaseOn(database: HostDatabase): Promise<Lease> {
+  return Effect.runPromise(
+    oneRowOf(LeaseRow, database.read(statement`SELECT holder, expires_at FROM workflow_leases`)),
+  );
+}
+
+export async function untilRenewedBy(database: HostDatabase, { holder }: Lease, renewals: number): Promise<void> {
+  const expiries = new Set<number>();
+  const renewed = await until(
+    async () => {
+      const lease = await leaseOn(database);
+      expiries.add(lease.expires_at);
+      return lease;
+    },
+    () => expiries.size > renewals,
+  );
+  expect(renewed.holder).toBe(holder);
 }

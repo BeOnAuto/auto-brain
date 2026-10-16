@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { onSQLite } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 import { failingOnce } from '../views-testing/pool-faults.ts';
 import { counting, foldedAll, liveWith } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
@@ -48,7 +48,7 @@ describe('a projector that fails', () => {
     views.failingDiscovery(true);
     views.start({ sweepEveryMs: 20 });
 
-    const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 0);
+    const troubles = await until(views.reports.troubles, (reported) => reported.length > 0);
     views.failingDiscovery(false);
     const kept = await views.until('runs', foldedAll(1));
 

@@ -1,11 +1,10 @@
-import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import type { SignInSettings } from '@on.auto/identity';
 import { Cause } from 'effect';
 import { describe, expect, it } from 'vitest';
 
-import { spawnServer } from '../testing/processes/spawned-server.ts';
+import { serverHoldingARequest, spawnServer } from '../testing/processes/spawned-server.ts';
 import { linesLoggedBy } from '../testing/records/logged-lines.ts';
 import {
   logAccessMode,
@@ -204,22 +203,14 @@ describe('the server process', () => {
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
   });
 
-  it('writes nothing more to stdout when a client abandons a slow request', async () => {
-    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
-    const port = await child.port;
+  it('writes nothing more to stdout when a client abandons a request its route answers once abandoned', async () => {
+    const { child, port, answer, abandon } = await serverHoldingARequest(serveWithTestRoutes, {});
 
-    const client = new AbortController();
-    const requesting = fetch(`http://127.0.0.1:${port}/slow?ms=300`, { signal: client.signal }).then(
-      () => 'answered',
-      () => 'abandoned',
-    );
-    await setTimeout(50);
-    client.abort();
-    const abandoned = await requesting;
-    await setTimeout(500);
+    abandon();
+    const abandoned = await answer;
     child.signal('SIGTERM');
 
-    expect({ abandoned, exitCode: await child.exited }).toEqual({ abandoned: 'abandoned', exitCode: 0 });
+    expect({ abandoned, exitCode: await child.exited }).toEqual({ abandoned: 'unanswered', exitCode: 0 });
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);
   });
 });

@@ -26,7 +26,7 @@ describe('the models a server can call', () => {
 
     const list = await catalog.list();
 
-    expect(list).toMatchObject({ object: 'list', catalog_status: 'complete' });
+    expect(list).toMatchObject({ object: 'list', catalog_status: 'complete', narrowed: false });
     expect(Date.parse(list.listed_at)).toBeLessThanOrEqual(Date.now());
     expect(list.data.filter(({ owned_by: ownedBy }) => ownedBy === 'gateway').map(({ id }) => id)).toEqual([
       'gateway/alibaba/qwen-3-14b',

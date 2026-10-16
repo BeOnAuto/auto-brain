@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { plainTextIn, type McpSession, type ToolResult } from '@on.auto/api/testing';
 import { Schema } from 'effect';
 
-import { until } from './workflow-calls.ts';
+import { until } from '../waiting/until.ts';
 import { runIdIn } from './workflow-server.ts';
 
 export interface TutorialRun {

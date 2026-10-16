@@ -1,12 +1,10 @@
-import { setTimeout } from 'node:timers/promises';
-
-import { listedTools, toolNamesIn, withMcpSession, type McpSession, type ToolResult } from '@on.auto/api/testing';
+import { listedTools, toolNamesIn, withMcpSession, type McpSession } from '@on.auto/api/testing';
 import { answers, jsonResult, type ScriptedReply } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import type { ReasoningServer } from '../testing/servers/reasoning-server.ts';
-import { servingWorkflows, workflowSource } from '../testing/servers/workflow-server.ts';
+import { servingWorkflows, settledOverMcp, workflowSource } from '../testing/servers/workflow-server.ts';
 
 const verdict = [
   '---',
@@ -80,15 +78,6 @@ async function onAlpha<T>(replies: readonly ScriptedReply[], use: (session: McpS
   return onAlphaOf(server, use);
 }
 
-async function settled(session: McpSession, runId: string): Promise<ToolResult> {
-  const reading = await session.callTool('get_run', { run_id: runId });
-  if (reading.structuredContent?.['status'] !== 'started') {
-    return reading;
-  }
-  await setTimeout(100);
-  return settled(session, runId);
-}
-
 const typeField = Schema.decodeUnknownSync(
   Schema.Struct({ properties: Schema.Struct({ type: Schema.Struct({ enum: Schema.Array(Schema.String) }) }) }),
 );
@@ -127,7 +116,7 @@ describe('workflows over MCP', () => {
         run_id: runId,
         event: { type: 'com.acme.approval.decided', data: 'yes' },
       });
-      return { started: starting, sent: sending, run: await settled(session, runId) };
+      return { started: starting, sent: sending, run: await settledOverMcp(session, runId) };
     });
 
     expect(started.structuredContent).toMatchObject({ type: 'workflow', status: 'started' });
@@ -182,7 +171,7 @@ describe('the graph of a workflow run over MCP', () => {
         run_id: runId,
         event: { type: 'com.acme.approval.decided', data: 'yes' },
       });
-      await settled(session, runId);
+      await settledOverMcp(session, runId);
       return session.callTool('list_playbook_events', { run_id: runId, order: 'asc', limit: 100 });
     });
     const { events } = eventsOf(tree.structuredContent);

@@ -40,7 +40,7 @@ export async function runServer<R>(
   serverProcess: ServerProcess,
   options: ServerOptions<R>,
   stopRequested: Promise<void>,
-  stopInsisted: Promise<void> = Promise.withResolvers<void>().promise,
+  stopInsisted: Promise<void>,
 ): Promise<RunningServer> {
   void exitWhenInsisted(stopInsisted, serverProcess);
   const server = await startServer(serverProcess.env, options);

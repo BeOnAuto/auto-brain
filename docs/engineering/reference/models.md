@@ -61,7 +61,7 @@ A model call reports a message for every `APICallError` whose message is not emp
 - a failed read is remembered for a minute (`failureKeptForMs`); within it, the last list is served as not current and the provider is not asked;
 - a catalog belongs to one model access, whose settings never change, so a list read with one credential is never served for another.
 
-`catalogListing` (`src/catalog/catalog-listing.ts`) builds the answer: alias entries offered under the allow list and whose target provider is configured, then the listed and declared entries that resolve to themselves through the aliases and are offered, deduplicated by `id` and sorted. `catalog_status` is `complete` only when every source answered from a current list; `listed_at` is the oldest `listedAt`, or now when none was read.
+`catalogListing` (`src/catalog/catalog-listing.ts`) builds the answer: alias entries offered under the allow list and whose target provider is configured, then the listed and declared entries that resolve to themselves through the aliases and are offered, deduplicated by `id` and sorted. `catalog_status` is `complete` only when every source answered from a current list; `narrowed` is `true` when `allowed`, the allow list of the settings, is not `null`; `listed_at` is the oldest `listedAt`, or now when none was read.
 
 ### Reading a list
 
@@ -69,7 +69,7 @@ A model call reports a message for every `APICallError` whose message is not emp
 
 ### Plain words
 
-`modelsListed` names at most 20 models, then `<n> more`. A model is named by the name its provider gives, else by the last part of its id. A name two providers share gets the provider in parentheses; a name that is still repeated is replaced by the last part of the id. Wildcard entries follow as `any <provider> model`, or `any <provider> model starting with <start>`. A `partial` answer ends with `The list may be incomplete: a provider could not be asked just now.` An empty answer says `This server has no model it can call`, with `through <provider>` when a provider was chosen.
+`modelsListed` names at most 20 models, then `<n> more`. A model is named by the name its provider gives, else by the last part of its id. A name two providers share gets the provider in parentheses; a name that is still repeated is replaced by the last part of the id. Wildcard entries follow as `any <provider> model`, or `any <provider> model starting with <start>`. A `narrowed` answer then says `It lists only the models its operator allows.` A `partial` answer ends with `The list may be incomplete: a provider could not be asked just now.` An empty answer says `This server has no model it can call`, with `through <provider>` when a provider was chosen.
 
 ## Requests and failures
 

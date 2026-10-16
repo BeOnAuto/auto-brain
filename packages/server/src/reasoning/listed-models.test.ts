@@ -76,6 +76,12 @@ const listedModels = {
     },
   ],
   catalog_status: 'complete',
+  narrowed: false,
+};
+
+const allowing = {
+  ...environment,
+  ALLOWED_MODELS: JSON.stringify(['anthropic/claude-sonnet-4-5-20250929', 'house/fast']),
 };
 
 const plainWords =
@@ -178,5 +184,34 @@ describe('list_models over MCP', () => {
     expect(plainTextIn(refused)).toBe(
       'Could not list the models this server can call: what was given does not fit what it needs. This can be corrected and tried again; the details below say what to change.',
     );
+  });
+});
+
+describe('list_models when the operator allows only some models', () => {
+  it('lists only those over HTTP, and says the list is narrowed', async () => {
+    server = await servingReasoning([], allowing, providerLists().fetch);
+
+    const listed = await server.call('GET', '/v1/orgs/local/models');
+
+    expect(listed).toMatchObject({
+      status: 200,
+      body: { data: [listedModels.data[2], listedModels.data[5]], catalog_status: 'complete', narrowed: true },
+    });
+  });
+
+  it('lists the same over MCP, and says plainly that the list holds only what the operator allows', async () => {
+    server = await servingReasoning([], allowing, providerLists().fetch);
+
+    const listed = await listedOnMcp('/mcp');
+
+    expect(listed.structuredContent).toMatchObject({
+      data: [listedModels.data[2], listedModels.data[5]],
+      catalog_status: 'complete',
+      narrowed: true,
+    });
+    expect(plainTextIn(listed)).toBe(
+      'This server can call 2 models through anthropic and gateway: Claude Sonnet 4.5 and fast. It lists only the models its operator allows.',
+    );
+    expect(internalTermsIn(plainTextIn(listed))).toEqual([]);
   });
 });

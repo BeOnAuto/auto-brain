@@ -4,8 +4,8 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { alpha, at, recorded, recordedWith } from '../reaction-testing/playbook-writes.ts';
-import { eventually } from '../testing/eventually.ts';
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
+import { until } from '../testing/until.ts';
 import { followedHost } from '../waiting-testing/followed-host.ts';
 import { recordedWaiting } from '../waiting-testing/recorded-waiting.ts';
 import { cancelRequests } from './cancel-requests.ts';
@@ -67,7 +67,7 @@ describe('a cancel request on a run of another capability', () => {
       context: runOf('interaction'),
       lineage: { causationId: null, correlationId: 'root-1' },
     });
-    const handed = await eventually(waiting.deferredCancels, (cancels) => cancels.length > 0);
+    const handed = await until(waiting.deferredCancels, (cancels) => cancels.length > 0);
 
     expect(handed).toEqual([
       {

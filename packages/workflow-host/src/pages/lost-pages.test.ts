@@ -1,14 +1,12 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { describe, expect, it } from 'vitest';
 
-import { eventually } from '../testing/eventually.ts';
 import { onSQLite } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 import { busyOnce } from '../views-testing/pool-faults.ts';
+import { foldingWorker } from '../views-testing/test-fold-workers.ts';
 import {
   collecting,
   counting,
-  foldOf,
   foldedAll,
   foldingOf,
   isStalled,
@@ -16,6 +14,24 @@ import {
 } from '../views-testing/view-documents.ts';
 import { viewHarness } from '../views-testing/view-harness.ts';
 import type { StallCause } from '../views/view-rows.ts';
+
+const foldingAPage = 'a page the projector folds';
+
+const blockedAtItsFirstFold = foldingWorker({
+  prelude: [],
+  whenFolding: `new BroadcastChannel(${JSON.stringify(foldingAPage)}).postMessage(event); for (;;) {}`,
+  serving: 'serveJobs({ fold });',
+});
+
+function heardOn(channel: string): Promise<void> {
+  const listening = new BroadcastChannel(channel);
+  const { promise, resolve } = Promise.withResolvers<void>();
+  listening.addEventListener('message', () => {
+    listening.close();
+    resolve();
+  });
+  return promise;
+}
 
 function workerOf(source: string): URL {
   return new URL(`data:text/javascript,${encodeURIComponent(source)}`);
@@ -93,7 +109,7 @@ describe('a page of folds the pool cannot finish', () => {
       await views.ran('reasoning/runs', 1);
       views.start(quick);
 
-      const troubles = await eventually(views.reports.troubles, (reported) => reported.length > 1, 3000);
+      const troubles = await until(views.reports.troubles, (reported) => reported.length > 1);
       const kept = await views.viewOf('runs');
 
       expect(kept).toMatchObject({ phase: 'rebuilding', folded: 0 });
@@ -136,23 +152,20 @@ describe('a page of folds lost twice', () => {
 describe('a projector stopped while it folds', () => {
   it('repeats the page when it starts again, and writes each fold once', async () => {
     const settings = await onSQLite();
-    const slow = {
-      ...collecting,
-      fold: foldOf(
-        'let spent = 0;\n  for (let index = 0; index < 10_000_000; index++) spent += index;\n  return [...view, event.data.output];',
-      ),
+    const blocked = {
+      folding: { ...foldingOf(), foldDeadlineMs: 2 * viewTestTimeoutMs, worker: blockedAtItsFirstFold },
     };
-    const lifted = { folding: { ...foldingOf(), budget: 1_000_000, foldDeadlineMs: 2 * viewTestTimeoutMs } };
     const first = await viewHarness(settings);
-    await first.saved('outputs', slow);
+    await first.saved('outputs', collecting);
     await first.ranEach('reasoning/runs', [1, 2, 3]);
-    const stopping = first.start(lifted);
-    await setTimeout(150);
+    const folding = heardOn(foldingAPage);
+    const stopping = first.start(blocked);
+    await folding;
     await stopping.stop();
     const interrupted = await first.viewOf('outputs');
 
     const second = await viewHarness(settings);
-    second.start(lifted);
+    second.start();
     const kept = await second.until('outputs', foldedAll(3));
 
     expect(interrupted?.folded).toBeLessThan(3);

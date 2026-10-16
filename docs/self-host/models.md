@@ -208,6 +208,7 @@ Ask your agent to call `list_models`. It needs `org:read`, and over HTTP it is `
 
 - Bedrock, Azure and Vertex list only the models you [declare](../reference/model-settings.md#declared-models), or `<provider>/*` when you declare none. A wildcard is not a model to run.
 - `catalog_status: "partial"` means a provider's list could not be read just now. The log says why.
+- `narrowed: true` means `allowed_models` is set, and the list holds only what it allows.
 
 [Listing the models](../reference/model-settings.md#listing-the-models) sets out where each list comes from and what the log says when one cannot be read.
 

@@ -4,10 +4,10 @@ import { expect, it } from 'vitest';
 
 import { skippingClock } from '../loop/host-clock.ts';
 import { ledgerRunLogStore } from '../runs/ledger-run-store.ts';
-import { eventually } from './eventually.ts';
 import { runAt, startOf, workflow } from './host-documents.ts';
 import { openedOn, type SettingsOf } from './host-files.ts';
 import { hostedOn } from './host-runs.ts';
+import { until } from './until.ts';
 
 const runId = '0199a3c4-7d2e-7c1a-9b3f-000000003000';
 
@@ -29,7 +29,7 @@ export function longRunSuite(settings: SettingsOf): void {
     hosted.know(runId);
 
     await Effect.runPromise(hosted.host.start(runAt(runId), startOf(ticking)));
-    await eventually(hosted.settlements, (settled) => settled.size > 0, 5000);
+    await until(hosted.settlements, (settled) => settled.size > 0);
     await hosted.host.stop();
     const runStore = ledgerRunLogStore(await openedOn(database));
     const stored = await Effect.runPromise(runStore.load(`acme/alpha/${runId}`));

@@ -1,10 +1,9 @@
-import { setTimeout } from 'node:timers/promises';
-
 import { Schema } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { alpha, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
 import { runIdIn, servingWorkflows, settledRun, workflowSource } from '../testing/servers/workflow-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const ListedRuns = Schema.Struct({
   runs: Schema.Array(
@@ -18,6 +17,10 @@ const ListedRuns = Schema.Struct({
 });
 
 const runsIn = Schema.decodeUnknownSync(ListedRuns);
+
+const historyIn = Schema.decodeUnknownSync(
+  Schema.Struct({ events: Schema.Array(Schema.Struct({ type: Schema.String })) }),
+);
 
 type ListedRun = (typeof ListedRuns.Type)['runs'][number];
 
@@ -55,14 +58,16 @@ async function servingWith(...definitions: readonly (readonly [string, string])[
   );
 }
 
-async function runsOf(name: string, attempts = 300): Promise<readonly ListedRun[]> {
-  const response = await server.call('GET', `${alpha}/runs?type=workflow&name=${name}`);
-  const { runs } = runsIn(response.body);
-  if (runs.some(({ status }) => status !== 'started') || attempts <= 1) {
-    return runs;
-  }
-  await setTimeout(100);
-  return runsOf(name, attempts - 1);
+function runsOf(name: string): Promise<readonly ListedRun[]> {
+  return until(
+    async () => runsIn((await server.call('GET', `${alpha}/runs?type=workflow&name=${name}`)).body).runs,
+    (runs) => runs.some(({ status }) => status !== 'started'),
+  );
+}
+
+async function historyOf(path: string): Promise<readonly string[]> {
+  const history = await server.call('GET', `${path}/history`);
+  return historyIn(history.body).events.map(({ type }) => type);
 }
 
 async function triggeredRunOf(name: string) {
@@ -102,7 +107,10 @@ describe('a run waiting for an event whose type its filter names', () => {
     await servingWith(['approval', approving]);
     const started = await server.call('POST', `${alpha}/definitions/workflow/approval/run`, { body: { input: {} } });
     const path = `${alpha}/runs/${runIdIn(started.body)}`;
-    await setTimeout(200);
+    await until(
+      () => historyOf(path),
+      (history) => history.includes('step_waiting'),
+    );
 
     await server.call('POST', `${alpha}/events`, {
       body: { event: { source: '/desk', type: 'com.acme.approved', data: { by: 'Ada' } } },

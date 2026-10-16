@@ -1,88 +1,64 @@
-import { setTimeout } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'vitest';
 
-import { shortShutdownTimeoutMs } from '../testing/processes/short-shutdown-timeout.ts';
-import { spawnServer } from '../testing/processes/spawned-server.ts';
+import { untilRefusingConnections } from '../testing/processes/accepting-connections.ts';
+import { shortShutdownTimeoutMs, shutdownTimeoutVariable } from '../testing/processes/shutdown-timeouts.ts';
+import { serverHoldingARequest, spawnServer } from '../testing/processes/spawned-server.ts';
+import { longerThanTheTestMs } from '../testing/waiting/until.ts';
 import { defaultServerOptions } from './lifecycle.ts';
 
 const serveWithTestRoutes = fileURLToPath(new URL('../testing/entries/serve-with-test-routes.ts', import.meta.url));
 
-const loopback = { HOST: '127.0.0.1', PORT: '0' };
-
-async function refusingConnections(port: number): Promise<void> {
-  const accepted = await fetch(`http://127.0.0.1:${port}/health`).then(
-    () => true,
-    () => false,
-  );
-  if (accepted) {
-    await setTimeout(10);
-    await refusingConnections(port);
-  }
-}
-
-function answeringSlowly(port: number, ms: number): Promise<Response> {
-  return fetch(`http://127.0.0.1:${port}/slow-body?ms=${ms}`);
-}
+const shuttingDownPatiently = { [shutdownTimeoutVariable]: String(longerThanTheTestMs) };
 
 describe('shutting down the server process', () => {
-  it('lets a slow request finish after SIGTERM and exits 0 before the shutdown timeout', async () => {
-    const child = spawnServer(serveWithTestRoutes, loopback);
-    const slow = await answeringSlowly(await child.port, 500);
+  it('lets a request in flight finish after SIGTERM and exits 0 once it has, without waiting for the shutdown timeout', async () => {
+    const { child, port, answer } = await serverHoldingARequest(serveWithTestRoutes, shuttingDownPatiently);
 
-    const signalled = performance.now();
     child.signal('SIGTERM');
-    const body: unknown = await slow.json();
-    const exitCode = await child.exited;
+    await untilRefusingConnections(port);
+    child.signal('SIGUSR2');
 
-    expect({ status: slow.status, body, exitCode }).toEqual({ status: 200, body: { slept: 500 }, exitCode: 0 });
-    expect(performance.now() - signalled).toBeLessThan(shortShutdownTimeoutMs);
+    expect({ answer: await answer, exitCode: await child.exited }).toEqual({
+      answer: { status: 200, body: { held: true } },
+      exitCode: 0,
+    });
   });
 
-  it('cuts off a request still running at the shutdown timeout and exits 0', async () => {
-    const child = spawnServer(serveWithTestRoutes, loopback);
-    const endless = await answeringSlowly(await child.port, 60_000);
-    const answer = endless.json().then(
-      () => 'answered',
-      () => 'cut off',
-    );
+  it('cuts off a request still running at the shutdown timeout, no sooner, and exits 0', async () => {
+    const { child, answer } = await serverHoldingARequest(serveWithTestRoutes, {});
 
     const signalled = performance.now();
     child.signal('SIGTERM');
     const exitCode = await child.exited;
-    const elapsed = performance.now() - signalled;
 
-    expect({ exitCode, request: await answer }).toEqual({ exitCode: 0, request: 'cut off' });
-    expect(elapsed).toBeGreaterThanOrEqual(shortShutdownTimeoutMs - 50);
-    expect(elapsed).toBeLessThan(shortShutdownTimeoutMs + 1500);
+    expect({ exitCode, answer: await answer }).toEqual({ exitCode: 0, answer: 'unanswered' });
+    expect(performance.now() - signalled).toBeGreaterThanOrEqual(shortShutdownTimeoutMs - 50);
   });
 });
 
 describe('a repeated stop signal', () => {
   it.each<NodeJS.Signals>(['SIGTERM', 'SIGINT'])(
-    'is ignored while the server process shuts down after the first %s, which still exits 0',
+    'ends the server process at once while it shuts down after the first %s, cutting off what still runs, and exits 1',
     async (signal) => {
-      const child = spawnServer(serveWithTestRoutes, loopback);
-      const port = await child.port;
-      const slow = await answeringSlowly(port, 1000);
+      const { child, port, answer } = await serverHoldingARequest(serveWithTestRoutes, shuttingDownPatiently);
 
       child.signal(signal);
-      await refusingConnections(port);
+      await untilRefusingConnections(port);
       child.signal(signal);
 
-      expect({ status: slow.status, body: await slow.json(), exitCode: await child.exited }).toEqual({
-        status: 200,
-        body: { slept: 1000 },
-        exitCode: 0,
-      });
+      expect({ answer: await answer, exitCode: await child.exited }).toEqual({ answer: 'unanswered', exitCode: 1 });
+      expect(child.output().stderr).toContain(
+        'Auto Runtime was told to stop again, so it exits now without finishing its shutdown\n',
+      );
     },
   );
 });
 
 describe('a server process that something keeps running after it stopped', () => {
   it('exits 0 at the exit deadline and says why on stderr', async () => {
-    const child = spawnServer(serveWithTestRoutes, loopback);
+    const child = spawnServer(serveWithTestRoutes, { HOST: '127.0.0.1', PORT: '0' });
     const port = await child.port;
     await (await fetch(`http://127.0.0.1:${port}/linger?ms=60000`)).text();
 

@@ -1,32 +1,44 @@
+import { once } from 'node:events';
 import { setTimeout } from 'node:timers/promises';
 
 import type { RegisterRoutes } from '@on.auto/api';
 
-function bodyAfter(ms: number): ReadableStream<Uint8Array> {
-  return new ReadableStream({
-    pull: async (controller) => {
-      await setTimeout(ms, undefined, { ref: false });
-      controller.enqueue(new TextEncoder().encode(JSON.stringify({ slept: ms })));
-      controller.close();
-    },
-  });
+export interface RequestHold {
+  readonly arrived: () => void;
+  readonly released: () => Promise<unknown>;
 }
 
-export const testRoutes: RegisterRoutes = (routes) => {
-  routes.add('GET', '/slow', async (c) => {
-    const ms = Number(c.req.query('ms'));
-    await setTimeout(ms, undefined, { ref: false });
-    return c.json({ slept: ms });
-  });
-  routes.add('GET', '/slow-body', (c) =>
-    c.body(bodyAfter(Number(c.req.query('ms'))), 200, { 'content-type': 'application/json' }),
-  );
-  routes.add('GET', '/fail', () => {
-    throw new Error('database password is hunter2');
-  });
-  routes.add('GET', '/linger', (c) => {
-    const ms = Number(c.req.query('ms'));
-    void setTimeout(ms);
-    return c.json({ lingering: ms });
-  });
-};
+export interface HeldRequests {
+  readonly routes: RegisterRoutes;
+  readonly arrived: Promise<void>;
+  readonly release: () => void;
+}
+
+export function testRoutesHeldBy(hold: RequestHold): RegisterRoutes {
+  return (routes) => {
+    routes.add('GET', '/held', async (c) => {
+      const released = hold.released();
+      hold.arrived();
+      await Promise.race([released, once(c.req.raw.signal, 'abort')]);
+      return c.json({ held: true });
+    });
+    routes.add('GET', '/fail', () => {
+      throw new Error('database password is hunter2');
+    });
+    routes.add('GET', '/linger', (c) => {
+      const ms = Number(c.req.query('ms'));
+      void setTimeout(ms);
+      return c.json({ lingering: ms });
+    });
+  };
+}
+
+export function heldRequests(): HeldRequests {
+  const arrival = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  return {
+    routes: testRoutesHeldBy({ arrived: arrival.resolve, released: () => release.promise }),
+    arrived: arrival.promise,
+    release: release.resolve,
+  };
+}

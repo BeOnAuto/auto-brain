@@ -1,5 +1,3 @@
-import { setTimeout } from 'node:timers/promises';
-
 import type { ScriptedReply } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
 
@@ -84,15 +82,6 @@ const decodeListed = Schema.decodeUnknownSync(ListedRuns);
 export async function runsOf(server: ReasoningServer, name: string): Promise<readonly ListedRun[]> {
   const listed = await server.call('GET', `${alpha}/runs?type=workflow&name=${name}&limit=100`);
   return decodeListed(listed.body).runs;
-}
-
-export async function until<A>(attempt: () => Promise<A>, done: (value: A) => boolean): Promise<A> {
-  const value = await attempt();
-  if (done(value)) {
-    return value;
-  }
-  await setTimeout(50);
-  return until(attempt, done);
 }
 
 export function ended(runs: readonly ListedRun[]): boolean {

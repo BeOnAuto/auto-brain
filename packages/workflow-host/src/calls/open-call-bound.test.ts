@@ -5,8 +5,8 @@ import { describe, expect, it } from 'vitest';
 
 import type { HostDatabase } from '../database/host-database.ts';
 import { statement, type Statement } from '../database/statement.ts';
-import { eventually } from '../testing/eventually.ts';
 import { aSQLiteFile, openedOn } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 import { hostExecutor } from './host-executor.ts';
 
 const origin = { version: 1 };
@@ -80,7 +80,7 @@ describe('the open calls of runs of one tree that start at the same moment', () 
         },
       ),
     );
-    await eventually(
+    await until(
       (): readonly CallResult[] => answered,
       (answers) => answers.length > 0,
     );

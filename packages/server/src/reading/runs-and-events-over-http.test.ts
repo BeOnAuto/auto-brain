@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { setTimeout } from 'node:timers/promises';
 
 import { internalTermsIn } from '@on.auto/operations/testing';
 import { answers, textResult } from '@on.auto/reasoning/testing';
@@ -10,6 +9,7 @@ import { afterEach, describe, expect, it, onTestFinished } from 'vitest';
 import { secretsKey } from '../testing/databases/secrets-key.ts';
 import type { TestResponse } from '../testing/servers/http-client.ts';
 import { alpha, servingReasoning, type ReasoningServer } from '../testing/servers/reasoning-server.ts';
+import { until } from '../testing/waiting/until.ts';
 
 const postgresql = process.env['LEDGER_TEST_POSTGRESQL_URL'] ?? '';
 
@@ -81,17 +81,8 @@ afterEach(async () => {
   await server.stop();
 });
 
-async function eventually(
-  path: string,
-  until: (response: TestResponse) => boolean,
-  tries = 500,
-): Promise<TestResponse> {
-  const response = await server.call('GET', path);
-  if (until(response) || tries === 0) {
-    return response;
-  }
-  await setTimeout(20);
-  return eventually(path, until, tries - 1);
+function eventually(path: string, holds: (response: TestResponse) => boolean): Promise<TestResponse> {
+  return until(() => server.call('GET', path), holds);
 }
 
 function holding(count: number): (response: TestResponse) => boolean {

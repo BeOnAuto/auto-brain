@@ -3,12 +3,10 @@ import { expect, it } from 'vitest';
 
 import { runAt, startOf, workflow } from '../testing/host-documents.ts';
 import type { SettingsOf } from '../testing/host-files.ts';
+import { until } from '../testing/until.ts';
 import { movedClock } from './moved-clock.ts';
 import { at, cronTrigger, eventTrigger, everyTrigger, published, definitionRecorded } from './playbook-writes.ts';
 import { reactingHost } from './reacting-host.ts';
-import { until } from './until.ts';
-
-const attempts = 2000;
 
 const waiting = '0199a3c4-7d2e-7c1a-9b3f-2f1e0d9c8b7d';
 
@@ -24,7 +22,6 @@ export function reactionSuite(settings: SettingsOf): void {
     const starts = await until(
       () => Promise.resolve(reacting.reactions.starts()),
       (found) => found.length > 0,
-      attempts,
     );
 
     expect(starts.map(({ workflow: name, depth }) => [name, depth])).toEqual([['close', 1]]);
@@ -38,7 +35,6 @@ export function reactionSuite(settings: SettingsOf): void {
     const state = await until(
       () => Effect.runPromise(reacting.host.stateOf(runAt(waiting))),
       (found) => found.status === 'ended',
-      attempts,
     );
 
     expect(state.outcome).toEqual({ kind: 'completed', output: ['decided'] });
@@ -58,7 +54,6 @@ function scheduleSuite(settings: SettingsOf): void {
     const starts = await until(
       () => Promise.resolve(reacting.reactions.starts()),
       (found) => found.length > 0,
-      attempts,
     );
 
     expect(starts.map(({ input }) => input)).toEqual([{ schedule: { due: '2026-10-01T09:01:00.000Z' } }]);
@@ -75,13 +70,11 @@ function scheduleSuite(settings: SettingsOf): void {
     await until(
       () => Promise.resolve(reacting.reactions.starts()),
       (found) => found.length > 0,
-      attempts,
     );
     clock.moveTo(activatedAt + 3_600_000);
     const starts = await until(
       () => Promise.resolve(reacting.reactions.starts()),
       (found) => found.length > 2,
-      attempts,
     );
 
     expect(starts.map(({ trigger, cause }) => [trigger.reference, cause === starts[1]?.cause])).toEqual([

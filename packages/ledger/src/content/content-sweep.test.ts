@@ -2,11 +2,12 @@ import { sqlite3EventStoreDriver } from '@event-driven-io/emmett-sqlite/sqlite3'
 import { textToKeep } from '@on.auto/operations';
 import { Effect, Layer, Logger } from 'effect';
 import { TestClock } from 'effect/testing';
-import { describe, expect, it, onTestFinished, vi } from 'vitest';
+import { describe, expect, it, onTestFinished } from 'vitest';
 
 import { ledgerLayerOver } from '../ledger-layer.ts';
 import { sqliteEventStore } from '../sqlite-event-store.ts';
 import { openLedgerWith } from '../testing/open-ledger.ts';
+import { until } from '../testing/until.ts';
 import { sweptHourly, unnamedChunksLastMs, type ContentSweeping } from './content-sweep.ts';
 
 interface Sweeps extends ContentSweeping {
@@ -73,7 +74,7 @@ describe('the sweep of the chunks no head names', () => {
     );
 
     expect(kept).toMatchObject({ bytes: 2, mediaType: 'application/json' });
-    await vi.waitFor(() => {
+    await until(() => {
       expect(logged).toEqual([expect.stringContaining(couldNotSweep)]);
     });
   });
