@@ -654,7 +654,7 @@ The rejection gives a `reason`, and a `kind` where it has one:
 | `unanswered`    | `expired`, `undelivered`         | It did not catch an unanswered request of an interaction function or a build |
 
 - A rejection of the kind `tools_unfinished`, `effect_unknown` or `rebuilding` keeps the error's `because`. A rejection's `detail` gives the error's title, or else its type, then the step that raised it by its name, then its detail, such as `The brief is not usable, at the step stop: Missing: audience.`
-- A step whose function refused its input keeps its `issues`, each at its pointer and in the field's words: `The computation function month-window refused its input, at the step work-out-month: month, The month to report on: expected at least 6 characters.` A workflow that called that workflow reads the same, with its own step first.
+- A step whose function refused its input keeps its `issues`, each at its pointer and in the field's words: `The computation function month-window refused its input, at the step work-out-month: month, The month to report on: expected at least 6 characters.` A workflow that called it reads `The workflow monthly stopped, at the step report: ` before those words.
 - A cancelled run's `detail` says why, in the words of whoever cancelled it.
 - A call rejected with `invalid_input`, or a cancellation of a run it called, that is not caught rejects it as `invalid_input`.
 

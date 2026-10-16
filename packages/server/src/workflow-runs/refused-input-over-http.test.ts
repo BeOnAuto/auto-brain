@@ -79,7 +79,7 @@ describe('a workflow whose first step refuses a field of its input, over HTTP', 
 });
 
 describe('a workflow that called a workflow whose first step refuses a field, over HTTP', () => {
-  it('reads the same at each level, each with its own step, and keeps the issues of the innermost step', async () => {
+  it('says the workflow stopped at its own step, then the refusal inside it, with the innermost issues', async () => {
     await servingTheHold();
     const started = await server.call('POST', `${alpha}/definitions/workflow/travelling/run`, {
       body: { input: { seats: 0 } },
@@ -90,7 +90,7 @@ describe('a workflow that called a workflow whose first step refuses a field, ov
         status: 'rejected',
         rejection: {
           reason: 'invalid_input',
-          detail: `The workflow holding-seats refused its input, at the step book: ${refusedAtTheStep}`,
+          detail: `The workflow holding-seats stopped, at the step book: ${refusedAtTheStep}`,
           issues: [refusedSeats],
         },
       },

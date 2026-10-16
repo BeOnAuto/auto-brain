@@ -57,7 +57,7 @@ describe('a workflow whose step refused its input', () => {
 });
 
 describe('a workflow that called a workflow whose step refused its input', () => {
-  it('reads the same at each level, each with its own step, and keeps the issues the innermost step met', async () => {
+  it('says the workflow stopped at its own step, then the refusal of the step inside it, with the innermost issues', async () => {
     const inner = await interpret(booking, { respond: refusing(refusedSeats.slice(0, 1)) });
     const innerRefusal = refusalOf(inner.settlement);
     const { settlement } = await interpret(travelling, { respond: () => innerRefusal });
@@ -66,7 +66,7 @@ describe('a workflow that called a workflow whose step refused its input', () =>
       status: 'rejected',
       reason: 'invalid_input',
       detail:
-        'The workflow booking refused its input, at the step book: The computation function seat-hold refused its input, at the step hold-seats: seats, How many seats to hold: expected at least 1.',
+        'The workflow booking stopped, at the step book: The computation function seat-hold refused its input, at the step hold-seats: seats, How many seats to hold: expected at least 1.',
       issues: refusedSeats.slice(0, 1),
     });
   });

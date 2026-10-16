@@ -43,6 +43,30 @@ describe('a call of run_definition', () => {
       workflowFunctions.describe('run_definition', 'summarize'),
     ]).toEqual(['the reasoning function summarize', 'the echo definition greet', 'run_definition', 'run_definition']);
   });
+
+  it('says a workflow it ran stopped when one of its steps did, and what its reason did otherwise', () => {
+    const workflowRun = { type: 'workflow', name: 'monthly' };
+
+    expect([
+      workflowFunctions.refusal?.('run_definition', workflowRun, 'invalid_input'),
+      workflowFunctions.refusal?.('run_definition', workflowRun, 'unavailable'),
+      workflowFunctions.refusal?.('run_definition', workflowRun, 'conflict'),
+      workflowFunctions.refusal?.('run_definition', workflowRun, 'unanswered'),
+      workflowFunctions.refusal?.('run_definition', workflowRun, 'cancelled'),
+      workflowFunctions.refusal?.('run_definition', workflowRun, 'not_found'),
+      workflowFunctions.refusal?.('run_definition', { type: 'computation', name: 'month-window' }, 'invalid_input'),
+      workflowFunctions.refusal?.('run_definition', 'monthly', 'invalid_input'),
+    ]).toEqual([
+      'stopped',
+      'stopped',
+      'stopped',
+      'stopped',
+      'was cancelled',
+      'could not be found',
+      'refused its input',
+      'refused its input',
+    ]);
+  });
 });
 
 describe('the definitions a workflow calls', () => {

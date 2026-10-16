@@ -5,6 +5,8 @@ type ArgumentRejections = (arguments_: Json | undefined, pointer: string) => rea
 
 type CallDescription = (name: string, arguments_: Json) => string;
 
+type RefusalWords = (name: string, arguments_: Json, reason: string) => string;
+
 export interface ChildCall {
   readonly function: string;
   readonly reference: string;
@@ -16,6 +18,7 @@ export interface ChildCall {
 export interface CallFunctions {
   readonly argumentChecks: Readonly<Record<string, ArgumentRejections>>;
   readonly describe: CallDescription;
+  readonly refusal?: RefusalWords;
   readonly childOf?: (call: ChildCall) => string | undefined;
   readonly emitRejections?: (attributes: JsonObject, pointer: string) => readonly Rejection[];
   readonly emitRefusal?: (event: JsonObject) => string | undefined;

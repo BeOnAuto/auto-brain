@@ -5,6 +5,7 @@ import {
   type CalledDefinition,
   type PlaybookOwnNames,
 } from '@on.auto/definitions';
+import { refusalInWords } from '@on.auto/operations';
 import {
   allTaskEntries,
   type CallFunctions,
@@ -24,6 +25,8 @@ import { outputRefusalOf } from './workflow-output.ts';
 import { scheduleRejections } from './workflow-schedule.ts';
 
 export const runDefinitionFunction = 'run_definition';
+
+const workflowType = 'workflow';
 
 const runDefinitionArguments = new Set(['type', 'name', 'input']);
 
@@ -76,6 +79,13 @@ function definitionDescribed(name: string, arguments_: Json): string {
   return type === undefined || definition === undefined ? name : `the ${definitionResourceLabel(type)} ${definition}`;
 }
 
+const refusedByItsSteps: ReadonlySet<string> = new Set(['invalid_input', 'unavailable', 'conflict', 'unanswered']);
+
+function refusalOfACall(_name: string, arguments_: Json, reason: string): string {
+  const type = isObject(arguments_) ? textField(arguments_, 'type') : undefined;
+  return type === workflowType && refusedByItsSteps.has(reason) ? 'stopped' : refusalInWords(reason);
+}
+
 function emitRejectionsOf({ types }: PlaybookOwnNames) {
   return (attributes: JsonObject, pointer: string): readonly Rejection[] => {
     const type = field(attributes, 'type');
@@ -114,6 +124,7 @@ export function workflowFunctionsOf(names: PlaybookOwnNames): CallFunctions {
   return {
     argumentChecks: { [runDefinitionFunction]: runDefinitionRejections },
     describe: definitionDescribed,
+    refusal: refusalOfACall,
     emitRejections: emitRejectionsOf(names),
     emitRefusal: emitRefusalOf(names),
     outputRefusal: outputRefusalOf,

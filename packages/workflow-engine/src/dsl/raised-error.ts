@@ -235,6 +235,7 @@ export interface CallSite {
   readonly function: string;
   readonly label: string;
   readonly reference: string;
+  readonly refused?: string;
 }
 
 type Classification = readonly [ErrorKind, number];
@@ -286,7 +287,7 @@ export function callErrorOf(result: FailedCall, call: CallSite): DslError {
     status,
     title:
       result.status === 'rejected'
-        ? `${capitalized(call.label)} ${refusalInWords(result.reason)}`
+        ? `${capitalized(call.label)} ${call.refused ?? refusalInWords(result.reason)}`
         : `${capitalized(call.label)} failed`,
     detail: result.detail,
     instance: call.reference,
