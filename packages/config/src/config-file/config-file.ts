@@ -72,7 +72,7 @@ function invalid(path: string, problems: readonly Located[]): ConfigFileInvalid 
 
 function settingReading(fileSetting: FileSetting, raw: Schema.Json, environment: Environment): SettingReading {
   const pointer = below('', fileSetting.key);
-  const refused = credentialProblems(fileSetting.key, raw, pointer);
+  const refused = credentialProblems(fileSetting.key, raw, pointer, fileSetting.sortsOfCredential);
   if (refused.length > 0) {
     return { written: [], problems: refused };
   }

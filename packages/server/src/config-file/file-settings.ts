@@ -67,5 +67,5 @@ export const fileSettings: readonly FileSetting[] = [
     asJson,
     { references: 'kept' },
   ),
-  fileSetting('CONNECTIONS', ConnectionPolicySchema, asJson),
+  fileSetting('CONNECTIONS', ConnectionPolicySchema, asJson, { sortsOfCredential: ['credential_kinds'] }),
 ];

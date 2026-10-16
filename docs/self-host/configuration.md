@@ -44,7 +44,7 @@ The server stops at start with one line that names the file, the line, the colum
 
 A value counts as a credential written out when:
 
-- its key names a credential, such as `api_key`, `Authorization`, `client_secret`, `password` or `token`, and it holds no reference. A key whose last word is `kind`, `kinds`, `type` or `types`, such as `credential_kinds` or `token_type`, names a sort of credential and not one, so its value is judged by its shape alone;
+- its key names a credential, such as `api_key`, `Authorization`, `client_secret`, `password` or `token`, and it holds no reference. `credential_kinds` of the `connections` section names sorts of credential and not one, so its values are judged by their shape alone;
 - the text written out in it has the shape of one, such as `Bearer ...`, an `sk-...` provider key or an `abk_...` API key;
 - it is a URL with a password, or whose user or query value has that shape;
 - it is an argument whose part after its `=` has that shape.
