@@ -63,7 +63,7 @@ const interactionSentence =
   'An interaction function asks a system and answers at once, or asks a person and answers started.';
 
 const answeringSentence =
-  "When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction, in the shape its function's answer takes, and start no new run for it.";
+  'When the person approves, rejects or otherwise answers what a run waits on, answer its request with answer_interaction and start no new run for it.';
 
 const recallSentence =
   'Recall retrieves retained run results, definitions and events, excluding run inputs and tool calls.';

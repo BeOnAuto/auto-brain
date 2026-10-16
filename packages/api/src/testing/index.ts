@@ -1,4 +1,5 @@
 export {
+  calledOpeningLinks,
   connectMcp,
   mcpClientKinds,
   plainTextIn,
@@ -6,6 +7,8 @@ export {
   technicalTextIn,
   textOf,
   withMcpSession,
+  type LinkOpening,
+  type LinksAsked,
   type McpClientKind,
   type McpConnection,
   type McpSession,

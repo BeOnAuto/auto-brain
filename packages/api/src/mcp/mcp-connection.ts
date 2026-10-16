@@ -1,4 +1,4 @@
-import { McpServer } from '@modelcontextprotocol/server';
+import { McpServer, type RequestStateCodec } from '@modelcontextprotocol/server';
 import type { Catalog, Dispatcher } from '@on.auto/operations';
 
 import {
@@ -72,6 +72,7 @@ export function connectionOf(endpoint: McpEndpoint, serving: McpServing, { serve
 export function serverOf(
   connection: Connection,
   served: ServedTools,
+  states: RequestStateCodec,
   registerTools: (server: GuideRegistry) => void,
 ): McpServer {
   const server = new McpServer(
@@ -79,6 +80,7 @@ export function serverOf(
     {
       capabilities: { tools: noChangesAnnounced, resources: noChangesAnnounced, prompts: noChangesAnnounced },
       instructions: instructionsOf(connection, served),
+      requestState: states,
     },
   );
   registerTools(server);

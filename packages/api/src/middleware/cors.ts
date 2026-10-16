@@ -3,7 +3,7 @@ import type { MiddlewareHandler } from 'hono';
 
 import type { ApiEnv } from '../api-env.ts';
 
-const allowedMethods = 'GET, HEAD, POST, PUT';
+const allowedMethods = 'GET, HEAD, POST, PUT, DELETE';
 
 const allowedHeaders = 'authorization, content-type, traceparent, tracestate, baggage';
 

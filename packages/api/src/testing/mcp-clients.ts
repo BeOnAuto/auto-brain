@@ -186,3 +186,41 @@ export async function withMcpSession<T>(
     await session.close();
   }
 }
+
+export interface LinkOpening {
+  readonly opens: 'links' | 'forms alone';
+  readonly revision: 'current revision' | 'previous revision';
+  readonly action: 'accept' | 'decline';
+}
+
+export interface LinksAsked {
+  readonly answer: ToolResult;
+  readonly elicited: readonly unknown[];
+}
+
+const openingEveryLink: LinkOpening = { opens: 'links', revision: 'current revision', action: 'accept' };
+
+const ElicitationSchema = Schema.Struct({ params: Schema.Unknown });
+
+export async function calledOpeningLinks(
+  { url, headers }: McpConnection,
+  call: { readonly name: string; readonly arguments: Readonly<Record<string, unknown>> },
+  opening: Partial<LinkOpening> = {},
+): Promise<LinksAsked> {
+  const { opens, revision, action } = { ...openingEveryLink, ...opening };
+  const elicited: unknown[] = [];
+  const capabilities = { elicitation: opens === 'links' ? { url: {} } : { form: {} } };
+  const versionNegotiation = { mode: revision === 'current revision' ? { pin: '2026-07-28' } : 'legacy' } as const;
+  const client = new Client({ name: 'auto-runtime-tests', version: '2.0.0' }, { capabilities, versionNegotiation });
+  client.setRequestHandler('elicitation/create', (request: unknown) => {
+    elicited.push(Schema.decodeUnknownSync(ElicitationSchema)(request).params);
+    return { action };
+  });
+  await client.connect(new StreamableHTTPClientTransport(new URL(url), { requestInit: { headers: { ...headers } } }));
+  try {
+    const answer = toolResultOf(await client.callTool({ name: call.name, arguments: { ...call.arguments } }));
+    return { answer, elicited };
+  } finally {
+    await client.close();
+  }
+}

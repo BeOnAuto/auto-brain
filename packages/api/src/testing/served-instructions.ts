@@ -45,6 +45,8 @@ export const queriesInsideAPlaybook = [
 
 const discovering = ['list_models', 'search'];
 
+const connecting = ['add_connection', 'list_connections', 'get_connection', 'remove_connection'];
+
 export const orgEndpoint: ServedTools = {
   orgTools: [...managingPlaybooks, ...discovering, 'get_guide'],
   playbookTools: [],
@@ -79,8 +81,12 @@ export const recipes: readonly RecipeCalls[] = [
   { name: 'schedule', calls: ['list_definitions', 'create_definition', 'update_definition', 'list_runs', 'get_run'] },
 ];
 
+export function withConnections({ orgTools, playbookTools }: ServedTools): ServedTools {
+  return { orgTools: [...orgTools, ...connecting], playbookTools };
+}
+
 export const everyEndpoint: readonly (readonly [McpEndpoint, ServedTools])[] = [
-  ['org', orgEndpoint],
+  ['org', withConnections(orgEndpoint)],
   ['playbook', playbookEndpoint],
-  ['own org', ownOrg],
+  ['own org', withConnections(ownOrg)],
 ];

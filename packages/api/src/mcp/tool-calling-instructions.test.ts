@@ -4,17 +4,19 @@ import {
   playbookEndpoint,
   definitionTypes,
   everyEndpoint,
+  orgEndpoint,
   ownOrg,
   queriesInsideAPlaybook,
   recipes,
+  withConnections,
 } from '../testing/served-instructions.ts';
 import { instructionsFor } from './instructions.ts';
 
 describe('the length of the instructions with every tool', () => {
-  it('take 1,972 characters on /mcp, 1,577 on the org endpoint and 1,923 on the playbook endpoint', () => {
+  it('take 1,996 characters on /mcp, 1,644 on the org endpoint and 1,880 on the playbook endpoint', () => {
     expect(
       everyEndpoint.map(([endpoint, served]) => instructionsFor(endpoint, served, definitionTypes, recipes).length),
-    ).toEqual([1577, 1923, 1972]);
+    ).toEqual([1644, 1880, 1996]);
   });
 });
 
@@ -70,5 +72,19 @@ describe('what the instructions say of calling a tool, to a key that may only wr
     expect(instructionsFor('own org', writing, definitionTypes, [])).toContain(
       'may name tools that search finds; execute calls one and shows what it answers.',
     );
+  });
+});
+
+describe('the instructions of an endpoint that lists add_connection', () => {
+  const connectionSentence = 'To add a tool server, call add_connection; the person approves it.';
+
+  it('say what a connection is after the sentence on tools, and an endpoint that does not list it does not', () => {
+    const listing = instructionsFor('own org', withConnections(ownOrg), definitionTypes, recipes);
+
+    expect(listing).toContain(`and dry_run what it would check. ${connectionSentence} A run of a workflow`);
+    expect(instructionsFor('org', withConnections(orgEndpoint), definitionTypes, recipes)).toContain(
+      `may name tools that search finds. ${connectionSentence} When you tell`,
+    );
+    expect(instructionsFor('own org', ownOrg, definitionTypes, recipes)).not.toContain('add_connection');
   });
 });
