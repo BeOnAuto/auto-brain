@@ -71,6 +71,7 @@ export type { PortabilityIssue } from './schema/schema-portability.ts';
 export { ModelAliasesSchema } from './settings/alias-settings.ts';
 export { AllowedModelsSchema, DeclaredModelsSchema } from './settings/catalog-settings.ts';
 export { ModelGatewaysSchema } from './settings/gateway-settings.ts';
+export { modelVariables } from './settings/model-variables.ts';
 export { readModelSettings, ModelSettingsInvalid, type ModelSettings } from './settings/model-settings.ts';
 export {
   providerStatus,

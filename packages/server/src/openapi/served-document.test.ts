@@ -54,12 +54,13 @@ describe('the OpenAPI document of the server', () => {
     expect(unresolvedSchemasIn(document)).toEqual([]);
   });
 
-  it('describes the 34 operations of the catalog and the guides, under the tags of their resources', () => {
-    expect(operationsIn(document)).toHaveLength(35);
+  it('describes the 41 operations of the catalog and the guides, under the tags of their resources', () => {
+    expect(operationsIn(document)).toHaveLength(42);
     expect(Schema.decodeUnknownSync(TagsSchema)(document).tags.map(({ name }) => name)).toEqual([
       'playbooks',
       'models',
       'tool-servers',
+      'connections',
       'definitions',
       'runs',
       'analytics',
@@ -102,7 +103,7 @@ function shapeOf({ path, method, operation }: DocumentedOperation): readonly str
   ];
 }
 
-describe('the five tools over the tool servers in the document', () => {
+describe('the five operations over the tool servers in the document', () => {
   it('carry validate and dry_run by POST with a body, as queries a retired playbook still serves, and execute as a command', () => {
     const toolServers = operationsIn(document).filter(({ path }) => path.includes('/tool-servers/'));
 

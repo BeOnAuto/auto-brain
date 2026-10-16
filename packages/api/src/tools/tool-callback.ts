@@ -24,11 +24,13 @@ export interface CalledTool extends ToolWords {
   readonly operationInputOf: (input: Arguments) => Arguments;
 }
 
-interface ToolContext {
+export interface ToolContext {
   readonly mcpReq: {
     readonly id: string | number;
     readonly signal: AbortSignal;
     readonly _meta?: Readonly<Record<string, unknown>>;
+    readonly envelope?: Readonly<Record<string, unknown>>;
+    readonly requestState: () => unknown;
   };
 }
 

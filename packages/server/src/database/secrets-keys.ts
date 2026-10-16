@@ -1,7 +1,8 @@
-import { randomBytes } from 'node:crypto';
+import { hkdfSync, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 
+import type { RetryStateKeys } from '@on.auto/api';
 import { secretKeyBytes, type SecretKeys } from '@on.auto/ledger';
 import { Redacted } from 'effect';
 
@@ -49,6 +50,20 @@ function keyInFile(file: string): Redacted.Redacted<Uint8Array> {
 
 function keyMadeAtStart(): Redacted.Redacted<Uint8Array> {
   return Redacted.make(Uint8Array.from(randomBytes(secretKeyBytes)));
+}
+
+const retryStatePurpose = 'auto-runtime: the key that signs the state of a retry of an MCP tool';
+
+function retryStateKeyOf(key: Redacted.Redacted<Uint8Array>): Redacted.Redacted<Uint8Array> {
+  const derived = hkdfSync('sha256', Redacted.value(key), new Uint8Array(), retryStatePurpose, secretKeyBytes);
+  return Redacted.make(new Uint8Array(derived));
+}
+
+export function retryStateKeysOf({ current, previous }: SecretKeys): RetryStateKeys {
+  return {
+    current: retryStateKeyOf(current),
+    previous: previous === undefined ? undefined : retryStateKeyOf(previous),
+  };
 }
 
 export function secretsKeysOf(secrets: SecretsSettings): SecretKeys {

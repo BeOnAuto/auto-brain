@@ -113,17 +113,26 @@ function signalUrlOf(endpoint: string, signal: TelemetrySignal): string {
   return new URL(`${path}v1/${signal}`, base).href;
 }
 
+function signalVariablesOf(name: string) {
+  return {
+    exporter: `OTEL_${name}_EXPORTER`,
+    endpoint: `OTEL_EXPORTER_OTLP_${name}_ENDPOINT`,
+    protocol: `OTEL_EXPORTER_OTLP_${name}_PROTOCOL`,
+    headers: `OTEL_EXPORTER_OTLP_${name}_HEADERS`,
+  };
+}
+
 function signalExportIn(
   environment: Environment,
   signal: TelemetrySignal,
   shared: SharedExport,
 ): Effect.Effect<SignalExport | undefined, InvalidSettingsError> {
-  const name = signalNames[signal];
+  const variables = signalVariablesOf(signalNames[signal]);
   return Effect.gen(function* () {
-    const exported = yield* exportedIn(environment, `OTEL_${name}_EXPORTER`);
-    const own = yield* urlIn(environment, `OTEL_EXPORTER_OTLP_${name}_ENDPOINT`);
-    const protocol = yield* protocolIn(environment, `OTEL_EXPORTER_OTLP_${name}_PROTOCOL`, shared.protocol);
-    const headers = yield* nameValuesIn(environment, `OTEL_EXPORTER_OTLP_${name}_HEADERS`);
+    const exported = yield* exportedIn(environment, variables.exporter);
+    const own = yield* urlIn(environment, variables.endpoint);
+    const protocol = yield* protocolIn(environment, variables.protocol, shared.protocol);
+    const headers = yield* nameValuesIn(environment, variables.headers);
     const url = own ?? (shared.endpoint === undefined ? undefined : signalUrlOf(shared.endpoint, signal));
     return exported && url !== undefined
       ? { url, protocol, headers: Redacted.make({ ...shared.headers, ...headers }) }
@@ -172,6 +181,20 @@ const metricExportInterval = {
   most: 3_600_000,
   example: 60_000,
 };
+
+export const telemetryVariables: readonly string[] = [
+  ...Object.values(signalNames).flatMap((name) => Object.values(signalVariablesOf(name))),
+  'OTEL_EXPORTER_OTLP_ENDPOINT',
+  'OTEL_EXPORTER_OTLP_PROTOCOL',
+  'OTEL_EXPORTER_OTLP_HEADERS',
+  'OTEL_TRACES_SAMPLER',
+  'OTEL_TRACES_SAMPLER_ARG',
+  'OTEL_SDK_DISABLED',
+  'OTEL_RESOURCE_ATTRIBUTES',
+  metricExportInterval.setting,
+  'TELEMETRY_CONTENT',
+  'OTEL_SERVICE_NAME',
+];
 
 export function readTelemetrySettings(
   environment: Environment,

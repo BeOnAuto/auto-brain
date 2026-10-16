@@ -282,7 +282,7 @@ export function defineCapability<Parsed>(definition: CapabilityDeclaration<Parse
           const summary = summarize(parsed);
           return {
             summary,
-            overview: (name) => writtenOverview({ name, noun, summary, sections: overview?.(parsed, source) }),
+            overview: (name) => writtenOverview({ name, noun, summary, sections: overview?.(parsed, source, name) }),
             check: (saved) => Effect.suspend(() => check(parsed, source, saved)),
             run: (input, context) => run(parsed, input, context, stripped),
             whenCancelled,

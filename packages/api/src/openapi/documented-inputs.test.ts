@@ -62,7 +62,7 @@ function bodyFieldsOf({ operation }: DocumentedOperation): Fields {
 }
 
 function documentedFieldsOf(described: DocumentedOperation): Fields {
-  return described.method === 'get' ? queriedFieldsOf(described) : bodyFieldsOf(described);
+  return ['get', 'delete'].includes(described.method) ? queriedFieldsOf(described) : bodyFieldsOf(described);
 }
 
 function documentedOf({ scope, name }: RouteRegistration): readonly DocumentedOperation[] {

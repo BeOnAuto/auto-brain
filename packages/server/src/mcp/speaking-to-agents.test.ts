@@ -2,7 +2,7 @@ import { plainTextIn, type McpSession } from '@on.auto/api/testing';
 import { internalTermsIn } from '@on.auto/operations/testing';
 import { answers, jsonResult } from '@on.auto/reasoning/testing';
 import { Schema } from 'effect';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   descriptionIn,
@@ -12,7 +12,7 @@ import {
   type MeetingsServer,
   type Surfaces,
 } from '../testing/servers/meetings-server.ts';
-import { recallTestTimeoutMs } from '../testing/servers/recall-server.ts';
+import { liveOverMcp } from '../testing/servers/recall-server.ts';
 
 let meetings: MeetingsServer;
 
@@ -82,7 +82,7 @@ describe('episode 3: asked to use Slack', () => {
     const listed = await onMcp((session) => session.callTool('search', { playbook: 'meetings' }));
 
     expect(sentenceNaming(surfaces.instructions, 'search finds')).toBe(
-      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
+      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows its answer, and dry_run what it would check.',
     );
     expect(plainTextIn(listed)).toMatch(/^This playbook's functions may use 2 tool servers\. /u);
     expect(plainTextIn(listed)).toContain('“slack” offers');
@@ -123,17 +123,6 @@ const rememberingWhatWasPosted = [
 
 const inPosts = { playbook: 'posts' };
 
-function standingOf(session: McpSession): Promise<unknown> {
-  return vi.waitFor(
-    async () => {
-      const read = await session.callTool('get_definition', { ...inPosts, type: 'recall', name: 'posted' });
-      expect(read.structuredContent).toMatchObject({ standing: { state: 'live', folded: 1 } });
-      return read.structuredContent;
-    },
-    { timeout: recallTestTimeoutMs - 10_000, interval: 50 },
-  );
-}
-
 async function rememberedOverMcp(session: McpSession) {
   await session.callTool('create_playbook', { ...inPosts, name: 'Posts' });
   await session.callTool('create_definition', {
@@ -154,7 +143,7 @@ async function rememberedOverMcp(session: McpSession) {
     name: 'posted',
     source: rememberingWhatWasPosted,
   });
-  await standingOf(session);
+  await liveOverMcp(session, { ...inPosts, name: 'posted' }, 1);
   return session.callTool('run_definition', { ...inPosts, type: 'recall', name: 'posted' });
 }
 
@@ -164,7 +153,7 @@ describe('episode 4: asked to make the playbook remember what it posted today', 
       await onMcp((session) => session.getPrompt('remember', { what: 'what it posted today' })),
     );
 
-    expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain('excluding run inputs and tool calls.');
+    expect(sentenceNaming(surfaces.instructions, 'Recall retrieves')).toContain('never run inputs or tool calls.');
     expect(String(prompt.messages[0]?.content.text)).toContain(
       'a function whose job is to post must answer what it posted.',
     );
@@ -259,7 +248,7 @@ describe('episode 8: asked what a gateway-style tool server offers, and then to 
     const seen = await onMcp(lookedAtOverMcp);
 
     expect(sentenceNaming(surfaces.instructions, 'search finds', 'execute')).toBe(
-      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows what it answers, and dry_run what it would check.',
+      'A reasoning function names a model that list_models lists and may name tools that search finds; execute calls one and shows its answer, and dry_run what it would check.',
     );
     expect(seen.found.structuredContent).toMatchObject({
       servers: [{ name: 'slack' }],

@@ -3,15 +3,22 @@ import { dirname } from 'node:path';
 import type { Environment, FileUse } from '@on.auto/config';
 import {
   defaultMostInputTokens,
+  modelVariables,
   ModelSettingsInvalid,
   providerStatus,
   readModelSettings,
   type ModelSettings,
   type SettingProblem,
 } from '@on.auto/reasoning';
-import { ToolServerSettingsInvalid, readToolServerSettings, type ToolServerSettings } from '@on.auto/tool-servers';
+import {
+  ToolServerSettingsInvalid,
+  readToolServerSettings,
+  toolServersSetting,
+  type ToolServerSettings,
+} from '@on.auto/tool-servers';
 import { Effect } from 'effect';
 
+import { problemsListed } from '../config-file/placed-problems.ts';
 import { countsIn } from './counted-settings.ts';
 
 interface ReasoningBounds {
@@ -33,31 +40,33 @@ const bounds = {
   },
 };
 
+export const reasoningVariables: readonly string[] = [
+  ...Object.values(bounds).map(({ setting }: { readonly setting: string }) => setting),
+  ...modelVariables,
+  toolServersSetting,
+];
+
 interface Problems {
   readonly problems: readonly SettingProblem[];
 }
 
-function listedIn({ problems }: Problems, file: FileUse | undefined): string {
-  const listed = problems.map(({ setting, detail }) =>
-    file !== undefined && file.fromFile.includes(setting) ? file.placed(setting, detail) : `${setting}: ${detail}`,
-  );
-  return listed.join('; ');
-}
-
 function modelsPlaced(invalid: Problems, file: FileUse | undefined): ModelSettingsInvalid {
   const { problems } = invalid;
-  return new ModelSettingsInvalid({ message: `The model settings are invalid. ${listedIn(invalid, file)}`, problems });
+  return new ModelSettingsInvalid({
+    message: `The model settings are invalid. ${problemsListed(problems, file)}`,
+    problems,
+  });
 }
 
 function serversPlaced(invalid: Problems, file: FileUse | undefined): ToolServerSettingsInvalid {
   const { problems } = invalid;
   return new ToolServerSettingsInvalid({
-    message: `The tool server settings are invalid. ${listedIn(invalid, file)}`,
+    message: `The tool server settings are invalid. ${problemsListed(problems, file)}`,
     problems,
   });
 }
 
-function modelProvidersOf(models: ModelSettings): readonly string[] {
+export function modelProvidersOf(models: ModelSettings): readonly string[] {
   const { configured, unconfigured } = providerStatus(models, { entraId: false });
   return [...configured, ...unconfigured.map(({ provider }) => provider)];
 }

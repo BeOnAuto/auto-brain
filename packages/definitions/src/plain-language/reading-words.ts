@@ -1,4 +1,4 @@
-import { counted, listed, plainNumber, quoted, type Noun, type RecordedOrder } from '@on.auto/operations';
+import { counted, listed, plainNumber, quoted, type Noun } from '@on.auto/operations';
 
 import type { RunStatus } from '../reading/run-status.ts';
 import type { DefinitionWords } from './definition-words.ts';
@@ -18,31 +18,18 @@ interface ListedRuns extends Page {
   readonly runs: readonly { readonly status: RunStatus }[];
 }
 
-interface History extends Page {
-  readonly events: readonly unknown[];
-}
-
-interface HistoryRequest {
-  readonly order?: RecordedOrder;
-  readonly cursor?: string;
-}
-
 const runNoun: Noun = { one: 'run', other: 'runs' };
-
-const eventNoun: Noun = { one: 'event', other: 'events' };
 
 const moreRemain = ' More remain after these.';
 
-export const endingsInWords: Readonly<Record<RunStatus, string>> = {
+const endingsInWords: Readonly<Record<RunStatus, string>> = {
   started: 'still running',
   succeeded: 'finished',
   rejected: 'did not go through',
   failed: 'broke down',
 };
 
-const orderInWords: Readonly<Record<RecordedOrder, string>> = { asc: 'oldest first', desc: 'newest first' };
-
-export function runsOfWhat(words: DefinitionWords, { type, name }: RunFilters): string {
+function runsOfWhat(words: DefinitionWords, { type, name }: RunFilters): string {
   if (type === undefined) {
     return name === undefined ? '' : ` of anything named ${quoted(name)}`;
   }
@@ -85,18 +72,4 @@ export function runsListed(words: DefinitionWords, page: ListedRuns, filters: Ru
   }
   const endings = filters.status === undefined ? howTheyEnded(runs) : '';
   return `Listed ${counted(runs.length, runNoun)}${described}, newest first${endings}.${hasMore ? moreRemain : ''}`;
-}
-
-export function historyFound(
-  { events, has_more: hasMore }: History,
-  { order = 'asc', cursor }: HistoryRequest,
-): string {
-  if (events.length > 0) {
-    const found = `Found ${counted(events.length, eventNoun)} in the history of the run, ${orderInWords[order]}, each with its fact and its metadata.`;
-    return `${found}${hasMore ? moreRemain : ''}`;
-  }
-  if (hasMore) {
-    return 'This page shows nothing of the run, but there is more of its history to read.';
-  }
-  return cursor === undefined ? 'The run has nothing to show yet.' : 'There is nothing more to show of the run.';
 }

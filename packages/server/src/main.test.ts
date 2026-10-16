@@ -244,13 +244,13 @@ describe('main over MCP', () => {
       { url: `http://127.0.0.1:${port}/orgs/demo/mcp`, headers: {} },
       async (session) => {
         await session.callTool('create_playbook', { playbook: 'support', name: 'Support' });
-        return session.callTool('get_playbook', { playbook: 'support' });
+        return session.callTool('list_playbooks', {});
       },
     );
     child.signal('SIGTERM');
 
     expect({ playbook: playbook.structuredContent, exitCode: await child.exited }).toMatchObject({
-      playbook: { id: 'support', name: 'Support', created_by: 'local' },
+      playbook: { playbooks: [{ id: 'support', name: 'Support', created_by: 'local' }] },
       exitCode: 0,
     });
     expect(child.output().stdout).toBe(`Auto Runtime listening on port ${port}\n`);

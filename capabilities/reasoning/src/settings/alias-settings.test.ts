@@ -10,7 +10,7 @@ async function problemsOf(aliases: Readonly<Record<string, string>>): Promise<re
 }
 
 function aliasProblem(alias: string, detail: string): SettingProblem {
-  return { setting: 'MODEL_ALIASES', detail: `/${alias.replaceAll('/', '~1')}: ${detail}` };
+  return { setting: 'MODEL_ALIASES', pointer: `/${alias.replaceAll('/', '~1')}`, detail };
 }
 
 const misplaced = 'A * stands once, at the end of both an alias and its target';
@@ -43,7 +43,7 @@ describe('a wildcard alias in MODEL_ALIASES', () => {
 
   it('is rejected when a side is not provider/ followed by the *', async () => {
     expect(await problemsOf({ '*': 'gateway/*', 'anthropic*': 'gateway/*' })).toEqual([
-      { setting: 'MODEL_ALIASES', detail: '/*: An alias and its target are each written provider/model' },
+      { setting: 'MODEL_ALIASES', pointer: '/*', detail: 'An alias and its target are each written provider/model' },
       aliasProblem('anthropic*', 'An alias and its target are each written provider/model'),
     ]);
   });

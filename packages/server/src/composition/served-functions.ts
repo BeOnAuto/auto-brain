@@ -17,7 +17,7 @@ import { toolUsersServedBy } from './served-tools.ts';
 type LedgerDatabase = Parameters<FunctionWiring['projections']['served']>[1]['database'];
 
 export interface ServedFunctions {
-  readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows' | 'identityIssuer'>;
+  readonly parts: Omit<WorkflowParts, 'ledger' | 'workflows' | 'identityIssuer' | 'retryStateKeys'>;
   readonly closing: ServedPredictionFunctions['withProcessesClosed'];
 }
 
@@ -47,8 +47,11 @@ export async function functionsServedBy(
       facts,
       names,
       orgOperations: [...playbookOperations, reasoning.listModels, ...toolOperations.inOrg],
-      playbookOperations: [...toolOperations.inPlaybook, ...interaction.operationsFor(capabilities)],
-      playbookRoutes: prediction.routes,
+      playbookOperations: [
+        ...toolOperations.inPlaybook,
+        ...interaction.operationsFor(capabilities),
+        ...prediction.routes,
+      ],
       dueWork: [...interaction.dueWorkOf(record), prediction.dueWorkFor(capabilities)],
       store: projections.store,
       projector: projections.projector,

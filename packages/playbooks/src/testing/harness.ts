@@ -8,6 +8,8 @@ import {
   type OrgRequest,
   type Outcome,
   type Registration,
+  type Runnable,
+  type Succeeded,
 } from '@on.auto/operations';
 import {
   memoryPlaybookRegistry,
@@ -28,6 +30,15 @@ interface PlaybookOperation {
   readonly registration: Registration<'playbook'>;
 }
 
+interface OrgRoute {
+  readonly registration: Runnable<'org'>;
+}
+
+interface Calling {
+  (operation: OrgOperation, request: OrgRequest, at?: string): Promise<Outcome>;
+  (operation: OrgRoute, request: OrgRequest, at?: string): Promise<Outcome<Succeeded>>;
+}
+
 export interface Harness {
   readonly ledger: MemoryLedger;
   readonly dispatch: (
@@ -35,7 +46,7 @@ export interface Harness {
     request: OrgRequest,
   ) => Effect.Effect<Outcome, never, DispatcherServices>;
   readonly run: <A>(calls: Effect.Effect<A, never, DispatcherServices>, at?: string) => Promise<A>;
-  readonly call: (operation: OrgOperation, request: OrgRequest, at?: string) => Promise<Outcome>;
+  readonly call: Calling;
   readonly callInPlaybook: (operation: PlaybookOperation, request: PlaybookRequest, at?: string) => Promise<Outcome>;
 }
 
@@ -59,11 +70,16 @@ export function harness(
         Effect.provide(services),
       ),
     );
+  function call(operation: OrgOperation, request: OrgRequest, at?: string): Promise<Outcome>;
+  function call(operation: OrgRoute, request: OrgRequest, at?: string): Promise<Outcome<Succeeded>>;
+  function call(operation: OrgRoute, request: OrgRequest, at?: string): Promise<Outcome<Succeeded>> {
+    return run(dispatcher.dispatchToOrg(operation.registration, request), at);
+  }
   return {
     ledger,
     dispatch,
     run,
-    call: (operation, request, at) => run(dispatch(operation, request), at),
+    call,
     callInPlaybook: (operation, request, at) => run(dispatcher.dispatchToPlaybook(operation.registration, request), at),
   };
 }

@@ -2,7 +2,7 @@
 
 # Recall function format
 
-A recall function keeps a view: a JSON value that its module folds from the playbook's events, one event at a time. The fold starts from the first event of the playbook's history. A run returns what the view holds as it stands. So the playbook can tell what it decided before, such as the reviews of each campaign, the latest verdict per region or the refusals of a quarter. The API stores a recall function as a definition of the type `recall`.
+A recall function keeps a view: a JSON value that its module folds from the playbook's events, one event at a time. The fold starts from the first event of the playbook's history. A run returns what the view holds as it stands. So the playbook can tell what it decided before, such as the reviews of each campaign, the latest verdict per region or the refusals of a quarter. A recall function is the playbook's memory: what a person wants kept so that the playbook can be asked about it again, shared by everyone who asks the playbook and by its workflows, and distinct from whatever notes an agent keeps for itself. The API stores a recall function as a definition of the type `recall`.
 
 The view depends on the playbook's events alone:
 
@@ -219,7 +219,7 @@ A recall function folds the events of its own playbook, in the order the playboo
 
 | What                    | The events a fold sees                                                                                         | The playbook's history                                                                                                                        |
 | ----------------------- | -------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- |
-| Who reads them          | A recall function's fold, and also a workflow's event triggers and `listen` filters and a prediction's dataset | A person or an agent, with `get_run_history`, `list_playbook_events` and `get_event`                                                          |
+| Who reads them          | A recall function's fold, and also a workflow's event triggers and `listen` filters and a prediction's dataset | A person or an agent, with `list_playbook_events` and `get_event`                                                                             |
 | What they hold          | The facts in the table below, and the events published to the playbook or emitted by its workflows             | Everything recorded: those facts and events, each run's input on its `run_started`, tool calls, workflow steps, requests, answers, deliveries |
 | The shape of each event | A CloudEvent, with the attributes below                                                                        | `id`, `type`, `summary`, `data` and `metadata`                                                                                                |
 

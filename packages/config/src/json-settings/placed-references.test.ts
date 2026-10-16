@@ -24,8 +24,8 @@ describe('the references of an entry', () => {
 
   it('are refused in every field but those that hold secrets, at their places', () => {
     expect(misplacedReferences(placement, references)).toEqual([
-      { setting: 'EXAMPLE_ENDPOINTS', detail: `/partner/url: ${placement.misplaced}` },
-      { setting: 'EXAMPLE_ENDPOINTS', detail: `/partner/fallback: ${placement.misplaced}` },
+      { setting: 'EXAMPLE_ENDPOINTS', pointer: '/partner/url', detail: placement.misplaced },
+      { setting: 'EXAMPLE_ENDPOINTS', pointer: '/partner/fallback', detail: placement.misplaced },
     ]);
   });
 

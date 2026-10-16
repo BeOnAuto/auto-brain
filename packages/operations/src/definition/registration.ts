@@ -2,7 +2,7 @@ import type { OperationKind, OperationScope } from '../caller/operation-scope.ts
 import type { Permission } from '../caller/permission.ts';
 import type { Answered, Succeeded } from '../outcome/outcome.ts';
 import type { DeclarableReason } from '../outcome/rejection.ts';
-import type { RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
+import type { LinkToOpen, RegisteredPlainLanguage } from '../plain-language/plain-language.ts';
 import type { HttpBody, StreamAnswer, SuccessStatusByKind } from './definition.ts';
 import type { HandlerServices } from './handler-services.ts';
 import type { JsonSchemaDocument } from './json-schema.ts';
@@ -27,6 +27,7 @@ export interface RegisteredFieldsOf<S extends OperationScope, K extends Operatio
   readonly reasons: readonly DeclarableReason[];
   readonly input: JsonSchemaDocument;
   readonly plainLanguage?: RegisteredPlainLanguage;
+  readonly linkToOpen?: (output: unknown) => LinkToOpen;
 }
 
 interface RunnableOf<S extends OperationScope, K extends OperationKind, A extends Succeeded> extends RegisteredFieldsOf<

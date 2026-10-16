@@ -1,11 +1,11 @@
 import type { Environment, FileUse } from '@on.auto/config';
 import { Effect } from 'effect';
 
-import { readComputationSettings, type ComputationSettings } from './computation-settings.ts';
-import { readInteractionSettings, type InteractionSettings } from './interaction-settings.ts';
-import { readPredictionSettings, type PredictionSettings } from './prediction-settings.ts';
-import { readReasoningSettings, type ReasoningSettings } from './reasoning-settings.ts';
-import { readRecallSettings, type RecallSettings } from './recall-settings.ts';
+import { computationVariables, readComputationSettings, type ComputationSettings } from './computation-settings.ts';
+import { interactionVariables, readInteractionSettings, type InteractionSettings } from './interaction-settings.ts';
+import { predictionVariables, readPredictionSettings, type PredictionSettings } from './prediction-settings.ts';
+import { readReasoningSettings, reasoningVariables, type ReasoningSettings } from './reasoning-settings.ts';
+import { readRecallSettings, recallVariables, type RecallSettings } from './recall-settings.ts';
 
 export interface FunctionSettings extends ReasoningSettings {
   readonly computation: ComputationSettings;
@@ -13,6 +13,14 @@ export interface FunctionSettings extends ReasoningSettings {
   readonly interaction: InteractionSettings;
   readonly prediction: PredictionSettings;
 }
+
+export const functionVariables: readonly string[] = [
+  ...reasoningVariables,
+  ...computationVariables,
+  ...recallVariables,
+  ...interactionVariables,
+  ...predictionVariables,
+];
 
 export function readFunctionSettings(environment: Environment, file: FileUse | undefined): FunctionSettings {
   const { models, toolServers, reasoning } = readReasoningSettings(environment, file);

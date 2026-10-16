@@ -10,6 +10,8 @@ export interface InteractionSettings {
 
 const mostOpenRequests = { setting: 'INTERACTION_OPEN_REQUESTS', least: 1, most: 1_000_000, example: 10_000 };
 
+export const interactionVariables: readonly string[] = [mostOpenRequests.setting];
+
 export function readInteractionSettings(
   environment: Environment,
 ): Effect.Effect<InteractionSettings, InvalidSettingsError> {

@@ -32,10 +32,15 @@ export async function toolServerToolsCalled(
 ): Promise<readonly (readonly [string, ToolResult])[]> {
   const asked = { server: 'graph', tool: 'search' };
   const searchedFor = { ...asked, arguments: { query: 'acme' } };
+  const crm = { name: 'crm', kind: 'mcp', entry: { url: 'https://crm.example.com/mcp' }, credential: { kind: 'none' } };
+  const added = await session.callTool('add_connection', crm);
+  const id = String(added.structuredContent?.['id']);
   return [
+    ['add_connection', added],
+    ['list_connections', await session.callTool('list_connections', {})],
+    ['remove_connection', await session.callTool('remove_connection', { id })],
     ['search', await session.callTool('search', inPlaybook({ terms: 'rows' }))],
     ['introspect', await session.callTool('introspect', inPlaybook(asked))],
-    ['validate', await session.callTool('validate', inPlaybook(searchedFor))],
     ['dry_run', await session.callTool('dry_run', inPlaybook(searchedFor))],
     ['execute', await session.callTool('execute', inPlaybook(searchedFor))],
   ];

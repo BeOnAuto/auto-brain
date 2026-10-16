@@ -2,7 +2,7 @@ import { decodedJsonSettingWith, strictly } from '@on.auto/config';
 import { JsonPointer, Result, Schema } from 'effect';
 
 import { aliasPatternOf, namesModels, patternsOverlap, wildcardsAreTrailing } from '../model/model-alias.ts';
-import { problem, type SettingProblem } from './setting-values.ts';
+import { problemAt, type SettingProblem } from './setting-values.ts';
 
 export interface AliasReading {
   readonly problems: readonly SettingProblem[];
@@ -19,14 +19,19 @@ const decodeAliases = Schema.decodeUnknownResult(ModelAliasesSchema, strictly);
 
 function referenceProblems(alias: string, target: string): readonly SettingProblem[] {
   if (!wildcardsAreTrailing(alias, target)) {
-    return problem(
+    return problemAt(
       setting,
-      `/${JsonPointer.escapeToken(alias)}: A * stands once, at the end of both an alias and its target`,
+      `/${JsonPointer.escapeToken(alias)}`,
+      `A * stands once, at the end of both an alias and its target`,
     );
   }
   const malformed = [alias, target].some((reference) => !namesModels(reference));
   return malformed
-    ? problem(setting, `/${JsonPointer.escapeToken(alias)}: An alias and its target are each written provider/model`)
+    ? problemAt(
+        setting,
+        `/${JsonPointer.escapeToken(alias)}`,
+        `An alias and its target are each written provider/model`,
+      )
     : [];
 }
 
@@ -35,9 +40,10 @@ function hopProblems(alias: string, target: string, aliases: Aliases): readonly 
     patternsOverlap(aliasPatternOf(target), aliasPatternOf(other)),
   );
   return resolvedAgain
-    ? problem(
+    ? problemAt(
         setting,
-        `/${JsonPointer.escapeToken(alias)}: The target is itself an alias; an alias resolves in one hop`,
+        `/${JsonPointer.escapeToken(alias)}`,
+        `The target is itself an alias; an alias resolves in one hop`,
       )
     : [];
 }

@@ -42,7 +42,7 @@ describe('a preflight request from an allowed origin', () => {
       vary: answer.headers.get('vary'),
     }).toEqual({
       allowOrigin: allowed,
-      allowMethods: 'GET, HEAD, POST, PUT',
+      allowMethods: 'GET, HEAD, POST, PUT, DELETE',
       allowHeaders: 'authorization, content-type, traceparent, tracestate, baggage',
       maxAge: '600',
       allowCredentials: null,

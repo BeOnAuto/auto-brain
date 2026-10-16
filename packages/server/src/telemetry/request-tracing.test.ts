@@ -1,7 +1,9 @@
 import { INVALID_SPAN_CONTEXT, trace } from '@opentelemetry/api';
 import { describe, expect, it, onTestFinished } from 'vitest';
 
+import { compositionRoot } from '../composition/composition-root.ts';
 import { defaultServerOptions, startServer, type RunningServer } from '../lifecycle/lifecycle.ts';
+import { temporaryLedger } from '../testing/records/temporary-ledger.ts';
 import { metricNamesIn, spansIn } from '../testing/telemetry/otlp-exports.ts';
 import { receivingOtlp, type OtlpReceiver } from '../testing/telemetry/otlp-receiver.ts';
 import { tracedRequestOf } from './request-tracing.ts';
@@ -67,6 +69,43 @@ describe('a request to a server with telemetry', () => {
 
     expect(answer.headers.get('x-trace-id')).toBeNull();
     expect(spansIn(receiver.received())).toEqual([]);
+  });
+});
+
+describe('a request that reads a link', () => {
+  it('is a span of the route read_link answers, whose URL masks the token of the link and carries it nowhere', async () => {
+    const ledger = temporaryLedger();
+    onTestFinished(ledger.remove);
+    const receiver = await receivingOtlp();
+    onTestFinished(receiver.close);
+    const server = await startServer(
+      {
+        HOST: '127.0.0.1',
+        PORT: '0',
+        LEDGER_FILE: ledger.fileName,
+        PREDICTION_CACHE_DIR: ledger.cacheDirectory,
+        OTEL_EXPORTER_OTLP_ENDPOINT: receiver.endpoint,
+        OTEL_EXPORTER_OTLP_PROTOCOL: 'http/json',
+      },
+      compositionRoot,
+    );
+    const token = 'kQ2_x-9fLm3WbP7rTz0aYc5vNd8eHu1oJs4iGq6lXwE';
+    const link = `/v1/orgs/local/connections/0199f0e0-0000-7000-8000-000000000000/link`;
+
+    const answer = await fetch(`http://127.0.0.1:${server.port}${link}/${token}`);
+    await server.stop();
+    const spans = spansIn(receiver.received());
+
+    expect(answer.status).toBe(404);
+    expect(spans.filter(({ kind }) => kind === 2)).toMatchObject([
+      {
+        attributes: {
+          'http.route': '/v1/orgs/:org/connections/:id/link/:token',
+          'url.full': `http://127.0.0.1:${server.port}${link}/REDACTED`,
+        },
+      },
+    ]);
+    expect(JSON.stringify(spans)).not.toContain(token);
   });
 });
 

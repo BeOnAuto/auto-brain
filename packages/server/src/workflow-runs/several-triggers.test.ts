@@ -109,7 +109,9 @@ async function triggeredThreeTimes(): Promise<Seen> {
   const newest = runs.runs[0]?.run_id ?? '';
   const overMcp = await withMcpSession('current revision', mcp, async (session) => ({
     listed: listedIn((await session.callTool('list_definitions', { type: 'workflow' })).structuredContent),
-    history: historyIn((await session.callTool('get_run_history', { run_id: newest })).structuredContent),
+    history: historyIn(
+      (await session.callTool('list_playbook_events', { run_id: newest, order: 'asc' })).structuredContent,
+    ),
   }));
   return {
     runs,
