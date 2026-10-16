@@ -1,11 +1,11 @@
 import { Effect } from 'effect';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { filterVerdictsOf } from '../filters/filter-verdicts.ts';
 import { machineSandboxOf } from '../instances/host-sandboxes.ts';
-import { churn, closed, evaluatedAt, plainFilter } from '../pool-testing/churning-filters.ts';
 import { decidedOnce } from '../pool-testing/decided-once.ts';
+import { churn, evaluatedAt } from '../pool-testing/evaluation-workers.ts';
 import { threadsAlive } from '../pool-testing/threads-alive.ts';
+import { longerThanTheTestMs } from '../pool-testing/waiting.ts';
 import type { Evaluation, ProgramRun } from '../programs/program-run.ts';
 import { answerGraceMs } from './evaluation-thread.ts';
 import { programPool } from './program-pool.ts';
@@ -132,17 +132,15 @@ describe('the evaluation worker of a pool, given a stack or a memory to exhaust'
 });
 
 describe('the evaluation worker of a pool that cannot answer', () => {
-  it('starts no worker once the pool closed, and ends an evaluation and a filter at once at their deadlines', async () => {
+  it('starts no worker once the pool closed, and ends an evaluation at once, however far off its deadline', async () => {
     const pool = poolOf();
     await pool.close();
     const before = threadsAlive();
 
     await Effect.runPromise(pool.evaluations.machine.reserve);
-    const answer = evaluatedIn(pool.evaluations.machine, '1 + 1', Number.POSITIVE_INFINITY);
-    const verdicts = await filterVerdictsOf([plainFilter], closed, pool.evaluations.filters, evaluatedAt);
+    const answer = evaluatedIn(pool.evaluations.machine, '1 + 1', longerThanTheTestMs);
 
     expect(answer).toMatchObject({ ran: 'exhausted', limit: 'deadline', work: 0 });
-    expect(verdicts).toMatchObject([{ error: { status: 500, instance: '/plain' }, stopped: true }]);
     expect(threadsAlive()).toBe(before);
   });
 

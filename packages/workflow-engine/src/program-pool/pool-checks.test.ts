@@ -1,11 +1,11 @@
 import { Schema } from 'effect';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 
 import type { CheckOutcome, CheckRequest, PoolOutcome, PoolSettings, ProgramPool } from '../jobs/pool-contract.ts';
 import { brokenAtStart, checking, checkingForever, checkingReadyAfter } from '../pool-testing/checking-workers.ts';
 import { counting } from '../pool-testing/counting-workers.ts';
 import { nextThreadStarted, threadEnded } from '../pool-testing/threads-alive.ts';
-import { isWatched, longerThanTheTestMs, patiently, until } from '../pool-testing/waiting.ts';
+import { isWatched, longerThanTheTestMs, until } from '../pool-testing/waiting.ts';
 import { unitMemoryBytes, workerStackBytes } from '../programs/sandbox-bounds.ts';
 import { checkPermits, mostCheckStartMs, programPool } from './program-pool.ts';
 
@@ -67,14 +67,6 @@ async function threadCounting(pool: ProgramPool): Promise<number> {
   return decodeRan(outcome.ran === 'answered' ? outcome.output : {}).thread;
 }
 
-function checkedOnceReady(pool: ProgramPool, worker: Readonly<URL>): Promise<CheckOutcome> {
-  return vi.waitFor(async () => {
-    const outcome = await pool.check(checkOf({ worker }));
-    expect(outcome.ran).toBe('checked');
-    return outcome;
-  }, patiently);
-}
-
 describe('the permit of the checks of a pool', () => {
   it('runs on a permit of its own, so it never waits behind the runs that take every worker', async () => {
     const pool = poolOf({ workers: 2 });
@@ -126,17 +118,17 @@ describe('the worker of the checks of a pool, while it starts', () => {
     const starting = nextThreadStarted();
 
     const early = await pool.check(checkOf({ worker }));
+    const started = await starting;
     const cancelling = new AbortController();
     const cancelled = pool.check(checkOf({ worker }), cancelling.signal);
     await until(() => isWatched(cancelling.signal));
     cancelling.abort();
-    const first = await checkedOnceReady(pool, worker);
+    await until(async () => threadOf(await pool.check(checkOf({ worker }))) === started);
     const second = await pool.check(checkOf({ worker }));
-    const started = await starting;
 
     expect(early).toMatchObject({ ran: 'stopped', because: 'busy' });
     expect(await cancelled).toMatchObject({ ran: 'stopped', because: 'cancelled' });
-    expect([threadOf(first), threadOf(second)]).toEqual([started, started]);
+    expect(threadOf(second)).toBe(started);
   });
 
   it('ends a check closing when the pool closes while its worker starts, and crashed when the worker ends before it is ready', async () => {

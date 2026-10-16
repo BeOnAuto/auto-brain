@@ -5,10 +5,25 @@ import { Schema } from 'effect';
 import { answerGraceMs } from '../program-pool/evaluation-thread.ts';
 import { nextThreadStarted } from './threads-alive.ts';
 
-export interface Replaced<Answer> {
+export interface Replacement<Answer> {
   readonly answer: Answer;
-  readonly replacedAfterMs: number | undefined;
+  readonly replacedByTheDeadline: boolean;
+  readonly replacedBeforeTheDeadline: boolean;
 }
+
+export const evaluatedAt = Date.parse('2026-10-01T09:00:00.000Z');
+
+export const churn =
+  '(() => { const big = "x".repeat(4194304); let total = 0; for (let round = 0; round < 1000000; round += 1) { total += JSON.stringify([big, round]).length; } return total > 0; })()';
+
+export const closed = { type: 'com.acme.closed', data: { region: 'eu' } };
+
+export const churningFilter = { reference: '/churn', attributes: { type: 'com.acme.closed', data: `\${ ${churn} }` } };
+
+export const plainFilter = {
+  reference: '/plain',
+  attributes: { type: 'com.acme.closed', data: '${ $data.region == "eu" }' },
+};
 
 const asked = 'the requests evaluation workers are asked';
 
@@ -41,23 +56,27 @@ function nextAsked(kind: string): Promise<void> {
   return promise;
 }
 
-export async function replacedByTheDeadlineOf<Answer>(
+export async function replacementOf<Answer>(
   kind: string,
   deadlineMs: number,
   work: () => Promise<Answer>,
-): Promise<Replaced<Answer>> {
+): Promise<Replacement<Answer>> {
   const started = performance.now();
-  const replaced: { afterMs?: number } = {};
+  const replacedAfterMs: number[] = [];
   const replacing = nextThreadStarted().then((thread) => {
-    replaced.afterMs = performance.now() - started;
+    replacedAfterMs.push(performance.now() - started);
     return thread;
   });
   const asking = nextAsked(kind);
   const working = work();
   await asking;
   await delay(deadlineMs + answerGraceMs + 1);
-  const replacedAfterMs = replaced.afterMs;
+  const byTheDeadline = [...replacedAfterMs];
   const answer = await working;
   await replacing;
-  return { answer, replacedAfterMs };
+  return {
+    answer,
+    replacedByTheDeadline: byTheDeadline.length > 0,
+    replacedBeforeTheDeadline: byTheDeadline.some((afterMs) => afterMs <= deadlineMs),
+  };
 }

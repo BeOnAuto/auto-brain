@@ -96,19 +96,20 @@ describe('the processes of a pool and its permits', () => {
     const pool = poolOf({ processes: 3, longJobs: 2 });
     const settled = { long: false };
     const long = Promise.all([
-      run(pool, 'sleep', { key: 'a', long: true, payload: 5000 }),
-      run(pool, 'sleep', { key: 'b', long: true, payload: 5000 }),
+      run(pool, 'begin and wait', { key: 'a', long: true, deadlineMs: longerThanTheTestMs }),
+      run(pool, 'begin and wait', { key: 'b', long: true, deadlineMs: longerThanTheTestMs }),
     ]).then((outcomes: readonly ProcessOutcome[]) => {
       settled.long = true;
       return outcomes;
     });
 
     const thirdLong = await run(pool, 'echo', { key: 'c', long: true, deadlineMs: 300 });
-    const short = await run(pool, 'echo', { key: 'd', deadlineMs: 4000 });
+    const short = await run(pool, 'echo', { key: 'd', deadlineMs: longerThanTheTestMs });
     const whileTheLongRan = !settled.long;
-    await long;
+    await pool.close();
 
     expect([thirdLong.ended, short.ended, whileTheLongRan]).toEqual(['busy', 'answered', true]);
+    expect((await long).map(({ ended }) => ended)).toEqual(['closing', 'closing']);
   });
 });
 

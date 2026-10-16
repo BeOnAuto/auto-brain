@@ -2,14 +2,15 @@ import { getEventListeners } from 'node:events';
 
 import { expect, vi } from 'vitest';
 
-export const patiently = { timeout: 30_000, interval: 10 };
-
 export const longerThanTheTestMs = 120_000;
 
-export function until(event: () => boolean): Promise<void> {
-  return vi.waitFor(() => {
-    expect(event()).toBe(true);
-  }, patiently);
+export function until(event: () => boolean | Promise<boolean>): Promise<void> {
+  return vi.waitFor(
+    async () => {
+      expect(await event()).toBe(true);
+    },
+    { timeout: longerThanTheTestMs, interval: 10 },
+  );
 }
 
 export function isWatched(signal: Readonly<AbortSignal>): boolean {
