@@ -12,7 +12,7 @@ import {
   predictionFunctionsServedBy,
   type ServedPredictionFunctions,
 } from './served-prediction-functions.ts';
-import { toolUsersServedBy } from './served-tools.ts';
+import { toolUsersServedBy, type ToolUsersWiring } from './served-tools.ts';
 
 type LedgerDatabase = Parameters<FunctionWiring['projections']['served']>[1]['database'];
 
@@ -25,7 +25,7 @@ export async function functionsServedBy(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
   database: LedgerDatabase,
-  { programPoolOf, projections: wiring, ...tools }: FunctionWiring,
+  { programPoolOf, projections: wiring, ...tools }: FunctionWiring & Pick<ToolUsersWiring, 'connections'>,
 ): Promise<ServedFunctions> {
   const { reasoning, interaction, toolOperations, withToolsClosed } = await toolUsersServedBy(runtime, settings, tools);
   const computation = await computationServedBy(settings.computation, programPoolOf);

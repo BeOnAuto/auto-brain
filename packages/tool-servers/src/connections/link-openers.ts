@@ -48,6 +48,10 @@ function tokensOf({ server, auth, serverUrl, discovery }: Remote, options: LinkO
       });
 }
 
+function tokenHolderOf({ name, connection }: LinkedServerSettings): string {
+  return connection === null ? name : `connection ${connection}`;
+}
+
 function tracedOpener(open: () => Promise<ServerConnection>, traceMeta?: TraceMeta): () => Promise<ServerConnection> {
   return traceMeta === undefined ? open : async () => tracedConnection(await open(), traceMeta);
 }
@@ -67,13 +71,18 @@ export function openerOf(settings: LinkedServerSettings, options: LinkOptions): 
   }
   if (settings.type === 'openapi') {
     const tokens = tokensOf(
-      { server: settings.name, auth: settings.auth, serverUrl: settings.api.baseUrl, discovery: 'from_the_issuer' },
+      {
+        server: tokenHolderOf(settings),
+        auth: settings.auth,
+        serverUrl: settings.api.baseUrl,
+        discovery: 'from_the_issuer',
+      },
       options,
     );
     return () => Promise.resolve(apiConnection(settings, { fetch: options.fetch, tokens, now: options.now }));
   }
   const authProvider = tokensOf(
-    { server: settings.name, auth: settings.auth, serverUrl: settings.url, discovery: 'from_the_server' },
+    { server: tokenHolderOf(settings), auth: settings.auth, serverUrl: settings.url, discovery: 'from_the_server' },
     options,
   );
   const { openMs, longestRetryWaitMs } = options.timing;

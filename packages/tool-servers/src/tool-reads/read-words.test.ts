@@ -1,10 +1,10 @@
 import { unsuccessfulWords } from '@on.auto/operations';
-import { Effect, Result } from 'effect';
+import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { defineDryRun, defineIntrospect } from '../index.ts';
 
-const lookup = { named: () => Result.void, listServers: () => Effect.succeed([]) };
+const lookup = { lookUp: () => Effect.never };
 
 const introspectWords = defineIntrospect(lookup).registration.plainLanguage;
 

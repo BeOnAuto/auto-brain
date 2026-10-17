@@ -27,30 +27,31 @@ function hostsOf({ kind, entry, credential }: Addition): readonly string[] {
   return addresses.filter((address) => address !== undefined).map((address) => new URL(address).hostname);
 }
 
-function hostRefusal(allowedHosts: readonly string[] | null, addition: Addition): Forbidden | undefined {
-  if (allowedHosts === null) {
-    return undefined;
-  }
-  const refused = hostsOf(addition).find((host) => !allowedHosts.some((pattern) => matches(pattern, host)));
-  return refused === undefined
+export function hostRefusalOf(allowedHosts: readonly string[] | null, host: string): Forbidden | undefined {
+  return allowedHosts === null || allowedHosts.some((pattern) => matches(pattern, host))
     ? undefined
     : new Forbidden({
-        detail: `A connection may not reach the host ${refused} on this runtime, which allows ${allowing(allowedHosts, 'no host')}`,
+        detail: `A connection may not reach the host ${host} on this runtime, which allows ${allowing(allowedHosts, 'no host')}`,
       });
+}
+
+function hostRefusal(allowedHosts: readonly string[] | null, addition: Addition): Forbidden | undefined {
+  const refused = hostsOf(addition).find((host) => hostRefusalOf(allowedHosts, host) !== undefined);
+  return refused === undefined ? undefined : hostRefusalOf(allowedHosts, refused);
 }
 
 const variablesRule = 'A reference may name only a variable the operator lists in connections.variables';
 
 function referenceRefusal(variables: readonly string[], { credential }: Addition): Forbidden | undefined {
-  const { kind, name = '' } = credential;
-  if (kind !== 'reference' || variables.includes(name)) {
+  const { kind, variable = '' } = credential;
+  if (kind !== 'reference' || variables.includes(variable)) {
     return undefined;
   }
   return new Forbidden({
     detail:
       variables.length === 0
         ? `${variablesRule}, and this runtime lists none`
-        : `${variablesRule}, which are ${listed(variables)}, and ${name} is not one of them`,
+        : `${variablesRule}, which are ${listed(variables)}, and ${variable} is not one of them`,
   });
 }
 
@@ -80,15 +81,26 @@ export function bindsPerson(access: RuntimeAccess): boolean {
   return access === 'people';
 }
 
-export function policyRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
-  if (!policy.peopleMayAdd) {
-    return new Forbidden({
-      detail: 'People may not add connections on this runtime: its operator sets up its tool servers itself',
-    });
-  }
+function rulesRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
   return (
     hostRefusal(policy.allowedHosts, addition) ??
     kindRefusal(policy.credentialKinds, addition) ??
     referenceRefusal(policy.variables, addition)
   );
+}
+
+export function policyRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
+  return policy.peopleMayAdd
+    ? rulesRefusalOf(policy, addition)
+    : new Forbidden({
+        detail: 'People may not add connections on this runtime: its operator sets up its tool servers itself',
+      });
+}
+
+export function useRefusalOf(policy: ConnectionPolicy, addition: Addition): Forbidden | undefined {
+  return policy.peopleMayAdd
+    ? rulesRefusalOf(policy, addition)
+    : new Forbidden({
+        detail: 'This runtime uses no connection: its operator sets up its tool servers itself',
+      });
 }

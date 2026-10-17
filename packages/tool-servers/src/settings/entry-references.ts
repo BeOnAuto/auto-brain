@@ -36,11 +36,23 @@ export function unreferencedSecurity(
     .filter((pointer) => !pointers.has(pointer));
 }
 
+const schemeAndCredential = /^[A-Za-z][\w!#$%&'*+.^`|~-]* +(\S.*)$/u;
+
+function credentialAfterItsScheme(headers: string, { pointer, value }: Reference): readonly Redacted.Redacted[] {
+  const [, credential] = value !== null && pointer.startsWith(headers) ? (schemeAndCredential.exec(value) ?? []) : [];
+  return credential === undefined ? [] : [Redacted.make(credential)];
+}
+
 export function secretsOfEntry(
   entry: string,
   fields: ServerEntryFields,
   references: readonly Reference[],
 ): readonly Redacted.Redacted[] {
+  const headers = `/${JsonPointer.escapeToken(entry)}/headers/`;
+  const afterTheirScheme = references.flatMap((reference) => credentialAfterItsScheme(headers, reference));
   const wholeValues = Object.values(fields.security ?? {}).map((value) => Redacted.make(value));
-  return [...secretsIn(placementOf(entry), references), ...wholeValues];
+  const values = [...secretsIn(placementOf(entry), references), ...afterTheirScheme, ...wholeValues].map((secret) =>
+    Redacted.value(secret),
+  );
+  return [...new Set(values)].map((value) => Redacted.make(value));
 }

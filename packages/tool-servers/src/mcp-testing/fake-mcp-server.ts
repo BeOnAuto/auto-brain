@@ -1,11 +1,11 @@
 import { OAuthError, OAuthErrorCode, requireBearerAuth } from '@modelcontextprotocol/server';
 import { Option, Schema } from 'effect';
 
+import { serveOnLoopback, type FailedRequest, type FetchHandler } from '../testing/loopback-server.ts';
 import { fakeAuthorization, type ClientRegistration, type FakeAuthorization } from './fake-authorization.ts';
 import { fakeChat, type FakeChat } from './fake-chat.ts';
 import { fakeSessions, type FakeSessions } from './fake-sessions.ts';
 import type { FakeHints, ReceivedCall } from './fake-tools.ts';
-import { serveOnLoopback, type FailedRequest, type FetchHandler } from './loopback-server.ts';
 
 export interface FakeMcpOptions {
   readonly bearer?: string;

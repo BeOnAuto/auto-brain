@@ -5,6 +5,7 @@ import type {
   CommandMetadata,
   ConnectionAddition,
   ConnectionApproval,
+  ConnectionBreaking,
   ConnectionCommand,
   ConnectionRemoval,
   CredentialGiving,
@@ -19,6 +20,8 @@ const nothingToRecord: Decision = Result.succeed([]);
 
 const kindsGivenOnThePage: ReadonlySet<string> = new Set(['secret', 'client_credentials']);
 
+export const mostConnectionsOfAnOrg = 50;
+
 function takesAValue({ connection }: KeptConnection): boolean {
   return kindsGivenOnThePage.has(connection.credential.kind);
 }
@@ -31,11 +34,17 @@ function decideAddition(
   { connection, name, kind, entry, credential, link }: ConnectionAddition,
   registry: Registry,
 ): Decision {
-  const taken = [...registry.values()].some(
-    (kept) => kept.connection.name === name && kept.connection.status !== 'removed',
-  );
-  return taken
-    ? Result.fail(new Conflict({ detail: `There is already a connection ${name} in this org`, kind: 'taken' }))
+  const kept = [...registry.values()].filter((each) => each.connection.status !== 'removed');
+  if (kept.some((each) => each.connection.name === name)) {
+    return Result.fail(new Conflict({ detail: `There is already a connection ${name} in this org`, kind: 'taken' }));
+  }
+  return kept.length >= mostConnectionsOfAnOrg
+    ? Result.fail(
+        new Conflict({
+          detail: `The org holds ${mostConnectionsOfAnOrg} connections, the most it may; remove one before adding another`,
+          kind: 'connections_full',
+        }),
+      )
     : Result.succeed([
         { type: 'connection_added', data: { connection, name, kind, entry, credential } },
         { type: 'connection_link_issued', data: { connection, ...link } },
@@ -80,6 +89,14 @@ function decideRemoval({ connection }: ConnectionRemoval, registry: Registry): D
   );
 }
 
+function decideBreaking({ connection, reason }: ConnectionBreaking, registry: Registry): Decision {
+  return Result.flatMap(keptConnectionOf(registry, connection), (kept) =>
+    kept.connection.status === 'connected'
+      ? Result.succeed([{ type: 'connection_broken', data: { connection, reason } }])
+      : nothingToRecord,
+  );
+}
+
 export function registryContextOf({ by, at }: CommandMetadata): Context {
   return { at, by };
 }
@@ -94,5 +111,5 @@ export function decideOnRegistry(command: ConnectionCommand, registry: Registry)
   if (command.type === 'give') {
     return decideGiving(command, registry);
   }
-  return decideRemoval(command, registry);
+  return command.type === 'break' ? decideBreaking(command, registry) : decideRemoval(command, registry);
 }

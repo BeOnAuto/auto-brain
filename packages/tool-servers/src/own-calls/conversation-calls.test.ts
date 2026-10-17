@@ -182,6 +182,25 @@ describe('a read the playbook makes in a conversation', () => {
   });
 });
 
+describe('a read and a telling through a connection', () => {
+  it("record the connection's id beside the server's name, so its history stays plain once the name is reused", () => {
+    const throughAConnection = { ...started, connection_id: '0199e7c1-5b3a-7d2e-9f40-6a1b2c3d4e5f' };
+
+    const read = repliesReadOf(
+      { ...place, start: throughAConnection, answered: answeredFact, replies: 0, taken: 0, refused: 0 },
+      recorded,
+    );
+
+    expect([read.event.data, tellingStartedOf(telling, throughAConnection, recorded).event.data]).toMatchObject([
+      { server: 'chat', connection_id: '0199e7c1-5b3a-7d2e-9f40-6a1b2c3d4e5f', tool: 'thread_replies' },
+      { server: 'chat', connection_id: '0199e7c1-5b3a-7d2e-9f40-6a1b2c3d4e5f', tool: 'thread_replies' },
+    ]);
+    expect(recordedCall(read.event, recorded).data).toMatchObject({
+      connection_id: '0199e7c1-5b3a-7d2e-9f40-6a1b2c3d4e5f',
+    });
+  });
+});
+
 describe('a read of a server that keeps no content', () => {
   it('records the size of its arguments and no digest', () => {
     const { arguments_sha256: _digest, ...unkept } = started;

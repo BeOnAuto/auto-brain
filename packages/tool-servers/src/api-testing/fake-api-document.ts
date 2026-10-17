@@ -110,12 +110,12 @@ const securitySchemes: DocumentFields = {
 
 const fakeApiSchemes = Object.keys(securitySchemes);
 
-export function fakeApiDocument(version: FakeApiVersion, serverUrl: string): DocumentFields {
+export function fakeApiDocument(version: FakeApiVersion, serverUrl: string, declaresKey = true): DocumentFields {
   return {
     openapi: version === '3.0' ? '3.0.3' : '3.1.0',
     info: { title: 'Graph', version: '1.0.0' },
     servers: [{ url: serverUrl }],
-    security: fakeApiSchemes.map((scheme) => ({ [scheme]: [] })),
+    security: declaresKey ? fakeApiSchemes.map((scheme) => ({ [scheme]: [] })) : [],
     paths: { ...readPaths(), ...otherPaths() },
     components: {
       schemas: { Profile: version === '3.0' ? profile30 : profile31, Person: person },

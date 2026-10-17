@@ -36,7 +36,7 @@ export function defineExecute(access: Pick<ToolAccess, 'open' | 'configured'>) {
         Effect.gen(function* () {
           const tools = yield* restore(access.open(context, [called.reference]));
           const offered = yield* offeredIn(tools, called);
-          return yield* tracedByHand(called.reference, offered.serverType, answeredOn(tools, offered, called, restore));
+          return yield* tracedByHand(called.reference, offered.server, answeredOn(tools, offered, called, restore));
         }),
       ).pipe(Effect.mapError(unavailableOf));
     }),

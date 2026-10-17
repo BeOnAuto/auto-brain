@@ -47,7 +47,7 @@ describe('approving a connection', () => {
     const reference = await added(h, {
       ...notes,
       name: 'notes-key',
-      credential: { kind: 'reference', name: 'NOTES_API_KEY' },
+      credential: { kind: 'reference', variable: 'NOTES_API_KEY', name: 'Authorization', in: 'header' },
     });
 
     const approved = await approving(h, id, token);

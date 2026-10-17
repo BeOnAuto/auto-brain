@@ -26,7 +26,11 @@ const timedOut: ScriptedReply = () =>
     new TimedOut({ detail: 'anthropic did not answer within 60000 ms', provider: 'anthropic', timeout_ms: 60_000 }),
   );
 
-async function serving(fake: FakeMcpServer | undefined, replies: readonly ScriptedReply[]): Promise<ReasoningServer> {
+async function serving(
+  fake: FakeMcpServer | undefined,
+  replies: readonly ScriptedReply[],
+  environment: Readonly<Record<string, string>> = {},
+): Promise<ReasoningServer> {
   const servers =
     fake === undefined
       ? {}
@@ -45,6 +49,7 @@ async function serving(fake: FakeMcpServer | undefined, replies: readonly Script
     GRAPH_API_KEY: apiKey,
     NODE_V8_COVERAGE: process.env['NODE_V8_COVERAGE'] ?? '',
     ...servers,
+    ...environment,
   });
   closing.push(server.stop);
   return server;
@@ -90,12 +95,14 @@ async function annotationsOf(server: ReasoningServer) {
 const searched = callingTools([['graph__search', { query: 'acme' }]], answers(textResult('Acme has 2 rows.')));
 
 describe('run_definition over MCP on a server with tool servers', () => {
-  it('is destructive when a tool server is configured, so an assistant asks before running a function', async () => {
+  it('is destructive when a tool server is configured or people may add connections, so an assistant asks before running a function', async () => {
     const configured = await serving(await fakeGraph(), []);
-    const unconfigured = await serving(undefined, []);
+    const takingConnections = await serving(undefined, []);
+    const neither = await serving(undefined, [], { CONNECTIONS: JSON.stringify({ people_may_add: false }) });
 
     expect(await annotationsOf(configured)).toMatchObject({ destructiveHint: true, openWorldHint: true });
-    expect(await annotationsOf(unconfigured)).toMatchObject({ destructiveHint: false });
+    expect(await annotationsOf(takingConnections)).toMatchObject({ destructiveHint: true });
+    expect(await annotationsOf(neither)).toMatchObject({ destructiveHint: false });
   });
 
   it('runs a reasoning function with its tools, whose history shows the calls', async () => {

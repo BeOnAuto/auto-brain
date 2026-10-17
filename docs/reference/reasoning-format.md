@@ -174,7 +174,7 @@ Some providers reject or do not enforce parts of a schema. Such a schema is stil
 
 ## Tools
 
-`tools` lists the tools a run may call, from the tool servers the operator configured for the playbook. Write each as `server/tool`, or `server/*` for every tool of a server that the operator allows:
+`tools` lists the tools a run may call, from the tool servers the operator configured for the playbook and the connections people added to its org. Write each as `server/tool`, or `server/*` for every tool of a server that the operator allows; a connection is named the same way, by its name:
 
 ```yaml
 tools: [graph/search, graph/query, notes/*]
@@ -194,15 +194,18 @@ Do not guess tool names. Ask the runtime:
 
 A run checks its tools after it confirms that its model is offered, and before it calls the model. A run whose model is not offered contacts no tool server. A tool that cannot be used ends the run as `unavailable`, and the model is never called:
 
-| Kind                 | `because`                    | When                                                                                 |
-| -------------------- | ---------------------------- | ------------------------------------------------------------------------------------ |
-| `tool_not_offered`   | `tool_server_not_configured` | The server is not configured for the playbook                                        |
-| `tool_not_offered`   | `tool_not_allowed`           | The tool is outside the server's `allowed`                                           |
-| `tool_not_offered`   | `tool_not_listed`            | The server does not list the tool                                                    |
-| `tool_server_failed` | `unreachable`                | The server cannot be reached, or does not respond in time                            |
-| `tool_server_failed` | `failing`                    | The server fails, or refuses to list its tools                                       |
-| `tool_server_failed` | `rate_limited`               | The server asks the run to slow down                                                 |
-| `tool_server_failed` | `key_refused`                | The server did not accept the key the runtime gives it; check that key, do not retry |
+| Kind                 | `because`                    | When                                                                                   |
+| -------------------- | ---------------------------- | -------------------------------------------------------------------------------------- |
+| `tool_not_offered`   | `tool_server_not_configured` | The server is not configured for the playbook                                          |
+| `tool_not_offered`   | `tool_not_allowed`           | The tool is outside the server's `allowed`                                             |
+| `tool_not_offered`   | `tool_not_listed`            | The server does not list the tool                                                      |
+| `tool_not_offered`   | `connection_pending`         | The server is a connection nobody has approved yet                                     |
+| `tool_not_offered`   | `connection_broken`          | The server is a connection whose credential cannot be read; remove it and add it again |
+| `tool_not_offered`   | `connection_not_allowed`     | The server is a connection a rule of the operator no longer allows                     |
+| `tool_server_failed` | `unreachable`                | The server cannot be reached, or does not respond in time                              |
+| `tool_server_failed` | `failing`                    | The server fails, or refuses to list its tools                                         |
+| `tool_server_failed` | `rate_limited`               | The server asks the run to slow down                                                   |
+| `tool_server_failed` | `key_refused`                | The server did not accept the key the runtime gives it; check that key, do not retry   |
 
 ### What the model sees
 

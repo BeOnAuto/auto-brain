@@ -1,7 +1,7 @@
-import { Caller, Conflict, OrgContext, defineCommand, quoted, randomUUIDv7 } from '@on.auto/operations';
+import { Caller, OrgContext, defineCommand, quoted, randomUUIDv7 } from '@on.auto/operations';
 import { Effect } from 'effect';
 
-import { additionIssuesOf, invalidAddition } from '../entries/entry-checks.ts';
+import { additionIssuesOf, invalidAddition, takenByTheFile } from '../entries/entry-checks.ts';
 import { connectPageOf } from '../links/connect-page.ts';
 import { issuedLink } from '../links/link-token.ts';
 import { adderRefusalOf, policyRefusalOf } from '../policy/policy-rules.ts';
@@ -15,13 +15,6 @@ const description = [
   'Use it when the person wants a function to reach a server the runtime does not set up; search lists the servers there are.',
   'The entry holds no credential: the person approves the connection, and gives its credential, on the page the link opens within ten minutes.',
 ].join(' ');
-
-function takenByTheFile(name: string): Conflict {
-  return new Conflict({
-    detail: `The runtime's configuration sets up a tool server named ${name}, so a connection cannot take that name`,
-    kind: 'taken',
-  });
-}
 
 export function defineAddConnection({ policy, fileEntries, providers, pages, access }: ConnectionServices) {
   return defineCommand('org', {

@@ -3,6 +3,7 @@ import { Effect } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import type { ToolAccess } from '../access/tool-access.ts';
+import { fakeConnections } from '../testing/fake-connections.ts';
 import { describedAccess, fakeApiKey, patientTiming, playbookToolCalls, serveFakeApi } from '../testing/index.ts';
 import { closedAfter, echoCall, oneCallKey, oneCallServer } from '../testing/one-calls.ts';
 import { reportingAccess } from '../testing/reporting-access.ts';
@@ -105,6 +106,28 @@ describe('a call of a tool of an MCP server made by hand with execute, traced', 
     ]);
     expect(unopened.map(({ name, attributes }) => [name, attributes['auto.on.rejection.because']])).toEqual([
       ['execute', 'unreachable'],
+    ]);
+  });
+});
+
+describe('a call of a tool of a connection, traced', () => {
+  it('names the connection beside its tool server, called once or by execute', async () => {
+    const fake = await oneCallServer();
+    const connections = fakeConnections();
+    connections.connect('acme', {
+      id: 'graph-id',
+      name: 'graph',
+      entry: { url: fake.url, headers: { Authorization: 'Bearer ${GRAPH_API_KEY}' }, allowed: ['echo'] },
+      environment: { GRAPH_API_KEY: oneCallKey },
+    });
+    const { access } = reportingAccess({}, { timing: patientTiming, connections });
+    closedAfter(access.close);
+
+    const spans = [...(await spansOfOneCall(access)), ...toolCallsAmong(await spansOfExecute(access))];
+
+    expect(spans.map(({ attributes }) => attributes)).toEqual([
+      { ...toolAttributes, 'auto.on.connection_id': 'graph-id' },
+      { ...toolAttributes, 'auto.on.connection_id': 'graph-id' },
     ]);
   });
 });

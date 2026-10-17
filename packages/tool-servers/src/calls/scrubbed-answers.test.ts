@@ -13,7 +13,7 @@ describe('the content of one answer received before and after a secret is minted
     const minted = 'minted-token-0123456789';
     const secrets = secretsOf([]);
     const keptTexts = new Map<string, string>();
-    const recording = recordingOf({ record_content: true, request_id: null }, secrets, (text) => {
+    const recording = recordingOf({ record_content: true, request_id: null, connection: null }, secrets, (text) => {
       keptTexts.set(sha256Of(text), text);
       return Promise.resolve(sha256Of(text));
     });

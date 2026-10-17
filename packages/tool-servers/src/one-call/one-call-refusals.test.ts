@@ -1,7 +1,7 @@
 import { once } from 'node:events';
 import { createServer } from 'node:http';
 
-import { Function, Result, Schema } from 'effect';
+import { Effect, Function, Result, Schema } from 'effect';
 import { describe, expect, it } from 'vitest';
 
 import { toolBounds } from '../bounds/call-bounds.ts';
@@ -97,8 +97,10 @@ describe('one call through a tool this playbook is not offered', () => {
     const access = oneCallAccess(fake.url);
 
     expect([
-      Result.isSuccess(access.named(alpha, [{ server: 'graph', tool: 'echo' }])),
-      access.named(alpha, [{ server: 'graph', tool: 'environment' }]),
+      Result.isSuccess(
+        await Effect.runPromise(Effect.result(access.named(alpha, [{ server: 'graph', tool: 'echo' }]))),
+      ),
+      await Effect.runPromise(Effect.result(access.named(alpha, [{ server: 'graph', tool: 'environment' }]))),
     ]).toMatchObject([true, Result.fail({ because: 'tool_not_allowed' })]);
     expect(fake.seen()).toEqual([]);
   });

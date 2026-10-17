@@ -49,16 +49,21 @@ function argumentsInWords({ arguments: checked }: DryRun): string {
   return checked.valid ? ', and its arguments are what it takes' : ', but its arguments are not what it takes';
 }
 
+function unreachedOf({ because }: DryRun['server']): string {
+  if (because === 'key_refused') {
+    return 'its tool server did not accept the key this server gives it';
+  }
+  return because === 'connection_not_allowed'
+    ? 'the rules whoever runs this server sets for connections do not allow its tool server'
+    : 'its tool server could not be asked just now';
+}
+
 function whyNot({ caller_may: callerMay, playbook_retired: retired, allowed, server }: DryRun): readonly string[] {
-  const unreached =
-    server.because === 'key_refused'
-      ? 'its tool server did not accept the key this server gives it'
-      : 'its tool server could not be asked just now';
   return [
     ...(callerMay ? [] : ['the caller may not change this playbook, which a call needs']),
     ...(retired ? ['the playbook is retired and can no longer change'] : []),
     ...(allowed ? [] : ['whoever runs this server does not allow the tool']),
-    ...(server.reachable === 'yes' ? [] : [unreached]),
+    ...(server.reachable === 'yes' ? [] : [unreachedOf(server)]),
   ];
 }
 

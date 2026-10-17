@@ -14,6 +14,7 @@ export interface ProgrammedAnswer {
 
 export interface ApiAnswering {
   readonly see: (request: SeenApiRequest) => void;
+  readonly documentRead: () => void;
   readonly programmed: () => ProgrammedAnswer | undefined;
   readonly requestIdHeader: string | undefined;
   readonly deniedText: string;

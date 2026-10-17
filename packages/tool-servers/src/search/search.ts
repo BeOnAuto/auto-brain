@@ -18,7 +18,7 @@ export function noServerNamed(server: string, holder: string): InvalidInput {
   return new InvalidInput({ detail, issues: [{ detail, pointer: '/server' }] });
 }
 
-export function defineSearch(access: Pick<ToolAccess, 'listServers'>) {
+export function defineSearch(access: Pick<ToolAccess, 'listServers' | 'takesConnections'>) {
   return defineQuery('playbook', {
     name: 'search',
     title: 'Search tools',
@@ -38,7 +38,8 @@ export function defineSearch(access: Pick<ToolAccess, 'listServers'>) {
     plainLanguage: {
       task: searchTask,
       attempt: (asked) => searchAttempted(asked),
-      outcome: (answer, asked) => searched(answer, asked),
+      outcome: (answer, asked) =>
+        searched(answer, asked, { takesConnections: access.takesConnections, where: 'playbook' }),
     },
   });
 }

@@ -31,12 +31,6 @@ export function credentialIssuesOf(
   kind: ConnectionKind,
   entry: ConnectionEntry,
 ): readonly Issue[] {
-  if (credential.kind === 'authorization') {
-    return issue(
-      '/credential/kind',
-      'The authorization credential, a consent the person gives the server, is not available yet; give a secret or client credentials instead',
-    );
-  }
   if (credential.in === 'header') {
     return headerIssuesOf(credential.name, kind, entry);
   }

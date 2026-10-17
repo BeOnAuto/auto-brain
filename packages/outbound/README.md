@@ -1,10 +1,14 @@
 # @on.auto/outbound
 
-How the server calls systems on the internet. It tells a certificate the server does not trust from any other failure of a call: the reasoning function adapter and the tool-servers package take the classification from here, so a model provider and a tool server whose certificate the server does not trust are named alike; every caller keeps its own client and bounds. And it makes the settings of a client of the AWS SDK, which the Bedrock provider of the reasoning capability and the object store of [`@on.auto/object-storage`](../object-storage/README.md) share, and signs the tokens the server signs in to the ledger's database with when `DATABASE_CREDENTIALS=aws-iam`.
+How the server calls systems on the internet. It walks the causes of a failed call, and tells a certificate the server does not trust from any other failure of a call: the reasoning function adapter and the tool-servers package take the classification from here, so a model provider and a tool server whose certificate the server does not trust are named alike; every caller keeps its own client and bounds. And it makes the settings of a client of the AWS SDK, which the Bedrock provider of the reasoning capability and the object store of [`@on.auto/object-storage`](../object-storage/README.md) share, and signs the tokens the server signs in to the ledger's database with when `DATABASE_CREDENTIALS=aws-iam`.
+
+## The causes of a failure
+
+`causesOf(error)` is the one walk of a failure's causes (`src/causes/error-causes.ts`): the failure and each `cause` it wraps, eight at most, ending at the first that is no object. `codesOf(error)` names the code of each, and the tool-servers package reads the walk for the refusal of a host that a client wraps.
 
 ## Certificates
 
-`isUntrustedCertificate(error)` says whether any of the causes of a failed call, eight deep at most, carries the code of a certificate the server does not trust, and `codesOf(error)` names those codes.
+`isUntrustedCertificate(error)` says whether any of the codes `codesOf` names is the code of a certificate the server does not trust.
 
 ## AWS clients
 
@@ -16,4 +20,4 @@ How the server calls systems on the internet. It tells a certificate the server 
 
 ## Source
 
-`src/certificates` holds the classification, `src/proxy` the settings of the environment proxy, and `src/aws` the settings of AWS clients.
+`src/causes` holds the walk of a failure's causes, `src/certificates` the classification, `src/proxy` the settings of the environment proxy, and `src/aws` the settings of AWS clients.

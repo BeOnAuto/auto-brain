@@ -1,24 +1,19 @@
 import { Array as Arr, Option, Result } from 'effect';
 
-import { listedThrough, serverFailed, type Listing } from '../access/server-listing.ts';
-import { notListed, offeredOn, unlistedOn } from '../access/tool-naming.ts';
 import { isReadOnly, type ListedTool } from '../bounds/tool-results.ts';
 import type { ServerSlot } from '../calls/server-slot.ts';
-import { failureOf, type ServerFailure } from '../connections/server-failures.ts';
 import type { ServerLink } from '../connections/server-links.ts';
+import { listedThrough, type Listing } from '../listing/server-listing.ts';
+import { notListed, offeredOn, unlistedOn } from '../names/tool-naming.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
-import { failedToOpenOnce, notOfferedOnce, type UnopenedOnce } from './called-once.ts';
-import { boundedSlot, takenWithin } from './connection-bound.ts';
+import { serverFailed } from '../org-servers/server-refusals.ts';
+import { notOfferedOnce, refusedOnce, type UnopenedOnce } from './called-once.ts';
+import { boundedSlot, restartedIfExited, takenWithin } from './connection-bound.ts';
 
 export interface Opened {
   readonly slot: ServerSlot;
   readonly tool: ListedTool;
   readonly readOnly: boolean;
-}
-
-async function restartedIfExited(slot: ServerSlot): Promise<ServerFailure | undefined> {
-  const restart = await slot.restartIfExited().catch((error: unknown) => failureOf(error));
-  return typeof restart === 'string' ? undefined : restart;
 }
 
 export async function openedFor(
@@ -30,20 +25,20 @@ export async function openedFor(
   const taken = await takenWithin(link, openMs);
   if ('late' in taken) {
     const message = `The tool server did not open a connection within ${openMs} ms`;
-    return failedToOpenOnce(serverFailed(link, { kind: 'timed_out', message }, listing.secrets));
+    return refusedOnce(serverFailed(link, { kind: 'timed_out', message }, listing.secrets));
   }
   if ('failure' in taken) {
-    return failedToOpenOnce(serverFailed(link, taken.failure, listing.secrets));
+    return refusedOnce(serverFailed(link, taken.failure, listing.secrets));
   }
   const bounded = boundedSlot(taken.slot, openMs);
   const exited = await restartedIfExited(bounded);
   if (exited !== undefined) {
     await bounded.release();
-    return failedToOpenOnce(serverFailed(link, exited, listing.secrets));
+    return refusedOnce(serverFailed(link, exited, listing.secrets));
   }
   const listed = await listedThrough(bounded, listing);
   if (Result.isFailure(listed)) {
-    return failedToOpenOnce(listed.failure);
+    return refusedOnce(listed.failure);
   }
   const naming = { references: [reference] };
   const unlisted = unlistedOn(listed.success, naming);

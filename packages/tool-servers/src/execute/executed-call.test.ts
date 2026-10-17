@@ -34,7 +34,7 @@ const unsent: CallReply = {
 
 const search: OfferedTool = {
   name: 'graph__search',
-  serverType: 'mcp',
+  server: { type: 'mcp', connection: null },
   description: 'Finds the rows of the graph that match a query.',
   inputSchema: { type: 'object' },
   annotations: { readOnlyHint: true },

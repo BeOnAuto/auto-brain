@@ -1,6 +1,8 @@
 # Add a tool server
 
-A tool server is a service or program that offers tools for a function to call. Its tools might read files, search the news or look up records in a business system. This page is for whoever runs Auto. You add the server to Auto's settings file, restart Auto and check that Auto lists the server. After that, people give its tools to their functions through their agents, as [Give a function tools](../guides/tools.md) shows.
+A tool server is a service or program that offers tools for a function to call. Its tools might read files, search the news or look up records in a business system. A tool server comes from one of two places: Auto's settings file, which this page is about, or a connection a person adds to an org through their agent, which [Let people add connections](connections.md) describes. A function names either in the same way.
+
+This page is for whoever runs Auto. You add the server to Auto's settings file, restart Auto and check that Auto lists the server. After that, people give its tools to their functions through their agents, as [Give a function tools](../guides/tools.md) shows.
 
 ## Before you start
 
@@ -25,7 +27,7 @@ Then decide three things for the entry:
 
 - Which tools a function may call, listed in `allowed`. Without `allowed`, a function may name every tool of the server, including any that write, send or delete. When a function's job is to read, allow only tools that read; no function can then change anything through that server, whatever its prompt says. Allow a tool that writes only when a function must write, and name that tool alone. Auto counts a tool as read-only only when its server marks it so.
 - Who may use it. `org` is required: one organization (org), a list of orgs, or `'*'` for every org. `playbooks` narrows the entry to some playbooks of each org. Limit it to your org and the playbooks that need the server. The entry has one key, and every playbook it serves calls the server with that key.
-- What the history keeps. Every call's arguments and results are kept whole in the playbook's history, scrubbed of secrets, for anyone who may read the playbook. If those readers should not see what the tools return, set `record_content: false`, and the history keeps only the sizes.
+- What the history keeps. Every call's arguments and results are kept whole in the playbook's history, scrubbed of secrets, for anyone who may read the playbook. The secrets are the values your references take, a header's credential after its scheme among them, so a key an `Authorization: ${GRAPH_HEADER}` of `Bearer <key>` sends is scrubbed alone too, and the credentials of `auth`, as the [configuration reference](configuration.md#tool-servers) lists them. If those readers should not see what the tools return, set `record_content: false`, and the history keeps only the sizes.
 
 ## Find the org and playbook ids {#find-the-org-and-playbook-ids}
 

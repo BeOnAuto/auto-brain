@@ -4,10 +4,23 @@ import { adding, billing, crm, issuesIn, statusesOf } from '../testing/additions
 import { harness } from '../testing/harness.ts';
 
 const refusedCredentials = [
-  ['authorization, not available yet', { kind: 'authorization' }, '/credential/kind'],
+  ['a kind of credential there is not', { kind: 'consent' }, '/credential/kind'],
   ['a field of another kind', { kind: 'none', name: 'CRM_API_KEY' }, '/credential/name'],
-  ['a reference without its variable', { kind: 'reference' }, '/credential/name'],
-  ['a reference to no variable', { kind: 'reference', name: 'crm-api-key' }, '/credential/name'],
+  [
+    'a reference without its variable',
+    { kind: 'reference', name: 'Authorization', in: 'header' },
+    '/credential/variable',
+  ],
+  [
+    'a reference to no variable',
+    { kind: 'reference', variable: 'crm-api-key', name: 'Authorization', in: 'header' },
+    '/credential/variable',
+  ],
+  [
+    'a reference in no header',
+    { kind: 'reference', variable: 'CRM_API_KEY', name: 'a header', in: 'header' },
+    '/credential/name',
+  ],
   ['a secret that says not where it is sent', { kind: 'secret', name: 'Authorization' }, '/credential/in'],
   ['a secret in a query parameter of an mcp server', { kind: 'secret', name: 'key', in: 'query' }, '/credential/in'],
   ['a secret in a header the entry sends', { kind: 'secret', name: 'x-tenant', in: 'header' }, '/credential/name'],
@@ -35,7 +48,7 @@ describe('a credential that cannot be taken', () => {
 
   it('names the field a kind takes and lacks, and the field it does not take', async () => {
     const credentials: readonly Readonly<Record<string, string>>[] = [
-      { kind: 'reference' },
+      { kind: 'reference', name: 'Authorization', in: 'header' },
       { kind: 'none', in: 'header' },
       { kind: 'client_credentials', issuer: 'https://auth.example.com', client_id: 'acme', name: 'CRM_API_KEY' },
     ];
@@ -45,7 +58,7 @@ describe('a credential that cannot be taken', () => {
     );
 
     expect(refused).toEqual([
-      [{ pointer: '/credential/name', detail: 'Expected name, which a reference credential takes' }],
+      [{ pointer: '/credential/variable', detail: 'Expected variable, which a reference credential takes' }],
       [{ pointer: '/credential/in', detail: 'Expected no in: a none credential takes no other field' }],
       [
         {
@@ -53,16 +66,6 @@ describe('a credential that cannot be taken', () => {
           detail: 'Expected no name: a client_credentials credential takes issuer, client_id, and scope',
         },
       ],
-    ]);
-  });
-
-  it('says that authorization is not available yet', async () => {
-    expect(issuesIn(await adding(harness(), { ...crm, credential: { kind: 'authorization' } }))).toEqual([
-      {
-        pointer: '/credential/kind',
-        detail:
-          'The authorization credential, a consent the person gives the server, is not available yet; give a secret or client credentials instead',
-      },
     ]);
   });
 });

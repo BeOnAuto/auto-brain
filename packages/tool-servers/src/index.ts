@@ -24,7 +24,20 @@ export type { AnsweredFields, StartedFields } from './calls/recorded-calls.ts';
 export type { AnsweredOnce, CallAnswer, CalledOnce, UnopenedOnce } from './one-call/called-once.ts';
 export type { OneCall, RunCall } from './one-call/one-call.ts';
 export { answerDocument, isReadOnly, type ToolAnnotations } from './bounds/tool-results.ts';
-export type { NamingCheck, StartOf } from './access/entry-reads.ts';
+export type { NamingCheck } from './org-servers/org-naming.ts';
+export type { PreparedCall } from './access/call-ways.ts';
+export {
+  isConnectionSettings,
+  noConnections,
+  type ConnectionServer,
+  type ConnectionServing,
+  type ConnectionSettings,
+  type ConnectionSource,
+  type ConnectionState,
+  type ConnectionUnready,
+  type OrgConnection,
+  type UnreadyBecause,
+} from './org-servers/connection-source.ts';
 export {
   ConversationCallEventSchema,
   conversationCallStreamOf,
@@ -68,7 +81,8 @@ export {
   type ServerEntryFields,
 } from './settings/server-entries.ts';
 export { checkedEntry, serverNameProblems, type EntryContext } from './settings/entry-checks.ts';
-export { isPinnableUrl } from './settings/checked.ts';
+export { isPinnableUrl, pinnedUrlShape } from './settings/checked.ts';
+export { takenByTheConfiguration } from './org-servers/org-servers.ts';
 export { headersTheRuntimeSets } from './settings/reserved-headers.ts';
 export type { ServerSettings, ToolServerSettings } from './settings/server-settings.ts';
 export type { Describing, ToolServers } from './openapi/described-api.ts';
@@ -76,6 +90,7 @@ export type { LeftOutOperation } from './openapi/api-tools.ts';
 export { ToolServerDocumentRefused, describedToolServers } from './openapi/described-servers.ts';
 export {
   ToolServerSettingsInvalid,
+  readEntry,
   readToolServerSettings,
   type Environment,
   type ToolServerSettingsContext,

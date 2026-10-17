@@ -1,10 +1,17 @@
 import { credentialProblems, substituted, type SettingProblem } from '@on.auto/config';
-import { InvalidInput, type Issue } from '@on.auto/operations';
-import { checkedEntry, serverNameProblems } from '@on.auto/tool-servers';
-import { JsonPointer, Result, Schema } from 'effect';
+import { Conflict, InvalidInput, type Issue } from '@on.auto/operations';
+import {
+  isPinnableUrl,
+  pinnedUrlShape,
+  serverNameProblems,
+  takenByTheConfiguration,
+  type ServerSettings,
+} from '@on.auto/tool-servers';
+import { JsonPointer, Redacted, Result, Schema } from 'effect';
 
 import type { ConnectionEntry, ConnectionKind } from '../registry/connection-entry.ts';
 import type { Credential } from '../registry/credential.ts';
+import { placedCredential, readPlaced, type GivenValue } from '../serving/placed-credentials.ts';
 import { credentialIssuesOf } from './credential-checks.ts';
 
 export interface AdditionInput {
@@ -25,8 +32,9 @@ const heldCredential =
 const heldReference =
   "Holds a reference to an environment variable, which a connection's entry never holds: a reference credential names the variable";
 
-const fileOnly =
-  'Expected an https URL, or an http URL on a loopback address: a connection reads its document from the network, never from the runtime’s disk';
+const fileOnly = `${pinnedUrlShape}: a connection reads its document from the network, never from the runtime’s disk`;
+
+const anyValue: GivenValue = { value: Redacted.make('a value the person gives'), algorithm: undefined };
 
 const asJson = Schema.decodeUnknownSync(Schema.Json);
 
@@ -53,19 +61,18 @@ function writtenIssues(name: string, entry: ConnectionEntry): readonly Issue[] {
   ];
 }
 
-function documentIssues({ kind, entry }: AdditionInput): readonly Issue[] {
-  return kind === 'openapi' && entry.document !== undefined && !URL.canParse(entry.document)
+function addressIssues({ kind, entry }: AdditionInput): readonly Issue[] {
+  if (kind === 'mcp') {
+    return entry.url === undefined || isPinnableUrl(entry.url)
+      ? []
+      : [{ pointer: '/entry/url', detail: pinnedUrlShape }];
+  }
+  return entry.document !== undefined && !URL.canParse(entry.document)
     ? [{ pointer: '/entry/document', detail: fileOnly }]
     : [];
 }
 
-function servedIssues(input: AdditionInput, { org, providers }: EntryChecking): readonly Issue[] {
-  const { name, kind, entry } = input;
-  const checked = checkedEntry(name, { ...entry, type: kind, org }, { providers, directory: '.', secrets: [] });
-  return Result.isFailure(checked) ? issuesOf(checked.failure, `/${JsonPointer.escapeToken(name)}`, '/entry') : [];
-}
-
-export function additionIssuesOf(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
+export function entryIssuesOf(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
   const named = issuesOf(
     serverNameProblems(input.name, checking.providers),
     `/${JsonPointer.escapeToken(input.name)}`,
@@ -73,13 +80,34 @@ export function additionIssuesOf(input: AdditionInput, checking: EntryChecking):
   );
   return [
     ...named,
-    ...documentIssues(input),
+    ...addressIssues(input),
     ...writtenIssues(input.name, input.entry),
-    ...(named.length === 0 && documentIssues(input).length === 0 ? servedIssues(input, checking) : []),
     ...credentialIssuesOf(input.credential, input.kind, input.entry),
   ];
 }
 
+export function readAddition(
+  input: AdditionInput,
+  checking: EntryChecking,
+  given: GivenValue | undefined,
+): Result.Result<ServerSettings, readonly Issue[]> {
+  const read = readPlaced(input, placedCredential(input.entry, input.credential, given), checking);
+  return Result.mapError(read, (problems) => issuesOf(problems, `/${JsonPointer.escapeToken(input.name)}`, '/entry'));
+}
+
+export function additionIssuesOf(input: AdditionInput, checking: EntryChecking): readonly Issue[] {
+  const issues = entryIssuesOf(input, checking);
+  if (issues.length > 0) {
+    return issues;
+  }
+  const given = input.credential.kind === 'none' ? undefined : anyValue;
+  return Result.match(readAddition(input, checking, given), { onSuccess: () => [], onFailure: (read) => read });
+}
+
 export function invalidAddition(issues: readonly Issue[]): InvalidInput {
   return new InvalidInput({ detail: 'The connection cannot be added as it is given', issues });
+}
+
+export function takenByTheFile(name: string): Conflict {
+  return new Conflict({ detail: takenByTheConfiguration(name), kind: 'taken' });
 }

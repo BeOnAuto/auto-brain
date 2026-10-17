@@ -108,6 +108,7 @@ const refusedEntries = [
   ['a name of the wrong shape', { ...notes, name: 'Notes' }, '/name'],
   ['the name of a model provider', { ...notes, name: 'openai' }, '/name'],
   ['a url that is no web address', { ...notes, entry: { url: 'ftp://notes.example.com' } }, '/entry/url'],
+  ['an http url off the loopback', { ...notes, entry: { url: 'http://notes.example.com/mcp' } }, '/entry/url'],
   [
     'a field of another kind',
     { ...notes, entry: { ...notes.entry, base_url: 'https://x.example' } },
@@ -218,8 +219,8 @@ describe('the policy of the runtime, of the hosts', () => {
   });
 });
 
-function naming(name: string) {
-  return { ...notes, credential: { kind: 'reference', name } };
+function naming(variable: string) {
+  return { ...notes, credential: { kind: 'reference', variable, name: 'Authorization', in: 'header' } };
 }
 
 describe('the policy of the runtime, of the variables a reference names', () => {

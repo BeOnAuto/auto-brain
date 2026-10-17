@@ -2,6 +2,7 @@ import type { OperationKind } from '../caller/operation-scope.ts';
 import type { Cancelled, Failed, Rejected, RejectionReason } from '../outcome/outcome.ts';
 import type { RejectionBecause } from '../outcome/rejection-because.ts';
 import type { RejectionKind } from '../outcome/rejection.ts';
+import { connectionBecauses, connectionExplanations, connectionRemedies } from './connection-explanations.ts';
 import type { Explanation, Remedies } from './plain-language.ts';
 import { predictionExplanations } from './prediction-explanations.ts';
 
@@ -95,6 +96,7 @@ const explanationByKind: Readonly<Record<RejectionKind, Explanation>> = {
       'This can be put right on your side: once its result keeps only what is needed, such as fewer or smaller values, it can be run again.',
   },
   ...predictionExplanations,
+  ...connectionExplanations,
   requested: {
     why: 'it was cancelled at the request of someone allowed to change the playbook',
     remedy: ranUntilCancelled,
@@ -147,6 +149,7 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
     'because whoever runs the server has not set up a tool server of that name for this playbook',
   tool_not_allowed: 'because it is not among the tools whoever runs the server allows',
   tool_not_listed: 'because the tool server it names does not have that tool',
+  ...connectionBecauses,
   failing: 'because the tool server kept failing',
   rate_limited: 'because the tool server asked it to slow down for longer than a run waits',
   unreachable: 'because the tool server could not be reached in time',
@@ -166,6 +169,7 @@ const explanationByBecause: Readonly<Record<RejectionBecause, string>> = {
 
 const remedyByBecause: Remedies = {
   key_refused: 'Trying again will not help until whoever runs the server checks the key it gives that tool server.',
+  ...connectionRemedies,
 };
 
 const explanationByKindAndBecause: Readonly<

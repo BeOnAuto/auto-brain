@@ -30,7 +30,7 @@ export interface Telling {
 
 export interface TellingParts {
   readonly ledger: StreamWriter;
-  readonly tools: Pick<ToolAccess, 'startOf' | 'callOnce'>;
+  readonly tools: Pick<ToolAccess, 'preparedCall'>;
 }
 
 const moment = Effect.map(DateTime.now, DateTime.formatIso);
@@ -42,10 +42,10 @@ export function told({ ledger, tools }: TellingParts, telling: Telling): Effect.
   const by = playbookCallerOf(playbook).id;
   const call = { ...playbook, reference: { server, tool }, input, meta: { [conversationCallIdKey]: callId } };
   return Effect.gen(function* () {
-    const fields = yield* tools.startOf(call);
+    const { fields, called: calling } = yield* tools.preparedCall(call);
     const started = tellingStartedOf({ callId, runId, definition }, fields, { by, at: yield* moment });
     const { version } = yield* ledger.execute(stream, conversationCallDecider, started, lineage).pipe(Effect.orDie);
-    const called = yield* tools.callOnce(call);
+    const called = yield* calling;
     const ended = tellingEndedOf({ callId, runId, definition }, called, { by, at: yield* moment });
     yield* ledger
       .execute(stream, conversationCallDecider, ended, { ...lineage, causationId: messageIdOf(stream, version) })

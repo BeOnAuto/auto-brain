@@ -102,6 +102,7 @@ describe('the tool servers a playbook may use', () => {
         name: 'graph',
         type: 'mcp',
         record_content: true,
+        playbooks: ['*'],
         tools: [
           {
             name: 'verbose',
@@ -123,7 +124,9 @@ describe('the tool servers a listing asks', () => {
     const listing = await listed(servers, {}, 'graph');
     const unknown = await listed(servers, {}, 'mail');
 
-    expect(listing).toEqual([{ name: 'graph', type: 'mcp', record_content: true, tools: [echoTool] }]);
+    expect(listing).toEqual([
+      { name: 'graph', type: 'mcp', record_content: true, playbooks: ['*'], tools: [echoTool] },
+    ]);
     expect(unknown).toEqual([]);
     expect(other.seen()).toEqual([]);
   });
@@ -137,8 +140,8 @@ describe('the tool servers a listing asks', () => {
     });
 
     expect(listing).toEqual([
-      { name: 'graph', type: 'mcp', record_content: true, tools: [echoTool] },
-      { name: 'wiki', type: 'mcp', record_content: false, tools: [echoTool] },
+      { name: 'graph', type: 'mcp', record_content: true, playbooks: ['*'], tools: [echoTool] },
+      { name: 'wiki', type: 'mcp', record_content: false, playbooks: ['*'], tools: [echoTool] },
     ]);
   });
 
@@ -163,11 +166,12 @@ describe('a tool server whose entry leaves allowed out', () => {
     const listing = await listed({ graph: remote(fake, { allowed: ['echo'] }), open: remote(open) });
 
     expect(listing).toEqual([
-      { name: 'graph', type: 'mcp', record_content: true, tools: [echoTool] },
+      { name: 'graph', type: 'mcp', record_content: true, playbooks: ['*'], tools: [echoTool] },
       {
         name: 'open',
         type: 'mcp',
         record_content: true,
+        playbooks: ['*'],
         tools: fakeToolNames.map((name): unknown => expect.objectContaining({ name })),
       },
     ]);
@@ -187,7 +191,9 @@ describe('a tool server that is a process', () => {
 
     const listing = await listed({ limitless });
 
-    expect(listing).toEqual([{ name: 'limitless', type: 'stdio', record_content: true, tools: [searchTool] }]);
+    expect(listing).toEqual([
+      { name: 'limitless', type: 'stdio', record_content: true, playbooks: ['*'], tools: [searchTool] },
+    ]);
   });
 });
 
@@ -254,6 +260,7 @@ describe('the secrets of a tool server', () => {
         name: 'graph',
         type: 'mcp',
         record_content: true,
+        playbooks: ['*'],
         tools: [
           {
             name: 'search',

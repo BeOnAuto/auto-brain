@@ -23,6 +23,7 @@ interface ServedBy extends ToolLists {
   readonly record_content: boolean;
   readonly request_id: string | null;
   readonly secrets: readonly Redacted.Redacted[];
+  readonly connection: string | null;
 }
 
 export interface McpServerSettings extends ServedBy {
@@ -68,16 +69,14 @@ export interface ServersScope {
 
 export const everyPlaybook = '*';
 
-function servesScope(server: ServedBy, { org, playbook }: ServersScope): boolean {
+type Scoped = Pick<ServedBy, 'name' | 'orgs' | 'playbooks'>;
+
+function servesScope(server: Scoped, { org, playbook }: ServersScope): boolean {
   return playbook === undefined ? servesOrg(server, org) : servesPlaybook(server, { org, playbook });
 }
 
-export function isListedFor(server: ServedBy, scope: ServersScope, named: string | undefined): boolean {
+export function isListedFor(server: Scoped, scope: ServersScope, named: string | undefined): boolean {
   return servesScope(server, scope) && (named === undefined || server.name === named);
-}
-
-export function playbooksServedBy(servers: readonly ServerSettings[], name: string): readonly string[] {
-  return servers.filter((server) => server.name === name).flatMap(({ playbooks }) => playbooks ?? [everyPlaybook]);
 }
 
 export function authOf(server: ServerSettings): AuthSettings | null {

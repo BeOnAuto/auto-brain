@@ -1,3 +1,5 @@
+import { Order } from 'effect';
+
 import { isReadOnly } from '../bounds/tool-results.ts';
 import type { AvailableServer, ServerTool, ToolServer } from '../listing/tool-server.ts';
 import type { Found, FoundTool, SearchAsked, SearchedServer } from './search-schemas.ts';
@@ -22,31 +24,23 @@ function consideredOn({ tools }: AvailableServer, { only }: SearchAsked): readon
   return only === undefined ? tools : tools.filter((tool) => keptBy[only](tool));
 }
 
-function searchedServer(server: ToolServer, asked: SearchAsked): SearchedServer {
-  const { name, type, record_content } = server;
+export function searchedServer(server: ToolServer, asked: SearchAsked): SearchedServer {
+  const { name, type, record_content, connection } = server;
+  const fields = { name, type, record_content, ...(connection === undefined ? {} : { connection }) };
   return 'unavailable' in server
-    ? { name, type, record_content, unavailable: server.unavailable, because: server.because }
-    : { name, type, record_content, tool_count: consideredOn(server, asked).length };
+    ? { ...fields, unavailable: server.unavailable, because: server.because }
+    : { ...fields, tool_count: consideredOn(server, asked).length };
 }
 
 function candidatesOn(server: ToolServer, asked: SearchAsked): readonly Candidate[] {
   return 'unavailable' in server ? [] : consideredOn(server, asked).map((tool) => ({ server: server.name, tool }));
 }
 
-function inOrder(first: string, second: string): number {
-  if (first === second) {
-    return 0;
-  }
-  return first < second ? -1 : 1;
-}
-
-function bestFirst(first: Scored, second: Scored): number {
-  if (first.score !== second.score) {
-    return second.score - first.score;
-  }
-  const byTool = inOrder(first.tool.name, second.tool.name);
-  return byTool === 0 ? inOrder(first.server, second.server) : byTool;
-}
+const bestFirst: Order.Order<Scored> = Order.combineAll([
+  Order.flip(Order.mapInput(Order.Number, ({ score }: Scored) => score)),
+  Order.mapInput(Order.String, ({ tool }: Scored) => tool.name),
+  Order.mapInput(Order.String, ({ server }: Scored) => server),
+]);
 
 function scoredBy(words: readonly string[]): (candidate: Candidate) => Scored {
   return ({ server, tool }) => ({ server, tool, score: scoreOf(tool, words) });

@@ -4,9 +4,9 @@ import { afterEach } from 'vitest';
 
 import type { ToolAccess } from '../access/tool-access.ts';
 import type { Timing } from '../bounds/call-bounds.ts';
+import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from '../mcp-testing/fake-mcp-server.ts';
 import type { CalledOnce } from '../one-call/called-once.ts';
 import type { OneCall, RunCall } from '../one-call/one-call.ts';
-import { serveFakeMcp, type FakeMcpOptions, type FakeMcpServer } from './fake-mcp-server.ts';
 import { patientTiming } from './index.ts';
 import { reportingAccess } from './reporting-access.ts';
 

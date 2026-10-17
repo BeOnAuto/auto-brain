@@ -16,6 +16,7 @@ export interface KeptConnection {
   readonly connection: RecordedConnection;
   readonly link: OpenLink | undefined;
   readonly secretId: string | undefined;
+  readonly algorithm: string | undefined;
 }
 
 export type Registry = ReadonlyMap<string, KeptConnection>;
@@ -40,6 +41,7 @@ function addedConnection({ data, context }: ConnectionAdded): KeptConnection {
     },
     link: undefined,
     secretId: undefined,
+    algorithm: undefined,
   };
 }
 
@@ -58,6 +60,7 @@ function connected(kept: KeptConnection, { data, context }: ConnectionConnected)
     },
     link: undefined,
     secretId: data.secret_id,
+    algorithm: data.algorithm,
   };
 }
 

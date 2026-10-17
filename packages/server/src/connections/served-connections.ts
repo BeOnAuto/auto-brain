@@ -1,10 +1,16 @@
 import type { AppRuntime } from '@on.auto/api';
-import { makeConnectionOperations, type ConnectionOperations, type RuntimeAccess } from '@on.auto/connections';
+import {
+  makeConnectionOperations,
+  makeConnectionSource,
+  type ConnectionOperations,
+  type RuntimeAccess,
+} from '@on.auto/connections';
 import { studioOrigin } from '@on.auto/identity';
 import type { SecretStore } from '@on.auto/ledger';
 import type { DispatcherServices } from '@on.auto/operations';
 import type { DatabaseSettings } from '@on.auto/workflow-host';
 
+import { runtimeLedger } from '../composition/runtime-ledger.ts';
 import { ledgerStoresOpenedBy, type LedgerStores } from '../database/ledger-stores.ts';
 import { modelProvidersOf } from '../function-settings/reasoning-settings.ts';
 import type { Settings } from '../settings/settings.ts';
@@ -12,9 +18,13 @@ import type { Settings } from '../settings/settings.ts';
 export interface StoresAndConnections {
   readonly stores: LedgerStores;
   readonly connections: ConnectionOperations;
+  readonly source: ReturnType<typeof makeConnectionSource>;
 }
 
-type ServingSettings = Pick<Settings, 'connections' | 'toolServers' | 'models' | 'signIn' | 'apiKeys'>;
+type ServingSettings = Pick<
+  Settings,
+  'connections' | 'connectionVariables' | 'toolServers' | 'models' | 'signIn' | 'apiKeys'
+>;
 
 function accessOf({ signIn, apiKeys }: ServingSettings): RuntimeAccess {
   if (signIn !== undefined) {
@@ -39,6 +49,20 @@ function connectionsServedBy(
   });
 }
 
+function sourceServedBy(
+  runtime: AppRuntime<DispatcherServices>,
+  settings: ServingSettings,
+  secrets: SecretStore,
+): ReturnType<typeof makeConnectionSource> {
+  return makeConnectionSource({
+    registry: runtimeLedger(runtime),
+    secrets,
+    policy: settings.connections,
+    variables: settings.connectionVariables,
+    providers: modelProvidersOf(settings.models),
+  });
+}
+
 export async function storesAndConnectionsOf(
   runtime: AppRuntime<DispatcherServices>,
   settings: Settings,
@@ -46,5 +70,9 @@ export async function storesAndConnectionsOf(
   ownOrigin: () => string,
 ): Promise<StoresAndConnections> {
   const stores = await ledgerStoresOpenedBy(runtime.context, settings, database);
-  return { stores, connections: connectionsServedBy(settings, stores.secrets, ownOrigin) };
+  return {
+    stores,
+    connections: connectionsServedBy(settings, stores.secrets, ownOrigin),
+    source: sourceServedBy(runtime, settings, stores.secrets),
+  };
 }

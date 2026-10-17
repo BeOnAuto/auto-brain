@@ -166,6 +166,7 @@ describe('a tool whose input schema names no argument', () => {
       name: 'notes',
       type: 'stdio',
       record_content: true,
+      playbooks: ['*'],
       tools: [{ name: 'note_count', description: 'Counts the notes.', input_schema: { type: 'object' } }],
     };
     const { call } = playbookToolCalls({ ...access, listServers: () => Effect.succeed([listed]) });

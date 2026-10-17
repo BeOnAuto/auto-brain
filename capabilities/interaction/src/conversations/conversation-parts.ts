@@ -12,7 +12,7 @@ export interface ConversationLedger
 
 export interface ConversationParts {
   readonly ledger: ConversationLedger;
-  readonly tools: Pick<ToolAccess, 'startOf' | 'callOnce'>;
+  readonly tools: Pick<ToolAccess, 'preparedCall'>;
   readonly record: RecordWork;
 }
 

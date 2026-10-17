@@ -1,5 +1,5 @@
 import { Caller, PlaybookContext, PlaybookLifecycle, defineQuery, type Permission } from '@on.auto/operations';
-import { Array as Arr, Effect, Option, Result, Schema } from 'effect';
+import { Effect, Result, Schema } from 'effect';
 
 import { isReadOnly } from '../bounds/tool-results.ts';
 import { ArgumentsField, ServerField, ToolField } from '../names/tool-fields.ts';
@@ -48,12 +48,12 @@ export function defineDryRun(access: ToolLookup) {
     reasons: ['unavailable'],
     handle: Effect.fnUntraced(function* ({ server, tool, arguments: input }) {
       const address = yield* PlaybookContext;
-      const naming = access.named(address, [{ server, tool }]);
+      const { naming, listed: listing } = yield* access.lookUp(address, { server, tool });
       if (Result.isFailure(naming) && naming.failure.because !== 'tool_not_allowed') {
         return yield* Effect.fail(unavailableOf(naming.failure));
       }
       const allowed = Result.isSuccess(naming);
-      const listed = Option.getOrThrow(Arr.head(yield* access.listServers(address, server)));
+      const listed = yield* listing;
       const seen = yield* seenOn(listed, { server, tool }, allowed);
       const callerMay = (yield* Caller).permissions.includes(executeNeeds);
       const retired = (yield* PlaybookLifecycle).status === 'retired';

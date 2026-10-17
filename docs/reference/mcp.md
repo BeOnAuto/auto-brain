@@ -81,14 +81,14 @@ Every tool supplies a description and the JSON Schema of its input. No tool has 
 
 Each tool's annotations tell a client how careful to be:
 
-| Annotation        | Means                                                          | `true` for                                                                                                                                                             |
-| ----------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `readOnlyHint`    | The tool only reads                                            | Every tool that reads, including `dry_run`, although its HTTP route uses `POST`                                                                                        |
-| `destructiveHint` | What it does cannot be undone, or may change something outside | `retire_playbook`, `remove_connection`, `retire_definition`, `cancel_run` and `answer_interaction`; `run_definition` and `execute` while any tool server is configured |
-| `idempotentHint`  | Calling it again with the same input changes nothing           | Every tool that reads, and `update_playbook`, `retire_playbook`, `remove_connection`, `update_definition`, `retire_definition`, `cancel_run` and `answer_interaction`  |
-| `openWorldHint`   | It reaches outside the runtime                                 | `list_models` and `run_definition`, which reach model providers; `search`, `introspect`, `dry_run` and `execute`, which reach tool servers                             |
+| Annotation        | Means                                                          | `true` for                                                                                                                                                                                           |
+| ----------------- | -------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `readOnlyHint`    | The tool only reads                                            | Every tool that reads, including `dry_run`, although its HTTP route uses `POST`                                                                                                                      |
+| `destructiveHint` | What it does cannot be undone, or may change something outside | `retire_playbook`, `remove_connection`, `retire_definition`, `cancel_run` and `answer_interaction`; `run_definition` and `execute` while any tool server is configured or people may add connections |
+| `idempotentHint`  | Calling it again with the same input changes nothing           | Every tool that reads, and `update_playbook`, `retire_playbook`, `remove_connection`, `update_definition`, `retire_definition`, `cancel_run` and `answer_interaction`                                |
+| `openWorldHint`   | It reaches outside the runtime                                 | `list_models` and `run_definition`, which reach model providers; `search`, `introspect`, `dry_run` and `execute`, which reach tool servers                                                           |
 
-`run_definition` is marked destructive while a tool server is configured, because a function's tools may then change something. An agent can ask the person before it runs a function.
+`run_definition` is marked destructive while a tool server is configured or people may add connections, as they may by default, because a function's tools may then change something. An agent can ask the person before it runs a function.
 
 ### Playbooks and models
 
@@ -159,7 +159,7 @@ Over MCP, a result carries its output twice, as JSON text and as structured cont
 
 ### Tool servers
 
-Four tools work with the tool servers set up for the playbook, whether MCP servers or HTTP APIs, under the names an agent gateway gives the same tools over the systems behind it, so an agent uses one vocabulary with either. A fifth operation, `validate`, is served over [HTTP](http.md#tool-servers) alone: `dry_run` reports the same check of the arguments. The routes are relative to `/v1/orgs/{org}`.
+Four tools work with the tool servers of the playbook, those set up in the configuration and the [connections](#connections) of its org, whether MCP servers or HTTP APIs, under the names an agent gateway gives the same tools over the systems behind it, so an agent uses one vocabulary with either. A fifth operation, `validate`, is served over [HTTP](http.md#tool-servers) alone: `dry_run` reports the same check of the arguments. The routes are relative to `/v1/orgs/{org}`.
 
 | Tool         | HTTP operation                                                                                        | What it is for                                                                 |
 | ------------ | ----------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -173,6 +173,7 @@ Four tools work with the tool servers set up for the playbook, whether MCP serve
 - `introspect` and `dry_run` change nothing and call no tool, but they ask the servers for their tool lists. So they are marked read-only and open-world, and a key that may read the playbook is offered them.
 - `execute` needs `playbook:write` whatever the tool does, so a key that may only read is not offered it. Each call is recorded in the playbook's history.
 - A call that names a server or a tool the playbook may not use is refused, and the refusal's words say what `search` shows.
+- A connection is listed with `connection`, its id, and named by its name. One that is not ready is refused, and listed unavailable, with `because` `connection_pending` while nobody has approved it, `connection_broken` once its credential cannot be read, or `connection_not_allowed` when a rule of the operator no longer takes it.
 
 [Tool servers](http.md#tool-servers) gives the fields, limits and refusals of all five.
 
@@ -189,7 +190,8 @@ A connection is a tool server that a person adds to the org through their agent,
 - A connection is added by a person: where the runtime signs people in, `add_connection` refuses a key, and a runtime of API keys alone, which signs nobody in, refuses every connection, since no person could approve it.
 - The agent adds a connection without its credential: an entry that holds a value that looks like a credential, or a reference such as `${CRM_API_KEY}`, is refused. The person approves the connection, and gives its credential where it takes one, on Studio's page, which `connect.url` of the answer opens within ten minutes.
 - `add_connection` always puts the link in its answer. To a client of the `2026-07-28` revision that declares in its request that it opens links, the `url` form of elicitation, it also asks for the link to be opened, with a message that says what to do. The client opens the page or declines, and retries the call, which answers the connection added once and never adds a second one. A retry by another caller, or in another org, is refused, and the connection stays added. A client of an earlier revision, whose requests carry no capabilities on this stateless server, is not asked; it shows the person the link from the answer.
-- The credential is one object: its `kind` and the fields that kind takes, `name` for `reference`, `name` and `in` for `secret`, and `issuer`, `client_id` and an optional `scope` for `client_credentials`. A field its kind lacks or does not take is refused as `invalid_input` at that field.
+- The credential is one object: its `kind` and the fields that kind takes, `variable`, `name` and `in` for `reference`, `name` and `in` for `secret`, and `issuer`, `client_id` and an optional `scope` for `client_credentials`. A field its kind lacks or does not take is refused as `invalid_input` at that field.
+- Once connected, a connection is a tool server of the org: a function names it by its name as `name/tool`, and `search`, `introspect`, `dry_run` and `execute` reach it, as [Tool servers](#tool-servers) describes.
 - A link is gone after its ten minutes, and nothing gives a pending connection another: remove the connection with `remove_connection` and add it again.
 - `add_connection` and `remove_connection` need `org:write`, and `list_connections` needs `org:read`. `get_connection`, which Studio reads to see whether the person approved a connection, is served over HTTP alone.
 

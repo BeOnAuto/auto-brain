@@ -1,17 +1,29 @@
-import { Effect } from 'effect';
-
 import { defaultTiming } from '../bounds/call-bounds.ts';
-import { serverLink } from '../connections/server-links.ts';
-import { oneCall } from '../one-call/one-call.ts';
+import { serverLink, type ServerLink } from '../connections/server-links.ts';
+import { listedServer } from '../listing/tool-servers.ts';
+import { oneCall, type OneCall, type RunCall } from '../one-call/one-call.ts';
 import type { ToolServers } from '../openapi/described-api.ts';
-import { openedRun } from './run-opening.ts';
-import type { LinkedAccess, LinkedOptions } from './tool-access.ts';
-import { toolServersOf } from './tool-servers.ts';
+import { connectionLinkOf } from '../org-servers/connection-linking.ts';
+import type { LinkConnection } from '../org-servers/connection-links.ts';
+import type { OrgServer } from '../org-servers/org-servers.ts';
+import { openedRun, type Opening } from './run-opening.ts';
+import type { LinkedOptions } from './tool-access.ts';
+
+type Opened = Pick<Opening, 'context' | 'references' | 'links'>;
+
+export interface LinkedAccess {
+  readonly fileLinks: ReadonlyMap<string, ServerLink>;
+  readonly connectionLink: LinkConnection;
+  readonly open: (opened: Opened) => ReturnType<typeof openedRun>;
+  readonly callOnce: (call: OneCall, server: OrgServer, runCall?: RunCall) => ReturnType<typeof oneCall>;
+  readonly listed: (link: ServerLink) => ReturnType<typeof listedServer>;
+  readonly close: () => Promise<void>;
+}
 
 export function linkedAccess(settings: ToolServers, options: LinkedOptions): LinkedAccess {
   const report = options.reportServerMessage;
   const timing = options.timing ?? defaultTiming;
-  const { secrets } = options;
+  const { secrets, keepIn } = options;
   const linkOptions = {
     client: options.client,
     fetch: options.fetch ?? globalThis.fetch,
@@ -23,15 +35,16 @@ export function linkedAccess(settings: ToolServers, options: LinkedOptions): Lin
     },
     ...(options.traceMeta === undefined ? {} : { traceMeta: options.traceMeta }),
   };
-  const links = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
+  const fileLinks = new Map(settings.servers.map((server) => [server.name, serverLink(server, linkOptions)]));
+  const linking = { options: linkOptions, reportLeftOut: options.reportLeftOut };
   return {
-    configured: settings.servers.length > 0,
-    open: (context, references) =>
-      openedRun({ context, references, links, secrets, keepIn: options.keepIn, timing, report }),
-    callOnce: (call, runCall) => oneCall(call, { links, secrets, keepIn: options.keepIn, timing }, runCall),
-    listServers: (scope, named) => Effect.promise(() => toolServersOf({ scope, named }, { links, secrets, timing })),
+    fileLinks,
+    connectionLink: (id, server) => connectionLinkOf(id, server, linking),
+    open: (opened) => openedRun({ ...opened, secrets, keepIn, timing, report }),
+    callOnce: (call, server, runCall) => oneCall(call, server, { secrets, keepIn, timing }, runCall),
+    listed: (link) => listedServer(link, { secrets, timing }),
     close: async () => {
-      await Promise.all([...links.values()].map((link) => link.stop()));
+      await Promise.all([...fileLinks.values()].map((link) => link.stop()));
     },
   };
 }

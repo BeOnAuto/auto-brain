@@ -1,8 +1,8 @@
 import type { Unavailable } from '@on.auto/operations';
 import { Effect, Option } from 'effect';
 
-import { notListed } from '../access/tool-naming.ts';
 import type { ServerTool, ToolServer } from '../listing/tool-server.ts';
+import { notListed } from '../names/tool-naming.ts';
 import type { ToolReference } from '../names/tool-reference.ts';
 import type { Reached } from './dry-run-schema.ts';
 import { listedTool } from './named-tool.ts';

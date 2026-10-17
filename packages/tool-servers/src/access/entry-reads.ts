@@ -1,25 +1,13 @@
-import { sha256Of, textToKeep, type PlaybookAddress, type RecordedContent } from '@on.auto/operations';
-import { Effect, Function, Result } from 'effect';
+import { sha256Of, textToKeep, type RecordedContent } from '@on.auto/operations';
+import { Effect } from 'effect';
 
 import { secretsOfServers, type Secrets } from '../bounds/secrets.ts';
 import { recordingOf, startedFields, type KeepIn, type StartedFields } from '../calls/recorded-calls.ts';
-import type { ToolReference } from '../names/tool-reference.ts';
 import type { OneCall } from '../one-call/one-call.ts';
+import type { Served } from '../org-servers/org-servers.ts';
 import type { ServerSettings } from '../settings/server-settings.ts';
-import { namedLinks } from './tool-naming.ts';
-import type { ToolNotOffered } from './tool-not-offered.ts';
 
-export type NamingCheck = (
-  address: PlaybookAddress,
-  references: readonly ToolReference[],
-) => Result.Result<void, ToolNotOffered>;
-
-export type StartOf = (call: Pick<OneCall, 'org' | 'playbook' | 'reference' | 'input'>) => Effect.Effect<StartedFields>;
-
-export function namingOf(servers: readonly ServerSettings[]): NamingCheck {
-  const entries = new Map(servers.map((settings) => [settings.name, { settings }]));
-  return (address, references) => Result.map(namedLinks(address, { references, links: entries }), Function.constVoid);
-}
+export type StartingCall = Pick<OneCall, 'org' | 'playbook' | 'reference' | 'input'>;
 
 export type ContentStore = Pick<RecordedContent, 'put'>;
 
@@ -45,15 +33,13 @@ export function recordingPartsOf(servers: readonly ServerSettings[], content: Co
   return { keepIn: keepingIn(content), secrets: secretsOfServers(servers) };
 }
 
-const nothingKept: Pick<ServerSettings, 'record_content' | 'request_id'> = {
-  record_content: false,
-  request_id: null,
-};
+const nothingKept: Pick<Served, 'record_content' | 'connection'> = { record_content: false, connection: null };
 
-export function startsOf(servers: readonly ServerSettings[], { keepIn, secrets }: RecordingParts): StartOf {
-  return ({ org, playbook, reference, input }) => {
-    const entry = servers.find(({ name }) => name === reference.server) ?? nothingKept;
-    const recording = recordingOf({ ...entry, request_id: null }, secrets, keepIn({ org, playbook }));
-    return Effect.promise(() => startedFields({ ...reference, input }, recording));
-  };
+export function startedOn(
+  served: Pick<Served, 'record_content' | 'connection'> | undefined,
+  { org, playbook, reference, input }: StartingCall,
+  { keepIn, secrets }: RecordingParts,
+): Promise<StartedFields> {
+  const recording = recordingOf({ ...(served ?? nothingKept), request_id: null }, secrets, keepIn({ org, playbook }));
+  return startedFields({ ...reference, input }, recording);
 }

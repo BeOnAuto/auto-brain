@@ -290,9 +290,9 @@
           "type": "array",
           "items": {
             "type": "string",
-            "enum": ["none", "reference", "secret", "client_credentials", "authorization"]
+            "enum": ["none", "reference", "secret", "client_credentials"]
           },
-          "description": "The kinds of credential a connection may take, of none, reference, secret, client_credentials and authorization; every kind when left out"
+          "description": "The kinds of credential a connection may take, of none, reference, secret and client_credentials; every kind when left out"
         },
         "variables": {
           "type": "array",

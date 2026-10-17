@@ -1,13 +1,18 @@
 import { Buffer } from 'node:buffer';
 
-import { fakeAuthorization, type ClientRegistration, type FakeAuthorization } from '../testing/fake-authorization.ts';
-import { deniedText } from '../testing/fake-tools.ts';
+import {
+  fakeAuthorization,
+  type ClientRegistration,
+  type FakeAuthorization,
+} from '../mcp-testing/fake-authorization.ts';
+import { deniedText } from '../mcp-testing/fake-tools.ts';
 import { serveOnLoopback, type FetchHandler } from '../testing/loopback-server.ts';
 import { fakeApiDocument, type FakeApiVersion } from './fake-api-document.ts';
 import { answerTo, type ApiAnswering, type ProgrammedAnswer, type SeenApiRequest } from './fake-api-routes.ts';
 
 export interface FakeApiOptions {
   readonly key?: string;
+  readonly declaresKey?: boolean;
   readonly client?: ClientRegistration;
   readonly version?: FakeApiVersion;
   readonly requestIdHeader?: string;
@@ -25,6 +30,7 @@ export interface FakeApiServer {
   readonly documentUrl: string;
   readonly issuing: FakeIssuing | undefined;
   readonly seen: () => readonly SeenApiRequest[];
+  readonly documentReads: () => number;
   readonly answerNextWith: (answer: ProgrammedAnswer, times?: number) => void;
   readonly close: () => Promise<void>;
 }
@@ -84,7 +90,8 @@ function apiHandler(options: FakeApiOptions, answering: ApiAnswering, issuing: I
   return async (request) => {
     const { pathname } = new URL(request.url);
     if (pathname === documentPath) {
-      return Response.json(fakeApiDocument(options.version ?? '3.1', basePath));
+      answering.documentRead();
+      return Response.json(fakeApiDocument(options.version ?? '3.1', basePath, options.declaresKey));
     }
     answering.see(await seenOf(request));
     if (!authorized(request, options.key, issuing)) {
@@ -121,9 +128,13 @@ export async function serveFakeApi(options: FakeApiOptions = {}): Promise<FakeAp
   const seen: SeenApiRequest[] = [];
   const programmed: ProgrammedAnswer[] = [];
   let answered = 0;
+  let documentReads = 0;
   const answering: ApiAnswering = {
     see: (request) => {
       seen.push(request);
+    },
+    documentRead: () => {
+      documentReads += 1;
     },
     programmed: () => programmed.shift(),
     requestIdHeader: options.requestIdHeader,
@@ -141,6 +152,7 @@ export async function serveFakeApi(options: FakeApiOptions = {}): Promise<FakeAp
     documentUrl: `${listening.origin}${documentPath}`,
     issuing,
     seen: () => [...seen],
+    documentReads: () => documentReads,
     answerNextWith: (answer, times = 1) => {
       programmed.push(...Array.from({ length: times }, () => answer));
     },
