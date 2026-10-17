@@ -8,7 +8,11 @@ import {
 } from '@on.auto/operations';
 import { Schema } from 'effect';
 
-import type { PlaybookFunctionDefinition, WorkflowDefinition } from '../registry/definition.ts';
+import {
+  isPlaybookFunctionType,
+  type PlaybookFunctionDefinition,
+  type WorkflowDefinition,
+} from '../registry/definition.ts';
 import { OutputShapeNameSchema } from '../shapes/shape-names.ts';
 import { mostResultBytes } from './recorded-size.ts';
 
@@ -99,10 +103,8 @@ export type FunctionRun = Run & Pick<PlaybookFunctionDefinition, 'type'>;
 
 export type WorkflowRun = Run & Pick<WorkflowDefinition, 'type'>;
 
-const functionTypes: ReadonlySet<string> = new Set(['reasoning', 'interaction', 'computation', 'recall']);
-
 export function isFunctionRun(run: Run): run is FunctionRun {
-  return functionTypes.has(run.type);
+  return isPlaybookFunctionType(run.type);
 }
 
 export function isWorkflowRun(run: Run): run is WorkflowRun {

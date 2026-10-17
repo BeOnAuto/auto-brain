@@ -20,11 +20,20 @@ const recallRun: Run = { ...functionRun, type: 'recall', output: [{ verdict: 'ap
 
 const interactionRun: Run = { ...functionRun, type: 'interaction', output: { choice: 'approve' } };
 
+const predictionRun: Run = {
+  ...functionRun,
+  type: 'prediction',
+  output: {
+    period: 'month',
+    lines: [{ name: 'orders', points: [{ at: '2026-10', value: 140, low: 120, high: 160 }] }],
+  },
+};
+
 const workflowRun: Run = { ...functionRun, type: 'workflow' };
 
 describe('a run', () => {
-  it('is a function run when it ran a reasoning, an interaction, a computation or a recall function, and a workflow run when it ran a workflow', () => {
-    const runs = [functionRun, interactionRun, computationRun, recallRun, workflowRun];
+  it('is a function run when it ran a reasoning, an interaction, a prediction, a recall or a computation function, and a workflow run when it ran a workflow', () => {
+    const runs = [functionRun, interactionRun, predictionRun, recallRun, computationRun, workflowRun];
 
     const functionRuns = runs.filter((run) => isFunctionRun(run));
     const workflowRuns = runs.filter((run) => isWorkflowRun(run));
@@ -32,13 +41,13 @@ describe('a run', () => {
     expectTypeOf(functionRuns).toEqualTypeOf<FunctionRun[]>();
     expectTypeOf(workflowRuns).toEqualTypeOf<WorkflowRun[]>();
     expect([functionRuns, workflowRuns]).toEqual([
-      [functionRun, interactionRun, computationRun, recallRun],
+      [functionRun, interactionRun, predictionRun, recallRun, computationRun],
       [workflowRun],
     ]);
   });
 
-  it.each(['echo', 'reason', 'interact', 'prediction', 'compute'])(
-    'is neither of a custom adapter or a planned function type: %s',
+  it.each(['echo', 'reason', 'interact', 'predict', 'compute'])(
+    'is neither of a custom adapter or a name that is not a function type: %s',
     (type) => {
       const run = { ...functionRun, type };
 

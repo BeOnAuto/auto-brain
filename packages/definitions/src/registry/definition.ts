@@ -1,5 +1,6 @@
 import { Schema } from 'effect';
 
+import { functionTypeOrder } from '../capability/function-terminology.ts';
 import type { StrippedForms } from '../capability/stripped-forms.ts';
 import { TriggerSchema } from './definition-triggers.ts';
 
@@ -99,18 +100,16 @@ export type PlaybookFunctionDefinition =
   | ComputationFunctionDefinition
   | RecallFunctionDefinition;
 
-const playbookFunctionTypes: ReadonlySet<string> = new Set([
-  'reasoning',
-  'interaction',
-  'prediction',
-  'recall',
-  'computation',
-]);
+const playbookFunctionTypes: ReadonlySet<string> = new Set<string>(functionTypeOrder);
+
+export function isPlaybookFunctionType(type: string): boolean {
+  return playbookFunctionTypes.has(type);
+}
 
 export type WorkflowDefinition = Definition & { readonly type: 'workflow' };
 
 export function isPlaybookFunctionDefinition(definition: Definition): definition is PlaybookFunctionDefinition {
-  return playbookFunctionTypes.has(definition.type);
+  return isPlaybookFunctionType(definition.type);
 }
 
 export function isWorkflowDefinition(definition: Definition): definition is WorkflowDefinition {
