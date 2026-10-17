@@ -61,12 +61,22 @@ jobs:
           key: ${{ steps.turbo-cache.outputs.cache-primary-key }}
 
   test:
-    name: Test (${{ join(matrix.packages, ', ') }})
+    name: Test (${{ join(matrix.packages, ', ') }}${{ matrix.shard && format(', shard {0} of {1}', matrix.shard.index, matrix.shard.count) || '' }})
     strategy:
       fail-fast: false
       matrix:
         include:
           - packages: [server]
+            shard: { index: 1, count: 4 }
+            services: true
+          - packages: [server]
+            shard: { index: 2, count: 4 }
+            services: true
+          - packages: [server]
+            shard: { index: 3, count: 4 }
+            services: true
+          - packages: [server]
+            shard: { index: 4, count: 4 }
             services: true
           - packages: [ledger, workflow-host, prediction, object-storage, workflow-engine]
             services: true
@@ -115,8 +125,8 @@ jobs:
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: .turbo/cache
-          key: turbo-test-${{ join(matrix.packages, '-') }}-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-${{ github.sha }}
-          restore-keys: turbo-test-${{ join(matrix.packages, '-') }}-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-
+          key: turbo-test-${{ join(matrix.packages, '-') }}${{ matrix.shard && format('-shard-{0}', matrix.shard.index) || '' }}-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-${{ github.sha }}
+          restore-keys: turbo-test-${{ join(matrix.packages, '-') }}${{ matrix.shard && format('-shard-{0}', matrix.shard.index) || '' }}-${{ hashFiles('pnpm-lock.yaml', '**/turbo.json') }}-
       - run: pnpm install --frozen-lockfile
       - name: Wait until PostgreSQL and the object store answer on their ports
         if: matrix.services
@@ -131,20 +141,31 @@ jobs:
             sleep 1
           done
           curl --fail --silent http://127.0.0.1:9000/health
-      - name: Run the tests of the group's packages two at a time, each with 100% coverage per file
+      - name: Run the tests of the group's packages two at a time, each with 100% coverage per file, or the shard's tests into a blob report the coverage job merges and checks
         run: |
           filters=()
           for name in $PACKAGES; do
             filters+=("--filter=@on.auto/$name")
           done
-          pnpm exec turbo run test --concurrency=2 "${filters[@]}"
+          pnpm exec turbo run "$TASK" --concurrency=2 "${filters[@]}"
         env:
           PACKAGES: ${{ join(matrix.packages, ' ') }}
+          TASK: ${{ matrix.shard && 'test:shard' || 'test' }}
+          VITEST_SHARD: ${{ matrix.shard && format('{0}/{1}', matrix.shard.index, matrix.shard.count) || '' }}
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ secrets.TURBO_TEAM }}
           TURBO_RUN_SUMMARY: true
           LEDGER_TEST_POSTGRESQL_URL: ${{ matrix.services && 'postgresql://postgres:ledger-ci@127.0.0.1:5432/postgres' || '' }}
           CONTENT_TEST_OBJECT_STORE_URL: ${{ matrix.services && 'http://content-ci:content-ci-secret@127.0.0.1:9000/content-ci' || '' }}
+      - name: Upload the shard's blob report, with its coverage, for the coverage job
+        if: matrix.shard
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: server-blob-report-${{ matrix.shard.index }}
+          path: packages/server/.vitest/blob/
+          if-no-files-found: error
+          retention-days: 1
+          overwrite: true
       - name: Show the inputs of turbo's global hash and, for each task, its hash, its cache status and its time
         if: ${{ !cancelled() }}
         run: .github/turbo/show-run-summary.sh
@@ -162,6 +183,34 @@ jobs:
         run: |
           docker logs postgresql
           docker logs object-store
+
+  coverage:
+    name: Coverage (server)
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Download the blob reports of the server's shards into the server package
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          path: packages/server/.vitest/blob
+          pattern: server-blob-report-*
+          merge-multiple: true
+      - name: Merge the shards' reports and check 100% coverage per file over the server's whole suite
+        run: pnpm --filter @on.auto/server test:merge
 
   container:
     name: Container (linux/${{ matrix.architecture }})
@@ -938,7 +987,7 @@ jobs:
   ci-ok:
     name: ci-ok
     if: always()
-    needs: [verify, test, container, package, pull-request-title, workflows]
+    needs: [verify, test, coverage, container, package, pull-request-title, workflows]
     runs-on: ubuntu-latest
     permissions: {}
     steps:

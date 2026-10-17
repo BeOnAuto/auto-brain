@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { isDeepStrictEqual } from 'node:util';
 
 import { Schema } from 'effect';
 import { parse } from 'yaml';
@@ -39,7 +40,13 @@ const testGroupsOf = Schema.decodeUnknownSync(
       test: Schema.Struct({
         strategy: Schema.Struct({
           matrix: Schema.Struct({
-            include: Schema.Array(Schema.Struct({ packages: Schema.Array(Schema.String), services: Schema.Boolean })),
+            include: Schema.Array(
+              Schema.Struct({
+                packages: Schema.Array(Schema.String),
+                shard: Schema.optionalKey(Schema.Struct({ index: Schema.Number, count: Schema.Number })),
+                services: Schema.Boolean,
+              }),
+            ),
           }),
         }),
       }),
@@ -74,8 +81,14 @@ interface TestedPackage {
   readonly folder: string;
 }
 
+interface Shard {
+  readonly index: number;
+  readonly count: number;
+}
+
 interface TestGroup {
   readonly names: readonly string[];
+  readonly shard: Shard | undefined;
   readonly services: boolean;
 }
 
@@ -88,7 +101,7 @@ const testedPackages: readonly TestedPackage[] = workspacePatterns
   .map(({ folder, manifest }): TestedPackage => ({ name: manifest.name, folder }));
 
 const groups = testGroupsOf(parse(textOf('.github/workflows/ci.yml'))).jobs.test.strategy.matrix.include.map(
-  ({ packages, services }): TestGroup => ({ names: packages.map((name) => `${scope}${name}`), services }),
+  ({ packages, shard, services }): TestGroup => ({ names: packages.map((name) => `${scope}${name}`), shard, services }),
 );
 
 const variablesOfTheServices = testEnvironmentOf(textOf('turbo.json')).tasks.test.env;
@@ -111,11 +124,26 @@ await test('the workspace names its packages by folder, or as every folder in a 
   assert.ok(testedPackages.length > 20);
 });
 
-await test('every package with tests runs in exactly one group of the test job, and every name in a group is such a package', () => {
+function shardsOf(name: string): readonly (Shard | undefined)[] {
+  return groups.filter(({ names }) => names.includes(name)).map(({ shard }) => shard);
+}
+
+function everyShardOf(count: number): readonly Shard[] {
+  return Array.from({ length: count }, (_, position) => ({ index: position + 1, count }));
+}
+
+function runsInOneGroupOrInEachOfItsShards(shards: readonly (Shard | undefined)[]): boolean {
+  return (
+    isDeepStrictEqual(shards, [undefined]) ||
+    (shards.length > 0 && isDeepStrictEqual(shards, everyShardOf(shards.length)))
+  );
+}
+
+await test('every package with tests runs in exactly one group of the test job, or once in each of its shards in order, and every name in a group is such a package', () => {
   const grouped = groups.flatMap(({ names }) => names);
   const tested = testedPackages.map(({ name }) => name);
   assert.deepEqual(
-    tested.filter((name) => grouped.filter((member) => member === name).length !== 1),
+    tested.filter((name) => !runsInOneGroupOrInEachOfItsShards(shardsOf(name))),
     [],
   );
   assert.deepEqual(
