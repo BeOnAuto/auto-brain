@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.12.0](https://github.com/BeOnAuto/runtime/compare/v0.11.0...v0.12.0) (2026-10-17)
+
+
+### Features
+
+* **server:** functions call through the connections people add ([#231](https://github.com/BeOnAuto/runtime/issues/231)) ([b3a2bad](https://github.com/BeOnAuto/runtime/commit/b3a2baddd9b0ef86e81f3a11c51d3425ffcc54f7))
+
+
+### Bug Fixes
+
+* **definitions:** a prediction run is a function run ([#236](https://github.com/BeOnAuto/runtime/issues/236)) ([d0032ec](https://github.com/BeOnAuto/runtime/commit/d0032ec94025878b4148b342565c8e41a29f6dc6))
+
 ## [0.11.0](https://github.com/BeOnAuto/runtime/compare/v0.10.0...v0.11.0) (2026-10-16)
 
 
